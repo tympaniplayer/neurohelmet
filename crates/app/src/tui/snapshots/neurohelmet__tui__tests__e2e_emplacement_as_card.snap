@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 902
+expression: screen
+---
+  1:Heavy Emplacement
+╔ Heavy Emplacement (AC/20) ═════════════════════╗
+║PV 15   SZ -   BD   MV 0"   TMM 0               ║
+║Skill 4+   PV 15                                ║
+║                                                ║
+║Armor     ██████  6/6                           ║
+║Structure ██████  6/6                           ║
+║                                                ║
+║Heat      [0] 1  2  3  S                        ║
+║Damage    S 2   M 2   L 0   E 0                 ║
+║To-Hit    S 4+  M 6+  L —   E —                 ║
+║Crits     Wpn0                                  ║
+║                                                ║
+║Specials  CF:6  AC2/2/0  IMMOBILE               ║
+╚════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Spc:dmg  u:repair  o/i:heat  c:crits  t:to-hit  1:scale  ,/.:unit  a:add  D:del  S:sess  ?:help

@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: render(&mut app)
+---
+  1:Atlas
+                        ┌HD────────┐                        ┌ HEAT ────────────────────────────────┐
+                        │A 20/20   │                        │Heat 0 / 30   diss 20                 │
+                        │██████████│                        │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
+                        │I 10/10   │                        │sinks 20× Single                      │
+╔ Keys ═══════════════════════════════════════════════════════════════════════════════════════════╗│
+║Doll                                            General                                          ║│
+║  Space    damage current location                Tab      switch panel                          ║│
+║  u        repair (internal first)                o / i    heat up / down                        ║┘
+║  c        crit slots (a=bin · t=munition)        e        end turn (heat, clear fired ✓ + PSR)  ║┐
+║  r        dice reference (cluster · hit loc)     x / X    toggle shutdown / pilot KO / wake     ║│
+║  f        toggle front / rear armor              d        toggle prone (knocked down)           ║│
+║  ←↑↓→     move cursor                            v        movement this turn (mode + hexes)     ║┘
+║                                                  t        to-hit target (GATOR)                 ║┐
+║Equipment                                         m / M    motive damage (vehicles) / repair     ║│
+║  Space    fire weapon (marks ✓) / spend ammo     L        log snapshot (game log)               ║│
+║  u        un-fire / refill                       z        undo                                  ║│
+║                                                  , / .    previous / next mech  ([ / ] also)    ║┘
+║Pilot / force                                     a / D    add / delete mech                     ║┐
+║  g        edit gunnery / piloting skills         S        sessions browser                      ║│
+║  b        set force point limit (BV)             ^t       display picker (theme + layout)       ║│
+║  p / P    pilot / crew hit / heal                q        quit                                  ║│
+║  press any key to close                                                                         ║│
+╚═════════════════════════════════════════════════════════════════════════════════════════════════╝│
+            │I 10/10   │            │I 10/10   │            │                                      │
+            │██████████│            │██████████│            │                                      │
+            │          │            │          │            │                                      │
+            │          │            │          │            │                                      │
+            └──────────┘            └──────────┘            └──────────────────────────────────────┘
+ Spc:dmg  u:rep  c:crit  p:pilot  f:face  Tab:panel  ?:help

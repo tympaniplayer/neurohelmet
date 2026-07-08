@@ -1,0 +1,63 @@
+[
+  {
+    "name":"Atlas Lance",
+    "elements":[
+      {"name":"Atlas AS7-D","tp":"BM","size":4,"mv":"6\"","armor":10,"structure":8,"dmgS":"5","dmgM":"5","dmgL":"2","dmgE":"-","ov":0,"th":-1,"pv":52,"skill":4,"specials":"AC2/2/-|IF1|LRM1/1/1|REAR1/1/-"},
+      {"name":"Atlas AS7-D","tp":"BM","size":4,"mv":"6\"","armor":10,"structure":8,"dmgS":"5","dmgM":"5","dmgL":"2","dmgE":"-","ov":0,"th":-1,"pv":52,"skill":4,"specials":"AC2/2/-|IF1|LRM1/1/1|REAR1/1/-"},
+      {"name":"Atlas AS7-D","tp":"BM","size":4,"mv":"6\"","armor":10,"structure":8,"dmgS":"5","dmgM":"5","dmgL":"2","dmgE":"-","ov":0,"th":-1,"pv":52,"skill":4,"specials":"AC2/2/-|IF1|LRM1/1/1|REAR1/1/-"},
+      {"name":"Atlas AS7-D","tp":"BM","size":4,"mv":"6\"","armor":10,"structure":8,"dmgS":"5","dmgM":"5","dmgL":"2","dmgE":"-","ov":0,"th":-1,"pv":52,"skill":4,"specials":"AC2/2/-|IF1|LRM1/1/1|REAR1/1/-"}
+    ],
+    "unit":{"type":"BM","size":4,"mv":3,"mvCode":"","jump":0,"trspMv":3,"trspCode":"","tmm":1,"armor":25,"dmgS":"7","dmgM":"7","dmgL":"3","dmgE":"-","skill":4,"pv":69,"specials":"FLK3/0|IF1"}
+  },
+  {
+    "name":"Locust Lance",
+    "elements":[
+      {"name":"Locust LCT-1V","tp":"BM","size":1,"mv":"16\"","armor":2,"structure":2,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":18,"skill":4,"specials":""},
+      {"name":"Locust LCT-1V","tp":"BM","size":1,"mv":"16\"","armor":2,"structure":2,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":18,"skill":4,"specials":""},
+      {"name":"Locust LCT-1V","tp":"BM","size":1,"mv":"16\"","armor":2,"structure":2,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":18,"skill":4,"specials":""},
+      {"name":"Locust LCT-1V","tp":"BM","size":1,"mv":"16\"","armor":2,"structure":2,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":18,"skill":4,"specials":""}
+    ],
+    "unit":{"type":"BM","size":1,"mv":8,"mvCode":"","jump":0,"trspMv":8,"trspCode":"","tmm":3,"armor":5,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","skill":4,"pv":24,"specials":"RCN"}
+  },
+  {
+    "name":"Mixed",
+    "elements":[
+      {"name":"Atlas AS7-D","tp":"BM","size":4,"mv":"6\"","armor":10,"structure":8,"dmgS":"5","dmgM":"5","dmgL":"2","dmgE":"-","ov":0,"th":-1,"pv":52,"skill":4,"specials":"AC2/2/-|IF1|LRM1/1/1|REAR1/1/-"},
+      {"name":"Atlas AS7-D","tp":"BM","size":4,"mv":"6\"","armor":10,"structure":8,"dmgS":"5","dmgM":"5","dmgL":"2","dmgE":"-","ov":0,"th":-1,"pv":52,"skill":4,"specials":"AC2/2/-|IF1|LRM1/1/1|REAR1/1/-"},
+      {"name":"Locust LCT-1V","tp":"BM","size":1,"mv":"16\"","armor":2,"structure":2,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":18,"skill":4,"specials":""},
+      {"name":"Locust LCT-1V","tp":"BM","size":1,"mv":"16\"","armor":2,"structure":2,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":18,"skill":4,"specials":""}
+    ],
+    "unit":{"type":"BM","size":3,"mv":6,"mvCode":"","jump":0,"trspMv":6,"trspCode":"","tmm":2,"armor":15,"dmgS":"4","dmgM":"4","dmgL":"1","dmgE":"-","skill":4,"pv":47,"specials":"FLK1/0|IF1|RCN"}
+  },
+  {
+    "name":"Demolisher (all-turret)",
+    "elements":[
+      {"name":"Demolisher Heavy Tank (Arrow IV)","tp":"CV","size":4,"mv":"6\"t","armor":5,"structure":4,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":42,"skill":4,"specials":"ARTAIS-2|SRCH|TUR(ARTAIS-2)"},
+      {"name":"Demolisher Heavy Tank (Arrow IV)","tp":"CV","size":4,"mv":"6\"t","armor":5,"structure":4,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":42,"skill":4,"specials":"ARTAIS-2|SRCH|TUR(ARTAIS-2)"},
+      {"name":"Demolisher Heavy Tank (Arrow IV)","tp":"CV","size":4,"mv":"6\"t","armor":5,"structure":4,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":42,"skill":4,"specials":"ARTAIS-2|SRCH|TUR(ARTAIS-2)"},
+      {"name":"Demolisher Heavy Tank (Arrow IV)","tp":"CV","size":4,"mv":"6\"t","armor":5,"structure":4,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":42,"skill":4,"specials":"ARTAIS-2|SRCH|TUR(ARTAIS-2)"}
+    ],
+    "unit":{"type":"V","size":4,"mv":3,"mvCode":"t","jump":0,"trspMv":3,"trspCode":"t","tmm":1,"armor":13,"dmgS":"1","dmgM":"1","dmgL":"-","dmgE":"-","skill":4,"pv":56,"specials":""}
+  },
+  {
+    "name":"Aero Flight",
+    "elements":[
+      {"name":"Sparrowhawk SPR-H5","tp":"AF","size":1,"mv":"10a","armor":4,"structure":5,"dmgS":"2","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":2,"pv":27,"skill":4,"specials":"BOMB1|ENE|FUEL20|PNT1|SPC|VSTOL"},
+      {"name":"Sparrowhawk SPR-H5","tp":"AF","size":1,"mv":"10a","armor":4,"structure":5,"dmgS":"2","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":2,"pv":27,"skill":4,"specials":"BOMB1|ENE|FUEL20|PNT1|SPC|VSTOL"},
+      {"name":"Sparrowhawk SPR-H5","tp":"AF","size":1,"mv":"10a","armor":4,"structure":5,"dmgS":"2","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":2,"pv":27,"skill":4,"specials":"BOMB1|ENE|FUEL20|PNT1|SPC|VSTOL"},
+      {"name":"Sparrowhawk SPR-H5","tp":"AF","size":1,"mv":"10a","armor":4,"structure":5,"dmgS":"2","dmgM":"1","dmgL":"-","dmgE":"-","ov":0,"th":2,"pv":27,"skill":4,"specials":"BOMB1|ENE|FUEL20|PNT1|SPC|VSTOL"}
+    ],
+    "unit":{"type":"AS","size":1,"mv":10,"mvCode":"a","jump":0,"trspMv":10,"trspCode":"a","tmm":-4,"armor":13,"dmgS":"3","dmgM":"1","dmgL":"-","dmgE":"-","skill":4,"pv":36,"specials":"BOMB1|FUEL20|PNT1"}
+  },
+  {
+    "name":"Infantry",
+    "elements":[
+      {"name":"Foot Squad (Rifle)","tp":"CI","size":1,"mv":"2\"f","armor":0,"structure":1,"dmgS":"0*","dmgM":"-","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":3,"skill":4,"specials":"AM|CAR1"},
+      {"name":"Foot Squad (Rifle)","tp":"CI","size":1,"mv":"2\"f","armor":0,"structure":1,"dmgS":"0*","dmgM":"-","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":3,"skill":4,"specials":"AM|CAR1"},
+      {"name":"Foot Squad (Rifle)","tp":"CI","size":1,"mv":"2\"f","armor":0,"structure":1,"dmgS":"0*","dmgM":"-","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":3,"skill":4,"specials":"AM|CAR1"},
+      {"name":"Foot Squad (Rifle)","tp":"CI","size":1,"mv":"2\"f","armor":0,"structure":1,"dmgS":"0*","dmgM":"-","dmgL":"-","dmgE":"-","ov":0,"th":-1,"pv":3,"skill":4,"specials":"AM|CAR1"}
+    ],
+    "unit":{"type":"CI","size":1,"mv":1,"mvCode":"f","jump":0,"trspMv":1,"trspCode":"f","tmm":0,"armor":1,"dmgS":"1","dmgM":"-","dmgL":"-","dmgE":"-","skill":4,"pv":4,"specials":"AM|CAR4"}
+  }
+]
+

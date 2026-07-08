@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: render(&mut app)
+---
+┌ Pick a unit (1) ─────────────────────────────────────────────────────────────────────────────────┐
+│ Search: █                                                                                        │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+▶ Atlas AS7-D  100t  Juggernaut  2755  BV 1897
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[type] search  [^f] filter  [^g] gen  [^b] budget  [↑↓] select  [Tab] prev  [Enter] add  [Esc] back

@@ -1,0 +1,13 @@
+/target
+# Downloaded source data cache (units.json, equipment2.json, ~4k SVGs). Re-creatable via
+# `neurohelmet-bake`. The baked product (data/mechs.bin) IS committed.
+/.bake-cache
+
+# insta pending snapshots (review + accept, never commit raw)
+*.snap.new
+
+# mdBook rendered output (source lives in docs/guide/src; the site is built by CI)
+/docs/guide/book
+
+# macOS
+.DS_Store

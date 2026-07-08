@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 1857
+expression: render(&mut app)
+---
+  1:Atlas
+╔ Atlas AS7-D ═══════════════════════════════════╗
+║PV 52   SZ 4   BM   MV 6"   TMM 1               ║
+║Skill 4+   PV 52                                ║
+║                                                ║
+║Armor     ██████████  10/10                     ║
+║Structure ████████  8/8                         ║
+║                                                ║
+║Heat      [0] 1  2  3  S                        ║
+║Damage    S 5   M 5   L 2   E 0                 ║
+║To-Hit    S 4+  M 6+  L 8+  E —                 ║
+║Crits     Eng1  FC0╔ Alpha Strike crits ══════════════════════════════════════╗
+║                   ║▶ Engine         1/2                                      ║
+║Specials  AC2/2/-  ║  Fire Control   0/4                                      ║
+╚═══════════════════║  MP             0/8                                      ║
+                    ║  Weapon         0/8                                      ║
+                    ║[↑↓] select   [←→] adjust   [Esc] close                   ║
+                    ╚══════════════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+
+ Spc:dmg  u:repair  o/i:heat  c:crits  t:to-hit  1:scale  ,/.:unit  a:add  D:del  S:sess  ?:help

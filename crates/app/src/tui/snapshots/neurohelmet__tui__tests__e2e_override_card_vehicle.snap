@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 1171
+expression: screen
+---
+  1:Manticore
+                        ╔FR 6,7,8══╗                        ┌ Manticore Heavy Tank ────────────────┐
+                        ║A 5/5     ║                        │Type Combat Vehicle  Mass 100t        │
+                        ║██████████║                        │Move 3 / 5t    TMM 1 / 2              │
+                        ║S 3/3     ║                        │Moved standstill (-1 hit)             │
+                        ║██████████║                        │                                      │
+                        ║          ║                        │  Weapons        Dmg                  │
+                        ╚══════════╝                        │▶ MLas           2                    │
+            ┌LS 10,11──┐┌TU 5,9────┐┌RS 3,4────┐            │                                      │
+            │A 5/5     ││A 5/5     ││A 5/5     │            │▶ MLas (RA)                           │
+            │██████████││██████████││██████████│            │  Rng  PB  S   M   L   X              │
+            │S 3/3     ││S 3/3     ││S 3/3     │            │  mod  +0  +0  +2  --  --             │
+            │██████████││██████████││██████████│            │  hit  3+  3+  5+  —   —              │
+            │          ││          ││          │            │                                      │
+            └──────────┘└──────────┘└──────────┘            │Equip Ammo:AC (T)                     │
+                                                            │Crew   3+  5+  7+  9+  11+  KIA       │
+                                                            │                                      │
+                                                            │                                      │
+                                                            │                                      │
+                                                            │                                      │
+                                                            │                                      │
+                                                            │                                      │
+                        ┌RR────────┐                        │                                      │
+                        │A 5/5     │                        │                                      │
+                        │██████████│                        │                                      │
+                        │S 3/3     │                        │                                      │
+                        │██████████│                        │                                      │
+                        │          │                        │                                      │
+                        └──────────┘                        └──────────────────────────────────────┘
+ Spc:dmg/fire  u:rep/unfire  o/i:heat  c:crit  v:move  t:to-hit  f:face  Tab:panel  e:end  p:pilot

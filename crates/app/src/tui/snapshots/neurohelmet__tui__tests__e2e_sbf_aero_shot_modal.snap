@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+┌ FORMATIONS · Round 0 · PV 40 ──┐╔ Squadron 1 ══════════════════╗┌ Flight 1 ──────────────────────┐
+│▶ Squadron 1                    │║▶ Flight 1 ×2                 ║│AS SZ2  MV 10a                  │
+│    SZ2 MV10a SK4  Normal       │║    A ████████ 5/5 D2/2/1     ║│Skill 4  PV 20                  │
+│                                │║    crits DMG 0  TGT 0  MP 0  ║│Dmg  S2 M2 L1 E1                │
+│                ╔ SBF to-hit ════════════════════════════════════════════════════╗                │
+│                ║  Range                Medium (+1)                              ║                │
+│                ║  Indirect fire        [ ]                                      ║ments           │
+│                ║  Formation JUMP used  0                                        ║            SK4 │
+│                ║  Units withholding    0                                        ║            SK4 │
+│                ║  Spotting for IF      [ ]                                      ║                │
+│                ║  Secondary target     [ ]                                      ║um air-to-air)  │
+│                ║  Target TMM           2                                        ║                │
+│                ║  Target JUMP used     0                                        ║l               │
+│                ║  Target evaded        [ ]                                      ║ 40             │
+│                ║  Terrain              +0                                       ║                │
+│                ║▶ Aero attack          air-to-air (+0)                          ║ each (min 1)   │
+│                ║  Aero target          airborne aero (+0)                       ║                │
+│                ║  Behind target (−2)   [ ]                                      ║                │
+│                ║  Cluster bombs (−1)   [ ]                                      ║                │
+│                ║  (no TMM vs airborne — target movement/terrain suppressed)     ║                │
+│                ║                                                                ║                │
+│                ║To-Hit   5+   (each firing unit rolls 2d6 ≥ 5)                  ║                │
+│                ║target morale is manual — not a to-hit term (§4.3)              ║                │
+│                ║engagement ref: +2 atmosphere · +2 tailed · −2 tailing (p.179)  ║                │
+│                ║[↑↓] select   [←→/space] adjust   [Esc] close                   ║                │
+│                ╚════════════════════════════════════════════════════════════════╝                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+└────────────────────────────────┘╚══════════════════════════════╝└────────────────────────────────┘
+ Spc:dmg  u:rep  c:crit  t:to-hit  m:morale  n:round  e:done  g:group  r:rename  ,/.:form  ?:help

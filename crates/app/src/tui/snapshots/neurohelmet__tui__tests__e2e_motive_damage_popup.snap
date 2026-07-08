@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 2009
+expression: render(&mut app)
+---
+  1:Manticore
+                        ╔FR════════╗                        ┌ CRITS ───────────────────────────────┐
+                        ║A 20/20   ║                        │ Motive   −2 MP  steer +5             │
+                        ║██████████║                        │ Engine Weapon Sensors Stabilizer     │
+                        ║I 6/6     ║                        │ Turret Fuel Tank Ammo Cargo          │
+                        ║██████████║                        │ [c] crits   [m] motive   [p/P] crew  │
+                        ║          ║                        │                                      │
+                        ╚══════════╝                        │                                      │
+            ┌LS────────┐┌TU────────┐┌RS────────┐            └──────────────────────────────────────┘
+            │A 20/20   ││A 20/20   ││A 20/20   │            ┌ CREW ────────────────────────────────┐
+            │██████╔ Motive system damage ═════════════════════════════════════╗ng 5+   BV 1897    │
+            │I 6/6 ║  Minor         +1 steer                                   ║                   │
+            │██████║  Moderate      −1 MP, +2 steer                            ║───────────────────┘
+            │      ║▶ Heavy         half MP, +3 steer                          ║───────────────────┐
+            └──────║  Immobilized   immobile                                   ║ motive            │
+                   ║                                                           ║                   │
+                   ║  Moderate · Heavy  cruise 1  steer +5                     ║                   │
+                   ║[↑↓] select   [Spc] apply   [r] repair last   [Esc] close  ║───────────────────┘
+                   ╚═══════════════════════════════════════════════════════════╝QUIP ──────────────┐
+                                                            │ Medium Laser    RA        5          │
+                                                            │ AC/20 Ammo       10/10               │
+                                                            │                                      │
+                        ┌RR────────┐                        │                                      │
+                        │A 20/20   │                        │                                      │
+                        │██████████│                        │                                      │
+                        │I 6/6     │                        │                                      │
+                        │██████████│                        │                                      │
+                        │          │                        │                                      │
+                        └──────────┘                        └──────────────────────────────────────┘
+ Motive: Heavy (-2 MP) | Spc:dmg  u:rep  c:crit  p:pilot  f:face  Tab:panel  ?:help

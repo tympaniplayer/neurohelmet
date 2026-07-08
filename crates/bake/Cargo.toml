@@ -1,0 +1,20 @@
+[package]
+name = "neurohelmet-bake"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "neurohelmet-bake"
+path = "src/main.rs"
+
+[dependencies]
+neurohelmet-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ureq = "2"
+roxmltree = "0.20"
+rayon = "1"
+
+[dev-dependencies]
+tempfile = "3"

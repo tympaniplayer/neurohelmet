@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+  1:Atlas
+▸ Lance 1   MV 3  SZ 4  PV 52  Normal
+╔ Atlas AS7-D ═══════════════════════════════════╗
+║BM   SZ 4   MV 3   TMM 1                        ║
+║Skill 4+   PV 52                                ║
+║Armor     ██████████  10/10                     ║
+║Structure ██████╔ BattleForce criticals ════════════════════════════════════════╗
+║Heat      [0] 1 ║'Mech column — pick the 2D6 result                             ║
+║Damage    S 5   ║live: Eng0 FC0 MP−0 Wpn0                                       ║
+║To-Hit    S 4+  ║                                                               ║
+║Crits     Eng0  ║▶  2  Ammo Hit                                                 ║
+║Specials  AC2/2/║   3  Engine Hit                                               ║
+║Rng S 0-1  M 2-4║   4  Fire Control Hit                                         ║
+╚════════════════║   5  No Critical Hit                                          ║
+                 ║   6  Weapon Hit                                               ║
+                 ║   7  MP Hit                                                   ║
+                 ║   8  Weapon Hit                                               ║
+                 ║   9  No Critical Hit                                          ║
+                 ║  10  Fire Control Hit                                         ║
+                 ║  11  Engine Hit                                               ║
+                 ║  12  Head Blown Off                                           ║
+                 ║[↑↓] select   [Enter/Spc] apply   [a] ARM spent   [Esc] close  ║
+                 ╚═══════════════════════════════════════════════════════════════╝
+
+
+
+
+
+
+ Spc:dmg  u:rep  o/i:heat  c:crit  t:to-hit  g:group  m:morale  n:round  r:rename  ,/.:unit  ?:help

@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 1009
+expression: screen
+---
+  1:Atlas
+                        ┌HD 12─────┐                        ┌ Atlas AS7-D ─────────────────────────┐
+                        │A 4/4     │                        │Type BattleMech  Mass 100t            │
+                        │██████████│                        │Move 3 / 5     TMM 1 / 2              │
+                        │S 3/3     │                        │Heat 0/5  Sinks 4                     │
+                        │██████████│                        │Moved standstill (-1 hit)             │
+                        │          │                        │                                      │
+                        │          │                        │  Weapons        Dmg  Ht              │
+                        └──────────┘                        │▶ AC/20          7    1               │
+┌LA 10,11──┐            ╔CT ▸F═════╗            ┌RA 3,4────┐│  MLas           2    1               │
+│A 7/7     │            ║A 10/10   ║            │A 7/7     ││                                      │
+│██████████│            ║██████████║            │██████████││▶ AC/20 (T)                           │
+│S 3/3     │            ║R 3/3     ║            │S 3/3     ││  Rng  PB  S   M   L   X              │
+│██████████│            ║██████████║            │██████████││  mod  +0  +0  +2  --  --             │
+│          │            ║S 4/4     ║            │          ││  hit  3+  3+  5+  —   —              │
+│          │            ║██████████║            │          ││Punch/Kick 4 / 7                      │
+│          │            ║          ║            │          ││                                      │
+│          │            ║          ║            │          ││Equip Ammo:AC (T)                     │
+│          │            ║          ║            │          ││Pilot  3+  5+  7+  9+  11+  KIA       │
+│          │            ║          ║            │          ││                                      │
+└──────────┘            ╚══════════╝            └──────────┘└──────────────────────────────────────┘
+            ┌LL 9──────┐            ┌RL 5──────┐            ┌ Heat ────────────────────────────────┐
+            │A 7/7     │            │A 7/7     │            │ 5  Automatic Shutdown                │
+            │██████████│            │██████████│            │ 4  Ammo Explosion (8+)               │
+            │S 3/3     │            │S 3/3     │            │ 3  Shutdown (avoid 8+)               │
+            │██████████│            │██████████│            │ 2  +1 Ranged Attack                  │
+            │          │            │          │            │ 1  -2 Move / -1 TMM                  │
+            │          │            │          │            │[0] No Effects                        │
+            └──────────┘            └──────────┘            └──────────────────────────────────────┘
+ Spc:dmg/fire  u:rep/unfire  o/i:heat  c:crit  v:move  t:to-hit  f:face  Tab:panel  e:end  p:pilot

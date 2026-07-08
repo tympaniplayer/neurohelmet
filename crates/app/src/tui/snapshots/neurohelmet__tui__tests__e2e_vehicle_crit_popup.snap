@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 1697
+expression: render(&mut app)
+---
+  1:Manticore
+                        ╔FR════════╗                        ┌ CRITS ───────────────────────────────┐
+                        ║A 20/20   ║                        │ Motive   ok                          │
+                        ║██████████║                        │ Engine Weapon Sensors Stabilizer     │
+                        ║I 6/6     ║                        │ Turret Fuel Tank Ammo Cargo          │
+                        ║██████████║                        │ [c] crits   [m] motive   [p/P] crew  │
+                        ║          ║                        │                                      │
+                        ╚══════════╝                        │                                      │
+            ┌LS────────┐┌TU────────┐┌RS────────┐            └──────────────────────────────────────┘
+            │A 20/20╔ Vehicle criticals ═══════════════════════════════════════╗───────────────────┐
+            │███████║  Engine                                                  ║ng 5+   BV 1897    │
+            │I 6/6  ║▶ Weapon  ×                                               ║                   │
+            │███████║  Sensors                                                 ║───────────────────┘
+            │       ║  Stabilizer                                              ║───────────────────┐
+            └───────║  Turret                                                  ║                   │
+                    ║  Fuel Tank                                               ║                   │
+                    ║  Ammo                                                    ║                   │
+                    ║  Cargo                                                   ║───────────────────┘
+                    ║[↑↓] select   [Spc] mark/clear   [Esc] close              ║QUIP ──────────────┐
+                    ╚══════════════════════════════════════════════════════════╝        5          │
+                                                            │ AC/20 Ammo       10/10               │
+                                                            │                                      │
+                        ┌RR────────┐                        │                                      │
+                        │A 20/20   │                        │                                      │
+                        │██████████│                        │                                      │
+                        │I 6/6     │                        │                                      │
+                        │██████████│                        │                                      │
+                        │          │                        │                                      │
+                        └──────────┘                        └──────────────────────────────────────┘
+ Weapon hit | Spc:dmg  u:rep  c:crit  p:pilot  f:face  Tab:panel  ?:help

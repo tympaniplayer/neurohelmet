@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+┌ FORMATIONS · Round 0 · PV 138 ─┐╔ Company 1 ═══════════════════╗┌ Lance 2 ───────────────────────┐
+│▶ Company 1 COM                 │║  Lance 1 ×4 COM              ║│BM SZ4  MV 3  TMM 1             │
+│    SZ4 TMM1 MV3 SK4  Normal    │║    A ████████ 25/25 D7/7/3   ║│Skill 4  PV 69                  │
+│                                │║    crits DMG 0  TGT 0  MP 0  ║│Dmg  S7 M7 L3 E2                │
+│                                │║                              ║│FLK IF                          │
+│                                │║▶ Lance 2 ×4 LEAD             ║│                                │
+│                                │║    A ████████ 25/25 D7/7/3   ║│Alpha Strike Elements           │
+│                                │║    crits DMG 0  TGT 0  MP 0  ║│ 5 Atlas AS7-D              SK4 │
+│                                │║                              ║│ 6 Atlas AS7-D              SK4 │
+│                                │║                              ║│ 7 Atlas AS7-D              SK4 │
+│                                │║                              ║│ 8 Atlas AS7-D              SK4 │
+│                                │║                              ║│                                │
+│                                │║                              ║│To-Hit 5+  (Medium vs TMM0)     │
+│                                │║                              ║│                                │
+│                                │║                              ║│Formation  Normal               │
+│                                │║                              ║│TAC 7  MOR 7  PV 138            │
+│                                │║                              ║│IF                              │
+│                                │║                              ║│defender +2 Tactics (COM/LEAD)  │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+│                                │║                              ║│                                │
+└────────────────────────────────┘╚══════════════════════════════╝└────────────────────────────────┘
+ Lance 2: Formation Leader (LEAD) | Spc:dmg  u:rep  c:crit  t:to-hit  m:morale  n:round  e:done  g:g

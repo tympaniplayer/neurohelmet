@@ -1,0 +1,16 @@
+[book]
+title = "Neurohelmet"
+description = "A keyboard-driven, fully-offline BattleTech tracker for the terminal."
+authors = ["Nate Palmer"]
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/tympaniplayer/neurohelmet"
+edit-url-template = "https://github.com/tympaniplayer/neurohelmet/edit/main/docs/guide/src/{path}"
+
+[output.html.fold]
+enable = true
+level = 1

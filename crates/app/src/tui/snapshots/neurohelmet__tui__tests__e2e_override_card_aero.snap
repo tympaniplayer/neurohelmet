@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 1182
+expression: screen
+---
+  1:Visigoth
+                        ╔NOS 6,7,8═╗                        ┌ Visigoth Prime ──────────────────────┐
+                        ║A 3/3     ║                        │Type Aerospace Fighter  Mass 80t      │
+                        ║██████████║                        │Thrust 5         TMM 3  DThr 1        │
+                        ║          ║                        │Heat 0/5  Sinks 2                     │
+                        ║          ║                        │Moved standstill (-1 hit)             │
+                        ║          ║                        │                                      │
+                        ║          ║                        │  Weapons        Dmg  Ht              │
+                        ╚══════════╝                        │▶ cerLLas        4    2               │
+            ┌LWG 9,10,1┐┌SI────────┐┌RWG 3,4,5─┐            │                                      │
+            │A 2/2     ││S 3/3     ││A 2/2     │            │▶ cerLLas (N)                         │
+            │██████████││██████████││██████████│            │  Rng  PB  S   M   L   X              │
+            │          ││          ││          │            │  mod  +0  +0  +0  +2  +2             │
+            │          ││          ││          │            │  hit  3+  3+  3+  5+  5+             │
+            │          ││          ││          │            │                                      │
+            │          ││          ││          │            │Pilot  3+  5+  7+  9+  11+  KIA       │
+            │          ││          ││          │            │                                      │
+            │          ││          ││          │            │                                      │
+            │          ││          ││          │            │                                      │
+            │          ││          ││          │            │                                      │
+            └──────────┘└──────────┘└──────────┘            └──────────────────────────────────────┘
+                        ┌AFT 2,12──┐                        ┌ Heat ────────────────────────────────┐
+                        │A 2/2     │                        │ 5  Automatic Shutdown                │
+                        │██████████│                        │ 4  Ammo Explosion (8+)               │
+                        │          │                        │ 3  Shutdown (avoid 8+)               │
+                        │          │                        │ 2  +1 Ranged Attack                  │
+                        │          │                        │ 1  -2 Move / -1 TMM                  │
+                        │          │                        │[0] No Effects                        │
+                        └──────────┘                        └──────────────────────────────────────┘
+ Spc:dmg/fire  u:rep/unfire  o/i:heat  c:crit  v:move  t:to-hit  f:face  Tab:panel  e:end  p:pilot

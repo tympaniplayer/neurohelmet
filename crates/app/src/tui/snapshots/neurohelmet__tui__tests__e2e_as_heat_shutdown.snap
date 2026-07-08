@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 911
+expression: screen
+---
+  1:Atlas
+╔ Atlas AS7-D ═══════════════════════════════════╗
+║PV 52   SZ 4   BM   MV 6"   TMM 1               ║
+║Skill 4+   PV 52                                ║
+║*** SHUTDOWN (heat) ***                         ║
+║                                                ║
+║Armor     ██████████  10/10                     ║
+║Structure ████████  8/8                         ║
+║                                                ║
+║Heat       0  1  2  3 [S]                       ║
+║Damage    S 5   M 5   L 2   E 0                 ║
+║Crits     Eng0  FC0  MP0  Wpn0                  ║
+║                                                ║
+║Specials  AC2/2/-  IF1  LRM1/1/1                ║
+╚════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Spc:dmg  u:repair  o/i:heat  c:crits  t:to-hit  1:scale  ,/.:unit  a:add  D:del  S:sess  ?:help

@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+  1:Atlas A   2:Atlas B   3:Atlas C   4:Atlas D
+▸ Lance 1   MV 3  SZ╔ BF to-hit ═══════════════════════════════════════════════╗
+┌ Atlas AS7-D ──────║  Attacker move                  moved (+0)               ║───────────────────┐
+│BM   SZ 4   MV 3   ║  Range                          Medium (+2)              ║                   │
+│Skill 4+   PV 52   ║  Attack kind                    Standard                 ║                   │
+│Armor     █████████║    spotter also attacked        [ ]                      ║                   │
+│Structure ████████ ║    remote-sensor spotter        [ ]                      ║                   │
+│Heat      [0] 1  2 ║  OV commit                      0 / max 0                ║                   │
+│Damage    S 5   M 5║  Area-effect (+1)               [ ]                      ║ 1                 │
+│To-Hit*   S 6+  M 8║  Secondary target (+1)          [ ]                      ║ 12+               │
+│Crits     Eng0  FC0║  Also spotting (+1)             [ ]                      ║n0                 │
+│Specials  AC2/2/-  ║  Grounded aero (p.46)           [ ]                      ║1/1                │
+│Rng S 0-1  M 2-4  L║▶ Target TMM                     2                        ║10*                │
+└───────────────────║  Target move                    ground (+TMM)            ║───────────────────┘
+┌ Atlas AS7-D ──────║    ±JMPS/JMPW/SUBS/SUBW         +0                       ║═══════════════════╗
+│BM   SZ 4   MV 3   ║  Target immobile (−4)           [ ]                      ║                   ║
+│Skill 4+   PV 52   ║  Target type                    none                     ║                   ║
+│Armor     █████████║  Target MAS/LMAS                none                     ║                   ║
+│Structure ████████ ║  Woods (+1)                     [ ]                      ║                   ║
+│Heat      [0] 1  2 ║  Partial cover (+1)             [ ]                      ║                   ║
+│Damage    S 5   M 5║  Underwater (+1, atk submerged) [ ]                      ║ 1                 ║
+│To-Hit*   S 6+  M 8║  Target STL active              [ ]                      ║ 12+               ║
+│Crits     Eng0  FC0║  Target carrying BA (+3)        [ ]                      ║n0                 ║
+│Specials  AC2/2/-  ║  Strikes rear (+1 dmg)          [ ]                      ║1/1                ║
+│Rng S 0-1  M 2-4  L║                                                          ║10*                ║
+└───────────────────║To-Hit   8+   damage 5                                    ║═══════════════════╝
+                    ║[↑↓] select   [←→/space] adjust   [Esc] close             ║
+                    ╚══════════════════════════════════════════════════════════╝
+
+ Spc:dmg  u:rep  o/i:heat  c:crit  t:to-hit  g:group  m:morale  n:round  r:rename  ,/.:unit  ?:help

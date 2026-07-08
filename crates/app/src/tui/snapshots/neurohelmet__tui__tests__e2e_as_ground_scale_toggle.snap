@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 929
+expression: hexes
+---
+  1:Atlas
+╔ Atlas AS7-D ═══════════════════════════════════╗
+║PV 52   SZ 4   BM   MV 3   TMM 1                ║
+║Skill 4+   PV 52                                ║
+║                                                ║
+║Armor     ██████████  10/10                     ║
+║Structure ████████  8/8                         ║
+║                                                ║
+║Heat      [0] 1  2  3  S                        ║
+║Damage    S 5   M 5   L 2   E 0                 ║
+║To-Hit    S 4+  M 6+  L 8+  E —                 ║
+║Crits     Eng0  FC0  MP0  Wpn0                  ║
+║                                                ║
+║Specials  AC2/2/-  IF1  LRM1/1/1                ║
+╚════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 1:1 ground scale (hexes) | 1:1 hex scale — Rng S 0-3  M 4-12  L 13-21  E 22-30  [1] inches  [?] key

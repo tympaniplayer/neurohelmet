@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 807
+expression: screen
+---
+  1:Visigoth
+╔ Visigoth Prime ════════════════════════════════╗
+║PV 50   SZ 2   AF   MV 7a   TMM 0   TH 3        ║
+║Skill 4+   PV 50                                ║
+║                                                ║
+║Armor     ███████  7/7                          ║
+║Structure ████  4/4                             ║
+║                                                ║
+║Heat      [0] 1  2  3  S                        ║
+║Damage    S 6   M 6   L 5   E 0                 ║
+║To-Hit    S 4+  M 6+  L 8+  E —                 ║
+║Crits     Eng0  FC0  Wpn0                       ║
+║                                                ║
+║Specials  BOMB2  FUEL20  VSTOL                  ║
+╚════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Spc:dmg  u:repair  o/i:heat  c:crits  t:to-hit  1:scale  ,/.:unit  a:add  D:del  S:sess  ?:help

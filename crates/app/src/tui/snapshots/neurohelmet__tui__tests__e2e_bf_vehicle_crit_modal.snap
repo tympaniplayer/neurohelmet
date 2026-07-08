@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+  1:Manticore
+▸ Lance 1   MV 4  SZ 4  PV 52  Normal
+╔ Manticore Heavy Tank ══════════════════════════╗
+║CV   SZ 4   MV 4t   TMM 1                       ║
+╔ BattleForce criticals ═══════════════════════════════════════════════════════════════════════════╗
+║Vehicle column — pick the 2D6 result                                                              ║
+║live: Eng0 FC0 MP−0 Wpn0                                                                          ║
+║                                                                                                  ║
+║▶  2  Ammo Hit                                                                                    ║
+║   3  Crew Stunned                                                                                ║
+║   4  Fire Control Hit                                                                            ║
+║   5  Fire Control Hit                                                                            ║
+║   6  No Critical Hit                                                                             ║
+║   7  No Critical Hit                                                                             ║
+║   8  No Critical Hit                                                                             ║
+║   9  Weapon Hit                                                                                  ║
+║  10  Weapon Hit                                                                                  ║
+║  11  Crew Killed                                                                                 ║
+║  12  Engine Hit                                                                                  ║
+║Motive damage (p.44) — once per game each:                                                        ║
+║      −1 MV                                                                                       ║
+║      ½ MV (round down)                                                                           ║
+║      Immobilized                                                                                 ║
+║1D6 5-6 then 2D6: 8-9 −1MV · 10-11 ½MV · 12 immob.  (Wheeled +2, Hover +3, VTOL/WiGE +4, rear +1) ║
+║[↑↓] select   [Enter/Spc] apply   [a] ARM spent   [Esc] close                                     ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+
+
+ Spc:dmg  u:rep  o/i:heat  c:crit  t:to-hit  g:group  m:morale  n:round  r:rename  ,/.:unit  ?:help

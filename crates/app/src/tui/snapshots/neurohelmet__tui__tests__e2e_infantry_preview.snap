@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+┌ Pick a unit (1) ─────────────────────────────────────────────────────────────────────────────────┐
+│ Search: █                                                                                        │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+▶ Achileus Light Battle Armor [David](Sqd4)  sq 4  Juggernaut  2755  BV 189
+
+
+
+                 ╔ Achileus Light Battle Armor [David](Sqd4) ═════════════════════╗
+                 ║squad 4   Inner Sphere   Juggernaut   intro 2755                ║
+                 ║                                                                ║
+                 ║Move       Walk 1  Jump 3  (6"j)                                ║
+                 ║Points     BV 189   PV 15                                       ║
+                 ║Cost       2,010,320 C-bills                                    ║
+                 ║Armor        24  (Standard Armor)                               ║
+                 ║Troopers   4                                                    ║
+                 ║Type       Battle Armor                                         ║
+                 ║                                                                ║
+                 ║Weapons                                                         ║
+                 ║   1× David Light Gauss…1       3/6/9                           ║
+                 ║                                                                ║
+                 ║Equipment                                                       ║
+                 ║  (none)                                                        ║
+                 ╚════════════════════════════════════════════════════════════════╝
+
+
+
+
+
+
+[type] search  [^f] filter  [^g] gen  [^b] budget  [↑↓] select  [Tab] prev  [Enter] add  [Esc] back

@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: screen
+---
+┌ Pick a unit (2 of 3)   filters: Inner Sphere ────────────────────────────────────────────────────┐
+│ Search: █                                                                                        │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+▶ Atlas AS7-D  100t  Juggernaut  2755  BV 1897
+  Manticore Heavy Tank  100t  Juggernaut  2755  BV 1897
+
+
+
+                    ╔ Filters ═════════════════════════════════════════════════╗
+                    ║  Type:   (any)                                           ║
+                    ║▶ Tech:   Inner Sphere                                    ║
+                    ║  Class:  (any)                                           ║
+                    ║  Role:   (any)                                           ║
+                    ║  Era:    (any)                                           ║
+                    ║  Year ≥: (any)                                           ║
+                    ║  Year ≤: (any)                                           ║
+                    ║  Family: (any)                                           ║
+                    ║  Avail era: (any)                                        ║
+                    ║  Faction: (any)                                          ║
+                    ║                                                          ║
+                    ║[↑↓] facet   [←→] cycle   [c] clear   [Esc] apply         ║
+                    ╚══════════════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+[type] search  [^f] filter  [^g] gen  [^b] budget  [↑↓] select  [Tab] prev  [Enter] add  [Esc] back

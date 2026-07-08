@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 3610
+expression: screen
+---
+┌ FORMATIONS · Round 0 · PV 69 ──┐╔ Lance 1 ═════════════════════╗┌ Lance 1 ───────────────────────┐
+│▶ Lance 1                       │║▶ Lance 1 ×4                  ║│BM SZ4  MV 3  TMM 1             │
+│    SZ4 TMM1 MV3 SK╔ Keys ════════════════════════════════════════════════════╗9                  │
+│                   ║Strategic BattleForce                                     ║ E2                │
+│                   ║  Space    1 damage to unit (overflow spills over)        ║                   │
+│                   ║  u        repair 1                                       ║                   │
+│                   ║  c        crit counters (roll 2d6, mark the result)      ║Elements           │
+│                   ║  t        to-hit (range + hand-entered target)           ║D              SK4 │
+│                   ║  m        cycle formation morale rung (manual)           ║D              SK4 │
+│                   ║  n        begin round (clears done, resets jump)         ║D              SK4 │
+│                   ║  e        formation done this turn                       ║D              SK4 │
+│                   ║  g        group editor (move / split / skill / remove)   ║                   │
+│                   ║  r / R    rename formation / unit                        ║edium vs TMM0)     │
+│                   ║  C / l    mark Force Commander / Formation Leader        ║                   │
+│                   ║Selection                                                 ║rmal               │
+│                   ║  , / .    previous / next formation  ([ / ] also)        ║ PV 69             │
+│                   ║  ↑↓ / kj  previous / next unit                           ║                   │
+│                   ║General                                                   ║                   │
+│                   ║  b        set force PV limit                             ║                   │
+│                   ║  z        undo                                           ║                   │
+│                   ║  a / D    add elements / delete formation                ║                   │
+│                   ║  S        sessions browser                               ║                   │
+│                   ║  P        export record-sheet PDF                        ║                   │
+│                   ║  ^t       display picker (theme + layout)                ║                   │
+│                   ║  q        quit                                           ║                   │
+│                   ║  press any key to close                                  ║                   │
+│                   ╚══════════════════════════════════════════════════════════╝                   │
+│                                │║                              ║│                                │
+└────────────────────────────────┘╚══════════════════════════════╝└────────────────────────────────┘
+ Spc:dmg  u:rep  c:crit  t:to-hit  m:morale  n:round  e:done  g:group  r:rename  ,/.:form  ?:help

@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: render(&mut app)
+---
+ Sessions — current: default
+  ● CL  default  (1)  Atlas  · BV 1897
+▶   AS  Friday Game  (4)  Atlas, Locust, Shadow Hawk +1  · PV 174/200
+    CL  scratch  (0)  empty
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ [↑↓] sel  [Enter] load  [n] new  [A] AS  [O] OV  [B] SBF  [F] BF  [r] rename  [D] del  [Esc] back

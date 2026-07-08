@@ -1,0 +1,34 @@
+---
+source: crates/app/src/tui/mod.rs
+expression: modal
+---
+┌ Pick a unit (1)   PV 52/200 ─────────────────────────────────────────────────────────────────────┐
+│ Search: █                                                                                        │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+▶ Atlas AS7-D  100t  Juggernaut  2755  BV 1897
+            ╔ Add Atlas AS7-D ════════════════════════════════════════════════════════╗
+            ║▶ Skill      4+                                                          ║
+            ║Cost      PV 52                                                          ║
+            ║Force     PV 104/200   96 left                                           ║
+            ║lower is better   [↑↓] skill   [←→] adjust   [Enter] add   [Esc] cancel  ║
+            ║────────────────────                                                     ║
+            ║100t   Inner Sphere   Juggernaut   intro 2755                            ║
+            ║                                                                         ║
+            ║Move       Walk 3  Run 5  Jump 0                                         ║
+            ║Points     BV 1897   PV 52                                               ║
+            ║Cost       9,626,000 C-bills                                             ║
+            ║Armor       278  (Standard Armor)                                        ║
+            ║Structure   130  (Standard)                                              ║
+            ║Heat sinks   20  (Single)                                                ║
+            ║                                                                         ║
+            ║Weapons                                                                  ║
+            ║   1× Medium Laser      H3     5       3/6/9                             ║
+            ║                                                                         ║
+            ║Equipment                                                                ║
+            ║  (none)                                                                 ║
+            ╚═════════════════════════════════════════════════════════════════════════╝
+
+
+
+
+[type] search  [^f] filter  [^g] gen  [^b] budget  [↑↓] select  [Tab] prev  [Enter] add  [Esc] back

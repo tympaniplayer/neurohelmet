@@ -1,0 +1,35 @@
+---
+source: crates/app/src/tui/mod.rs
+assertion_line: 1769
+expression: screen
+---
+  1:Manticore
+╔ Manticore Heavy Tank ══════════════════════════╗
+║PV 52   SZ 4   CV   MV 8"t   TMM 1              ║
+║Skill 4+   PV 52                                ║
+║                                                ║
+║Armor     ██████████  10/10                     ║
+║Structure ████████  8/8                         ║
+║                                                ║
+║Heat      [0] 1  2  3  S                        ║
+║Damage    S 5   M 5   L 2   E 0                 ║
+║To-Hit    S 4+  M 6+  L 8+  E —                 ║
+║Crits     Eng0  FC0  Wpn0  Mot0                 ║
+║                                                ║
+║Specials  AC2/2/-  IF1  LRM1/1/1                ║
+╚════════════════════════════════════════════════╝
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ Spc:dmg  u:repair  o/i:heat  c:crits  t:to-hit  1:scale  ,/.:unit  a:add  D:del  S:sess  ?:help
