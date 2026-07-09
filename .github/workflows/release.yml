@@ -116,8 +116,10 @@ jobs:
           # generate-rpm hiccup warns instead of failing the job and blocking the release.
           # --auto-req disabled: the binary is self-contained (only libc), and running
           # find-requires against a cross-built aarch64 ELF on this x86_64 host wouldn't work.
+          # NB: cargo-generate-rpm's -p is a PATH to the package dir (not the crate name
+          # like cargo-deb), and it reads [package.metadata.generate-rpm] from there.
           ( cargo install cargo-generate-rpm --locked \
-            && cargo generate-rpm -p "$BIN" --target ${{ matrix.target }} --auto-req disabled \
+            && cargo generate-rpm -p crates/app --target ${{ matrix.target }} --auto-req disabled \
                  -o "out/$BIN-$VERSION-${{ matrix.target }}.rpm" ) \
             || echo "::warning::RPM generation failed for ${{ matrix.target }} — tar.gz/deb still shipped"
 
