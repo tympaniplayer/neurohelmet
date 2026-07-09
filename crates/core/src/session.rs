@@ -3393,6 +3393,14 @@ impl Session {
             .sum()
     }
 
+    /// Whether an ACS Formation is aerospace (its converted type is `As`/`La`). Abstract Combat
+    /// Aerospace is a v1 non-goal (see `engine/acs.rs`); the UI flags aerospace Formations as
+    /// unsupported rather than silently running them through the ground converter. Empty
+    /// Formations are never aerospace.
+    pub fn acs_formation_is_aerospace(&self, f: &AcsFormationState) -> bool {
+        !f.units.is_empty() && self.acs_formation(f).is_aerospace()
+    }
+
     // ---- Grouping (coarse, Phase 2): build/rename/remove Formations. The fine per-element manual
     //      editor across the three sub-tiers is Phase 4 (mirrors how SBF split state vs editor).
 
@@ -6442,6 +6450,24 @@ mod tests {
         assert_eq!(s.acs_force_pv(), 0);
         // Other modes carry no ACS state.
         assert!(Session::new_with_mode(GameMode::AlphaStrike).acs.formations.is_empty());
+    }
+
+    #[test]
+    fn acs_formation_is_aerospace_flags_aero_and_not_ground() {
+        // A ground Formation (Atlas elements) is not aerospace.
+        let ground = acs_session(4);
+        assert!(!ground.acs_formation_is_aerospace(&ground.acs.formations[0]));
+        // A Formation of aerospace fighters (AF) converts to an As-typed Formation → flagged.
+        let mut aero = Session::new_with_mode(GameMode::AbstractCombatSystem);
+        aero.acs.formations.clear();
+        for _ in 0..4 {
+            aero.mechs.push(TrackedMech::new(sbf_aero()));
+        }
+        aero.acs_new_formation("Wing", 0..4);
+        assert!(aero.acs_formation_is_aerospace(&aero.acs.formations[0]));
+        // The seeded empty Formation is never aerospace.
+        let empty = Session::new_with_mode(GameMode::AbstractCombatSystem);
+        assert!(!empty.acs_formation_is_aerospace(&empty.acs.formations[0]));
     }
 
     #[test]

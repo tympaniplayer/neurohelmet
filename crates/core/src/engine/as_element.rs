@@ -179,10 +179,10 @@ impl AsElement {
     }
 }
 
-/// `getUnitType` mapping (`SBFElementType.java:31-55`) — build `sbf_type` from the AS `tp` code.
-/// `SV` cannot be routed to `As` vs `V` without `isAerospaceSV()` (not baked) → always `V` (gap,
-/// flagged in the spec's Open Questions). Unbaked large-craft/PM/MS types fall to the `default → La`
-/// arm; neurohelmet-local `BD` (gun emplacement) → `V`.
+/// `getUnitType` mapping (`SBFElementType.java:31-55`) — build `sbf_type` from the AS `tp` code
+/// alone. A bare `SV` routes to `V`; [`as_element`] refines an *aerodyne* `SV` (a fixed-wing
+/// Support Vehicle) up to `As` via the movement mode (`isAerospaceSV()`). Unbaked large-craft/PM/MS
+/// types fall to the `default → La` arm; neurohelmet-local `BD` (gun emplacement) → `V`.
 pub fn sbf_type_from_tp(tp: &str) -> SbfElementType {
     match tp {
         "IM" | "BM" => SbfElementType::Bm,
@@ -192,7 +192,7 @@ pub fn sbf_type_from_tp(tp: &str) -> SbfElementType {
         "CI" => SbfElementType::Ci,
         "AF" | "CF" | "SC" => SbfElementType::As,
         "CV" => SbfElementType::V,
-        "SV" => SbfElementType::V, // isAerospaceSV() not baked → always V (gap)
+        "SV" => SbfElementType::V, // ground SV; aerodyne (fixed-wing) SVs → As in as_element()
         "BD" => SbfElementType::V, // neurohelmet-local gun emplacement
         _ => SbfElementType::La,
     }
@@ -212,10 +212,19 @@ pub fn as_element(stats: &AsStats, name: &str, skill: u8) -> AsElement {
     for tok in &stats.specials {
         parse_special(tok, &mut suas, &mut turret_suas);
     }
+    // isAerospaceSV() (SBFElementType.java): the tp code "SV" can't distinguish an aerospace
+    // (fixed-wing) Support Vehicle from a ground one, but the AS movement mode can — aerodyne (`a`)
+    // is aerospace-only in the catalog (ground SVs use h/t/w/v/…; airship SVs bake as ground). Route
+    // aerodyne SVs up to `As`; everything else keeps the tp-only mapping.
+    let sbf_type = if stats.tp == "SV" && primary_mode == "a" {
+        SbfElementType::As
+    } else {
+        sbf_type_from_tp(&stats.tp)
+    };
     AsElement {
         name: name.to_string(),
         as_type: stats.tp.clone(),
-        sbf_type: sbf_type_from_tp(&stats.tp),
+        sbf_type,
         size: stats.size,
         primary_move,
         primary_mode,
@@ -615,12 +624,22 @@ mod tests {
         assert_eq!(sbf_type_from_tp("BM"), SbfElementType::Bm);
         assert_eq!(sbf_type_from_tp("IM"), SbfElementType::Bm);
         assert_eq!(sbf_type_from_tp("AF"), SbfElementType::As);
-        assert_eq!(sbf_type_from_tp("SV"), SbfElementType::V); // gap: never As
+        assert_eq!(sbf_type_from_tp("SV"), SbfElementType::V); // tp-only: ground SV (aerodyne → As in as_element)
         assert_eq!(sbf_type_from_tp("BD"), SbfElementType::V);
         assert_eq!(sbf_type_from_tp("ZZ"), SbfElementType::La); // default
         assert!(SbfElementType::Bm.is_ground());
         assert!(SbfElementType::As.is_aerospace());
         assert!(SbfElementType::Unknown.is_aerospace()); // broad test
+    }
+
+    #[test]
+    fn aerodyne_support_vehicle_routes_to_aerospace() {
+        // isAerospaceSV(): a bare SV code is ground, but an aerodyne SV is a fixed-wing aircraft → As.
+        assert_eq!(as_element(&stats("SV", "5a", &[]), "Fixed-Wing", 4).sbf_type, SbfElementType::As);
+        // A ground Support Vehicle (hover/tracked/wheeled/…) stays V.
+        assert_eq!(as_element(&stats("SV", "22\"h", &[]), "Truck", 4).sbf_type, SbfElementType::V);
+        // Non-SV aerodyne units (fighters) are unaffected by the refinement.
+        assert_eq!(as_element(&stats("AF", "10a", &[]), "ASF", 4).sbf_type, SbfElementType::As);
     }
 
     #[test]

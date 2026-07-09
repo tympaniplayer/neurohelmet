@@ -3791,6 +3791,11 @@ fn draw_acs_formations(f: &mut Frame, area: Rect, app: &App) {
         if fs.is_done {
             head.push(Span::styled(" ✓", Style::default().fg(theme().good)));
         }
+        if derived.is_aerospace() {
+            // Abstract Combat Aerospace is a v1 non-goal; the ground converter's numbers for an
+            // aero Formation are not valid. Flag it (full explanation in the detail pane).
+            head.push(Span::styled(" ⚠aero", Style::default().fg(theme().warning)));
+        }
         lines.push(Line::from(head));
         lines.push(Line::from(vec![
             Span::styled(
@@ -3946,6 +3951,17 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
     };
     let derived = app.session.acs_combat_unit(cu);
     let mut lines: Vec<Line> = Vec::new();
+
+    if app.session.acs_formation_is_aerospace(fs) {
+        lines.push(Line::from(Span::styled(
+            "⚠ aerospace — Abstract Combat Aerospace is not yet supported.",
+            Style::default().fg(theme().warning),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  Stats below are ground-converted; resolve aero combat at the table.",
+            Style::default().fg(theme().warning),
+        )));
+    }
 
     lines.push(Line::from(Span::styled(
         format!(
