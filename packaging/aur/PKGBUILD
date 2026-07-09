@@ -1,0 +1,23 @@
+# Maintainer: Nate Palmer <nate@natedpalm.com>
+#
+# Template — release.yml fills in __PLACEHOLDERS__ (version + SHA256s) and pushes
+# the result (with a matching .SRCINFO) to the AUR as the `neurohelmet-bin` package.
+# This is a -bin package: it installs the prebuilt release tarball, no compilation.
+pkgname=neurohelmet-bin
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc="Keyboard-driven terminal BattleTech record-sheet tracker (prebuilt binary)"
+arch=('x86_64' 'aarch64')
+url="https://github.com/__OWNER__/neurohelmet"
+license=('GPL-3.0-or-later')
+provides=('neurohelmet')
+conflicts=('neurohelmet')
+source_x86_64=("https://github.com/__OWNER__/neurohelmet/releases/download/v__VERSION__/neurohelmet-__VERSION__-x86_64-unknown-linux-gnu.tar.gz")
+source_aarch64=("https://github.com/__OWNER__/neurohelmet/releases/download/v__VERSION__/neurohelmet-__VERSION__-aarch64-unknown-linux-gnu.tar.gz")
+sha256sums_x86_64=('__SHA_LINUX_X86__')
+sha256sums_aarch64=('__SHA_LINUX_ARM__')
+
+package() {
+    install -Dm755 "${srcdir}/neurohelmet" "${pkgdir}/usr/bin/neurohelmet"
+    install -Dm644 "${srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

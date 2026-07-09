@@ -9,10 +9,14 @@ release assets by URL + SHA256.
 
 | Target | Artifact | Consumed by |
 | --- | --- | --- |
-| `x86_64-unknown-linux-gnu` | `.tar.gz` + `.deb` | Homebrew (Linux/Intel), apt |
-| `aarch64-unknown-linux-gnu` (Raspberry Pi) | `.tar.gz` + `.deb` | Homebrew (Linux/ARM), apt |
+| `x86_64-unknown-linux-gnu` | `.tar.gz` + `.deb` + `.rpm` | Homebrew, apt, AUR, dnf (`.rpm`) |
+| `aarch64-unknown-linux-gnu` (Raspberry Pi) | `.tar.gz` + `.deb` + `.rpm` | Homebrew, apt, AUR, dnf (`.rpm`) |
 | `x86_64-pc-windows-msvc` | `.zip` | Scoop |
 | universal macOS (Intel + Apple Silicon) | `.zip` | Homebrew (macOS) |
+
+The `.rpm`s are attached to each Release for direct `dnf install ./file.rpm` — there's
+no hosted RPM repo (yet). The AUR package (`neurohelmet-bin`) is a prebuilt-binary
+package that downloads the `.tar.gz`.
 
 No code signing / notarization: the dataset is embedded in the binary, and
 `brew`/`scoop`/`apt` don't quarantine their downloads, so unsigned binaries just run.
@@ -93,12 +97,30 @@ repo for users. Delete `apt-private.asc` afterward.
 
 Setting `APT_GPG_PRIVATE_KEY` **and** `PACKAGES_DEPLOY_TOKEN` enables the apt job.
 
+### 4. AUR deploy key — `AUR_SSH_PRIVATE_KEY`
+
+The AUR lives on `aur.archlinux.org` (not GitHub) and authenticates over SSH. The
+CI deploy key is already generated and stored as the secret `AUR_SSH_PRIVATE_KEY`; you
+just need to register its **public** half against a free AUR account:
+
+1. Create an account at [aur.archlinux.org/register](https://aur.archlinux.org/register).
+2. **My Account → SSH Public Key** → paste the public key (the one printed when the key
+   was generated; re-print any time with `ssh-keygen -y -f <path-to-private-key>`), save.
+
+That's it — no need to pre-create the package. The first release pushes to
+`ssh://aur@aur.archlinux.org/neurohelmet-bin.git`, which the AUR auto-creates. RPMs need
+**no** setup: they're built by `cargo generate-rpm` and attached to every Release.
+
+> The account must own the `neurohelmet-bin` name. If someone else already published it,
+> pick a different `pkgname` in `packaging/aur/PKGBUILD` + `.SRCINFO`.
+
 ### Secret checklist
 
 | Secret | Enables | Where to get it |
 | --- | --- | --- |
 | `PACKAGES_DEPLOY_TOKEN` | Homebrew + Scoop + apt push | Fine-grained PAT (step 2) |
 | `APT_GPG_PRIVATE_KEY` | apt repo signing | `gpg --export-secret-keys` (step 3) |
+| `AUR_SSH_PRIVATE_KEY` | AUR push | ed25519 deploy key; public half on your AUR account (step 4) |
 
 That's it — no Apple Developer account, no certificates.
 
@@ -125,6 +147,16 @@ curl -fsSL https://<owner>.github.io/neurohelmet-apt/neurohelmet.gpg \
 echo "deb [signed-by=/usr/share/keyrings/neurohelmet.gpg] https://<owner>.github.io/neurohelmet-apt stable main" \
   | sudo tee /etc/apt/sources.list.d/neurohelmet.list
 sudo apt update && sudo apt install neurohelmet
+```
+
+**AUR (Arch Linux)**
+```sh
+yay -S neurohelmet-bin
+```
+
+**Fedora / RHEL / openSUSE (.rpm)**
+```sh
+sudo dnf install ./neurohelmet-<version>-x86_64-unknown-linux-gnu.rpm
 ```
 
 **Direct download** — grab an archive from the

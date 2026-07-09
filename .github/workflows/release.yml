@@ -101,7 +101,7 @@ jobs:
         run: cargo build --release -p "$BIN" --target ${{ matrix.target }}
 
       # ── Package ──
-      - name: Package (Linux — tar.gz + .deb)
+      - name: Package (Linux — tar.gz + .deb + .rpm)
         if: matrix.kind == 'linux'
         run: |
           set -euo pipefail
@@ -112,6 +112,14 @@ jobs:
           # --no-strip: the host `strip` can't process a cross-built aarch64 ELF.
           cargo deb -p "$BIN" --no-build --no-strip --target ${{ matrix.target }} \
             --output "out/$BIN-$VERSION-${{ matrix.target }}.deb"
+          # RPM is best-effort: the tar.gz + .deb are already built above, so a
+          # generate-rpm hiccup warns instead of failing the job and blocking the release.
+          # --auto-req disabled: the binary is self-contained (only libc), and running
+          # find-requires against a cross-built aarch64 ELF on this x86_64 host wouldn't work.
+          ( cargo install cargo-generate-rpm --locked \
+            && cargo generate-rpm -p "$BIN" --target ${{ matrix.target }} --auto-req disabled \
+                 -o "out/$BIN-$VERSION-${{ matrix.target }}.rpm" ) \
+            || echo "::warning::RPM generation failed for ${{ matrix.target }} — tar.gz/deb still shipped"
 
       - name: Package (Windows — zip)
         if: matrix.kind == 'windows'
@@ -171,11 +179,13 @@ jobs:
     outputs:
       deploy: ${{ steps.c.outputs.deploy }}
       apt: ${{ steps.c.outputs.apt }}
+      aur: ${{ steps.c.outputs.aur }}
     steps:
       - id: c
         run: |
           echo "deploy=${{ secrets.PACKAGES_DEPLOY_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
           echo "apt=${{ secrets.PACKAGES_DEPLOY_TOKEN != '' && secrets.APT_GPG_PRIVATE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+          echo "aur=${{ secrets.AUR_SSH_PRIVATE_KEY != '' }}" >> "$GITHUB_OUTPUT"
 
   # ── 4a. Homebrew tap (macOS + Linux) ───────────────────────────────────────
   homebrew:
@@ -296,3 +306,53 @@ jobs:
           git add -A
           git commit -m "neurohelmet $VERSION" || { echo "no change"; exit 0; }
           git push
+
+  # ── 4d. AUR (Arch Linux) — neurohelmet-bin, prebuilt-binary package ─────────
+  aur:
+    needs: [release, preflight]
+    if: needs.preflight.outputs.aur == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4                # main repo, for packaging/aur/*
+      - name: Resolve version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Set up SSH for the AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t ed25519,rsa aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<'EOF'
+          Host aur.archlinux.org
+            User aur
+            IdentityFile ~/.ssh/aur
+            IdentitiesOnly yes
+          EOF
+      - name: Render + push PKGBUILD
+        run: |
+          set -euo pipefail
+          O="${{ github.repository_owner }}"
+          sha() { sha256sum "$(find artifacts -name "$1" | head -1)" | cut -d' ' -f1; }
+          LX86=$(sha "$BIN-$VERSION-x86_64-unknown-linux-gnu.tar.gz")
+          LARM=$(sha "$BIN-$VERSION-aarch64-unknown-linux-gnu.tar.gz")
+          # Cloning a not-yet-existing AUR package returns an empty repo; the first push creates it.
+          git clone "ssh://aur@aur.archlinux.org/neurohelmet-bin.git" aur
+          for f in PKGBUILD .SRCINFO; do
+            sed -e "s|__OWNER__|$O|g" -e "s|__VERSION__|$VERSION|g" \
+                -e "s|__SHA_LINUX_X86__|$LX86|g" -e "s|__SHA_LINUX_ARM__|$LARM|g" \
+                "packaging/aur/$f" > "aur/$f"
+          done
+          cd aur
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add PKGBUILD .SRCINFO
+          git commit -m "neurohelmet $VERSION" || { echo "no change"; exit 0; }
+          git branch -M master   # the AUR only accepts the master branch
+          git push origin master

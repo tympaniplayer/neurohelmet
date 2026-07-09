@@ -130,6 +130,21 @@ echo "deb [signed-by=/usr/share/keyrings/neurohelmet.gpg] https://tympaniplayer.
 sudo apt update && sudo apt install neurohelmet
 ```
 
+**Arch Linux — [AUR](https://aur.archlinux.org/packages/neurohelmet-bin)**
+
+```sh
+yay -S neurohelmet-bin      # or any AUR helper, e.g. paru -S neurohelmet-bin
+```
+
+**Fedora · RHEL · openSUSE — `.rpm`**
+
+Grab the `.rpm` for your architecture from the
+[latest release](https://github.com/tympaniplayer/neurohelmet/releases/latest) and install it:
+
+```sh
+sudo dnf install ./neurohelmet-*-x86_64-unknown-linux-gnu.rpm
+```
+
 **Direct download.** Grab the archive for your platform from the
 [Releases page](https://github.com/tympaniplayer/neurohelmet/releases) and check it against
 `SHA256SUMS`. A macOS binary downloaded this way is quarantined by Gatekeeper — clear it once with

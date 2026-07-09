@@ -1,0 +1,16 @@
+pkgbase = neurohelmet-bin
+	pkgdesc = Keyboard-driven terminal BattleTech record-sheet tracker (prebuilt binary)
+	pkgver = __VERSION__
+	pkgrel = 1
+	url = https://github.com/__OWNER__/neurohelmet
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-or-later
+	provides = neurohelmet
+	conflicts = neurohelmet
+	source_x86_64 = https://github.com/__OWNER__/neurohelmet/releases/download/v__VERSION__/neurohelmet-__VERSION__-x86_64-unknown-linux-gnu.tar.gz
+	sha256sums_x86_64 = __SHA_LINUX_X86__
+	source_aarch64 = https://github.com/__OWNER__/neurohelmet/releases/download/v__VERSION__/neurohelmet-__VERSION__-aarch64-unknown-linux-gnu.tar.gz
+	sha256sums_aarch64 = __SHA_LINUX_ARM__
+
+pkgname = neurohelmet-bin

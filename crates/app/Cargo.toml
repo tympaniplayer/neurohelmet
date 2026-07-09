@@ -20,6 +20,14 @@ sheets, covering Classic BattleTech, Alpha Strike, and several other game modes.
 The full unit dataset is embedded in the binary, so it runs fully offline with \
 no external files."""
 
+# Metadata for `cargo generate-rpm` (RPM built in the release workflow). When
+# --target is passed, cargo-generate-rpm rewrites target/release -> target/<triple>/release
+# and infers the RPM arch from the binary's ELF header.
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/neurohelmet", dest = "/usr/bin/neurohelmet", mode = "755" },
+]
+
 [[bin]]
 name = "neurohelmet"
 path = "src/main.rs"
