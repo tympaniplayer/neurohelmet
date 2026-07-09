@@ -1,0 +1,298 @@
+name: release
+
+# ── How to cut a release ─────────────────────────────────────────────────────
+# 1. Bump the version in Cargo.toml ([workspace.package] version) and commit.
+# 2. Tag it and push:   git tag v0.2.0 && git push origin v0.2.0
+#
+# The tag build then compiles every target, publishes a GitHub Release with the
+# archives + a SHA256SUMS file, and updates the Homebrew tap / Scoop bucket / apt
+# repo to point at the new binaries.
+#
+# The whole app is self-contained: data/mechs.bin is include_bytes!'d into the
+# binary, and the only non-Rust dependency is libc — so each artifact is just the
+# executable, and there is nothing to notarize/sign on macOS (brew/scoop/apt don't
+# quarantine downloads). One-time setup — the three channel repos, a deploy token,
+# and the apt GPG key — is documented in docs/RELEASING.md. Until those secrets
+# exist the publish jobs skip themselves, so an early tag still produces a working
+# GitHub Release you can test in isolation.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build, e.g. v0.2.0'
+        required: true
+
+permissions:
+  contents: write   # create the Release and upload assets in THIS repo
+
+defaults:
+  run:
+    shell: bash     # one shell everywhere, including Windows (git-bash)
+
+env:
+  BIN: neurohelmet
+
+jobs:
+  # ── 1. Build + package one self-contained binary per target ────────────────
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux built on 22.04 for a broadly-compatible glibc (2.35).
+          - { os: ubuntu-22.04,   target: x86_64-unknown-linux-gnu,  kind: linux }
+          - { os: ubuntu-22.04,   target: aarch64-unknown-linux-gnu, kind: linux,
+              apt_pkg: gcc-aarch64-linux-gnu, linker: aarch64-linux-gnu-gcc }
+          - { os: windows-latest, target: x86_64-pc-windows-msvc,    kind: windows }
+          # macos-latest is an Apple-Silicon runner; we build both arches and lipo them.
+          - { os: macos-latest,   target: universal-apple-darwin,    kind: macos }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          ver="${tag#v}"
+          echo "TAG=$tag"     >> "$GITHUB_ENV"
+          echo "VERSION=$ver" >> "$GITHUB_ENV"
+          # Fail fast if the tag and the crate version disagree.
+          crate=$(grep -m1 '^version' Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          if [ "$crate" != "$ver" ]; then
+            echo "::error::tag v$ver does not match Cargo.toml version $crate — bump the version and re-tag"
+            exit 1
+          fi
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.kind == 'macos' && 'x86_64-apple-darwin,aarch64-apple-darwin' || matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross linker (Linux arm64)
+        if: matrix.apt_pkg != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.apt_pkg }}
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=${{ matrix.linker }}" >> "$GITHUB_ENV"
+
+      # ── Build ──
+      - name: Build (macOS universal)
+        if: matrix.kind == 'macos'
+        run: |
+          cargo build --release -p "$BIN" --target x86_64-apple-darwin
+          cargo build --release -p "$BIN" --target aarch64-apple-darwin
+          mkdir -p bin
+          lipo -create -output "bin/$BIN" \
+            "target/x86_64-apple-darwin/release/$BIN" \
+            "target/aarch64-apple-darwin/release/$BIN"
+          lipo -info "bin/$BIN"
+
+      - name: Build (Linux / Windows)
+        if: matrix.kind != 'macos'
+        run: cargo build --release -p "$BIN" --target ${{ matrix.target }}
+
+      # ── Package ──
+      - name: Package (Linux — tar.gz + .deb)
+        if: matrix.kind == 'linux'
+        run: |
+          set -euo pipefail
+          mkdir -p out stage
+          cp "target/${{ matrix.target }}/release/$BIN" README.md LICENSE NOTICE.md stage/
+          tar -C stage -czf "out/$BIN-$VERSION-${{ matrix.target }}.tar.gz" .
+          cargo install cargo-deb --locked
+          # --no-strip: the host `strip` can't process a cross-built aarch64 ELF.
+          cargo deb -p "$BIN" --no-build --no-strip --target ${{ matrix.target }} \
+            --output "out/$BIN-$VERSION-${{ matrix.target }}.deb"
+
+      - name: Package (Windows — zip)
+        if: matrix.kind == 'windows'
+        run: |
+          set -euo pipefail
+          mkdir -p out stage
+          cp "target/${{ matrix.target }}/release/$BIN.exe" README.md LICENSE NOTICE.md stage/
+          ( cd stage && 7z a -tzip "../out/$BIN-$VERSION-${{ matrix.target }}.zip" . >/dev/null )
+
+      - name: Package (macOS — zip, unsigned)
+        if: matrix.kind == 'macos'
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp README.md LICENSE NOTICE.md bin/
+          ( cd bin && zip -q -r "../out/$BIN-$VERSION-universal-apple-darwin.zip" . )
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+
+  # ── 2. Publish the GitHub Release (the substrate every channel points at) ──
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "TAG=$tag" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Assemble + checksum
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find artifacts -type f -exec cp {} dist/ \;
+          ( cd dist && sha256sum * | tee SHA256SUMS )
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          R="${{ github.repository }}"
+          if gh release view "$TAG" --repo "$R" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --repo "$R" --clobber
+          else
+            gh release create "$TAG" --repo "$R" --title "$TAG" --generate-notes dist/*
+          fi
+
+  # ── 3. Detect which publish channels are configured (by their secrets) ─────
+  #     Only booleans are emitted here — secret values never leave this job.
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.c.outputs.deploy }}
+      apt: ${{ steps.c.outputs.apt }}
+    steps:
+      - id: c
+        run: |
+          echo "deploy=${{ secrets.PACKAGES_DEPLOY_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+          echo "apt=${{ secrets.PACKAGES_DEPLOY_TOKEN != '' && secrets.APT_GPG_PRIVATE_KEY != '' }}" >> "$GITHUB_OUTPUT"
+
+  # ── 4a. Homebrew tap (macOS + Linux) ───────────────────────────────────────
+  homebrew:
+    needs: [release, preflight]
+    if: needs.preflight.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Render + push formula
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          O="${{ github.repository_owner }}"
+          sha() { sha256sum "$(find artifacts -name "$1" | head -1)" | cut -d' ' -f1; }
+          MAC=$(sha "$BIN-$VERSION-universal-apple-darwin.zip")
+          LX86=$(sha "$BIN-$VERSION-x86_64-unknown-linux-gnu.tar.gz")
+          LARM=$(sha "$BIN-$VERSION-aarch64-unknown-linux-gnu.tar.gz")
+          sed -e "s|__OWNER__|$O|g" -e "s|__VERSION__|$VERSION|g" \
+              -e "s|__SHA_MACOS__|$MAC|g" \
+              -e "s|__SHA_LINUX_X86__|$LX86|g" \
+              -e "s|__SHA_LINUX_ARM__|$LARM|g" \
+              packaging/homebrew/neurohelmet.rb > /tmp/neurohelmet.rb
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/$O/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp /tmp/neurohelmet.rb tap/Formula/neurohelmet.rb
+          cd tap
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/neurohelmet.rb
+          git commit -m "neurohelmet $VERSION" || { echo "no change"; exit 0; }
+          git push
+
+  # ── 4b. Scoop bucket (Windows) ─────────────────────────────────────────────
+  scoop:
+    needs: [release, preflight]
+    if: needs.preflight.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Render + push manifest
+        env:
+          GH_TOKEN: ${{ secrets.PACKAGES_DEPLOY_TOKEN }}
+        run: |
+          set -euo pipefail
+          O="${{ github.repository_owner }}"
+          WIN=$(sha256sum "$(find artifacts -name "$BIN-$VERSION-x86_64-pc-windows-msvc.zip" | head -1)" | cut -d' ' -f1)
+          sed -e "s|__OWNER__|$O|g" -e "s|__VERSION__|$VERSION|g" -e "s|__SHA_WINDOWS__|$WIN|g" \
+              packaging/scoop/neurohelmet.json > /tmp/neurohelmet.json
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/$O/scoop-bucket.git" bucket
+          mkdir -p bucket/bucket
+          cp /tmp/neurohelmet.json bucket/bucket/neurohelmet.json
+          cd bucket
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/neurohelmet.json
+          git commit -m "neurohelmet $VERSION" || { echo "no change"; exit 0; }
+          git push
+
+  # ── 4c. apt repo (Debian/Ubuntu, GPG-signed, served via GitHub Pages) ──────
+  apt:
+    needs: [release, preflight]
+    if: needs.preflight.outputs.apt == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4              # main repo, for packaging/apt/distributions
+      - name: Resolve version
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          echo "VERSION=${tag#v}" >> "$GITHUB_ENV"
+      - uses: actions/download-artifact@v4
+        with: { path: artifacts }
+      - name: Import signing key
+        env:
+          APT_GPG_PRIVATE_KEY: ${{ secrets.APT_GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          echo "$APT_GPG_PRIVATE_KEY" | gpg --batch --import
+          keyid=$(gpg --list-secret-keys --with-colons | awk -F: '/^sec:/{print $5; exit}')
+          echo "GPG_KEYID=$keyid" >> "$GITHUB_ENV"
+      - name: Check out apt repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/neurohelmet-apt
+          token: ${{ secrets.PACKAGES_DEPLOY_TOKEN }}
+          path: aptrepo
+      - name: Build + sign the repo
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y reprepro
+          cd aptrepo
+          mkdir -p conf
+          sed "s|__GPG_KEYID__|$GPG_KEYID|" ../packaging/apt/distributions > conf/distributions
+          find ../artifacts -name '*.deb' -print0 | while IFS= read -r -d '' deb; do
+            reprepro -b . includedeb stable "$deb"
+          done
+          # Publish the public key so users can verify the repo.
+          gpg --armor --export "$GPG_KEYID" > neurohelmet.asc
+          gpg --export "$GPG_KEYID" > neurohelmet.gpg
+      - name: Commit + push
+        run: |
+          set -euo pipefail
+          cd aptrepo
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "neurohelmet $VERSION" || { echo "no change"; exit 0; }
+          git push

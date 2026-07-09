@@ -99,6 +99,45 @@ Microsoft, Topps, Catalyst Game Labs, Death From Above Wargaming, or the MegaMek
 
 Full details and required notices are in **[NOTICE.md](NOTICE.md)**.
 
+## Install
+
+Prebuilt binaries for Linux (x86_64 · arm64), Windows (x86_64), and macOS (universal) are published on
+the [Releases page](https://github.com/tympaniplayer/neurohelmet/releases) for every tagged version.
+Pick a package manager, or grab an archive directly. The dataset is baked into the binary, so there's
+nothing else to install.
+
+**macOS · Linux — [Homebrew](https://brew.sh)**
+
+```sh
+brew install tympaniplayer/tap/neurohelmet
+```
+
+**Windows — [Scoop](https://scoop.sh)**
+
+```powershell
+scoop bucket add neurohelmet https://github.com/tympaniplayer/scoop-bucket
+scoop install neurohelmet
+```
+
+**Debian · Ubuntu · Raspberry Pi OS (64-bit) — apt**
+
+```sh
+sudo mkdir -p /usr/share/keyrings
+curl -fsSL https://tympaniplayer.github.io/neurohelmet-apt/neurohelmet.gpg \
+  | sudo tee /usr/share/keyrings/neurohelmet.gpg >/dev/null
+echo "deb [signed-by=/usr/share/keyrings/neurohelmet.gpg] https://tympaniplayer.github.io/neurohelmet-apt stable main" \
+  | sudo tee /etc/apt/sources.list.d/neurohelmet.list
+sudo apt update && sudo apt install neurohelmet
+```
+
+**Direct download.** Grab the archive for your platform from the
+[Releases page](https://github.com/tympaniplayer/neurohelmet/releases) and check it against
+`SHA256SUMS`. A macOS binary downloaded this way is quarantined by Gatekeeper — clear it once with
+`xattr -dr com.apple.quarantine neurohelmet` (the package-manager installs above aren't affected).
+
+Prefer to build from source? See [Build & run](#build--run) below, or
+[Running on a Raspberry Pi](#running-on-a-raspberry-pi-build-on-device) to compile on-device.
+
 ## Build & run
 
 ```sh

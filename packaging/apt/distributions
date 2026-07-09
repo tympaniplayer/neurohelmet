@@ -1,0 +1,11 @@
+# reprepro repository definition. release.yml copies this to the apt repo's
+# conf/distributions, substituting __GPG_KEYID__ with the imported signing key,
+# then runs `reprepro includedeb stable <debs>` to (re)build the signed repo.
+Origin: Neurohelmet
+Label: Neurohelmet
+Codename: stable
+Suite: stable
+Architectures: amd64 arm64
+Components: main
+Description: Neurohelmet apt repository
+SignWith: __GPG_KEYID__

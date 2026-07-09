@@ -1,0 +1,22 @@
+{
+  "//": "Template for the Scoop manifest. release.yml fills in __PLACEHOLDERS__ and pushes it to <owner>/scoop-bucket as bucket/neurohelmet.json.",
+  "version": "__VERSION__",
+  "description": "Keyboard-driven terminal BattleTech record-sheet tracker",
+  "homepage": "https://github.com/__OWNER__/neurohelmet",
+  "license": "GPL-3.0-or-later",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/__OWNER__/neurohelmet/releases/download/v__VERSION__/neurohelmet-__VERSION__-x86_64-pc-windows-msvc.zip",
+      "hash": "__SHA_WINDOWS__"
+    }
+  },
+  "bin": "neurohelmet.exe",
+  "checkver": "github",
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/__OWNER__/neurohelmet/releases/download/v$version/neurohelmet-$version-x86_64-pc-windows-msvc.zip"
+      }
+    }
+  }
+}

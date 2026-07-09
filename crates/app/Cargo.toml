@@ -3,6 +3,22 @@ name = "neurohelmet"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+description = "Keyboard-driven terminal BattleTech record-sheet tracker (Classic, Alpha Strike, and more)."
+homepage = "https://github.com/tympaniplayer/neurohelmet"
+repository = "https://github.com/tympaniplayer/neurohelmet"
+
+# Metadata for `cargo deb` (Debian package built in the release workflow). The
+# dataset is embedded in the binary, so the package has no runtime dependencies
+# beyond libc; cargo-deb auto-installs the binary to /usr/bin.
+[package.metadata.deb]
+maintainer = "Nate Palmer <nate@natedpalm.com>"
+section = "games"
+priority = "optional"
+extended-description = """
+Neurohelmet is a keyboard-driven terminal (TUI) tracker for BattleTech record \
+sheets, covering Classic BattleTech, Alpha Strike, and several other game modes. \
+The full unit dataset is embedded in the binary, so it runs fully offline with \
+no external files."""
 
 [[bin]]
 name = "neurohelmet"
