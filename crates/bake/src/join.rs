@@ -23,8 +23,8 @@
 //! build a small name/id/alias → heat index from it.
 
 use neurohelmet_core::domain::{
-    AmmoBin, AsStats, CritSlot, Equipment, HeatSinkType, Location, LocationArmor, Mech, MechConfig,
-    MotiveType, UnitType, WeaponMount,
+    AmmoBin, ArcCard, ArcDamage, AsStats, CritSlot, Equipment, FiringArc, HeatSinkType, Location,
+    LocationArmor, Mech, MechConfig, MotiveType, UnitType, WeaponMount,
 };
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap};
@@ -279,7 +279,43 @@ fn parse_as_stats(unit: &Value) -> AsStats {
         overheat: num_u8(a, "OV"),
         threshold: num_u8(a, "Th"),
         specials,
+        arcs: parse_arcs(a),
     }
+}
+
+/// Parse the large-craft multi-arc block (`frontArc/leftArc/rightArc/rearArc`) from an `as` block.
+/// Returns `None` unless `usesArcs` is set — single-arc fighters/ground keep `None`.
+fn parse_arcs(a: &Value) -> Option<ArcCard> {
+    if a.get("usesArcs").and_then(Value::as_bool) != Some(true) {
+        return None;
+    }
+    let arc = |k: &str| a.get(k).map(parse_firing_arc).unwrap_or_default();
+    Some(ArcCard {
+        front: arc("frontArc"),
+        left: arc("leftArc"),
+        right: arc("rightArc"),
+        rear: arc("rearArc"),
+    })
+}
+
+/// Parse one firing arc: the STD/CAP/SCAP/MSL damage sub-blocks (preserving `"0*"`) + arc specials.
+fn parse_firing_arc(arc: &Value) -> FiringArc {
+    let dmg = |class: &str| {
+        let band = |b: &str| {
+            arc.get(class)
+                .and_then(|c| c.get(b))
+                .and_then(Value::as_str)
+                .unwrap_or("0")
+                .to_string()
+        };
+        ArcDamage { s: band("dmgS"), m: band("dmgM"), l: band("dmgL"), e: band("dmgE") }
+    };
+    let specials = arc
+        .get("specials")
+        .and_then(Value::as_array)
+        .map(|arr| arr.iter().filter_map(Value::as_str).map(str::to_string).collect())
+        .unwrap_or_default();
+    FiringArc { std: dmg("STD"), cap: dmg("CAP"), scap: dmg("SCAP"), msl: dmg("MSL"), specials }
 }
 
 /// Result of building one mech, including any non-fatal warnings (e.g. weapons whose heat
@@ -317,6 +353,26 @@ pub fn is_aero_fighter(unit: &Value) -> bool {
                     | "Conventional Fighter"
                     | "Fixed Wing Support Vehicle"
                     | "Fixed Wing Support Vehicle Omni"
+            )
+        )
+}
+
+/// Whether a unit is capital-scale large craft that fields on the AS/BF card. Phase 1 admits the
+/// **DropShip + Small Craft** subtypes (spheroid/aerodyne, civilian + military); Phase 2 extends
+/// this to JumpShip / WarShip / Space Station. All are `type == "Aero"` and carry the multi-arc
+/// card (`usesArcs`); baked from JSON only (no Classic capital record sheet).
+pub fn is_large_craft(unit: &Value) -> bool {
+    unit.get("type").and_then(Value::as_str) == Some("Aero")
+        && matches!(
+            unit.get("subtype").and_then(Value::as_str),
+            Some(
+                "Spheroid DropShip"
+                    | "Aerodyne DropShip"
+                    | "Civilian Spheroid DropShip"
+                    | "Civilian Aerodyne DropShip"
+                    | "Aerodyne Small Craft"
+                    | "Spheroid Small Craft"
+                    | "Civilian Aerodyne Small Craft"
             )
         )
 }
@@ -607,6 +663,53 @@ pub fn build_aero(
         availability: BTreeMap::new(),
     };
     Ok(BuildOutcome { mech, unresolved_heat })
+}
+
+/// Build a large craft (DropShip / Small Craft; Phase 2 adds JumpShip / WarShip / Space Station).
+/// These field on the AS/BF card only — the full multi-arc damage matrix + single Arm/Str/Th pool
+/// live in the JSON `as` block ([`parse_as_stats`] carries the arcs). The Classic capital record
+/// sheet (per-arc armor doll, weapon bays) is out of scope, so there is no SVG-derived armor doll,
+/// no heat-sink model, and no Classic weapon loadout (the arcs ARE the weapon representation) —
+/// baked from JSON only, which also keeps large WarShip loadouts from bloating the bundle.
+pub fn build_large_craft(unit: &Value) -> Result<BuildOutcome, String> {
+    let chassis = s(unit, "chassis");
+    if chassis.is_empty() {
+        return Err("unit has no chassis".into());
+    }
+    let mech = Mech {
+        chassis,
+        model: s(unit, "model"),
+        tonnage: num_u16(unit, "tons"),
+        tech_base: s(unit, "techBase"),
+        role: s(unit, "role"),
+        weight_class: s(unit, "weightClass"),
+        subtype: s(unit, "subtype"),
+        year: num_u16(unit, "year"),
+        bv: num_u32(unit, "bv"),
+        cost: num_u64(unit, "cost"),
+        armor_type: s(unit, "armorType"),
+        structure_type: String::new(),
+        walk: num_u8(unit, "walk"), // Safe Thrust
+        run: num_u8(unit, "run"),   // Maximum Thrust
+        jump: 0,
+        heat_sinks: 0,
+        heat_sink_type: HeatSinkType::Single,
+        dissipation: 0,
+        config: MechConfig::Biped,
+        unit_type: UnitType::Aerospace,
+        motive: None,
+        internal: 0, // SI is carried as the AS `Str` pool on `as_stats`, not a Classic doll
+        dpt: 0,
+        transport: Vec::new(),
+        armor: BTreeMap::new(), // AS/BF card only; the single Arm/Str/Th pool lives on `as_stats`
+        weapons: Vec::new(),    // the firing arcs are the weapon representation
+        ammo: Vec::new(),
+        equipment: Vec::new(),
+        crit_slots: BTreeMap::new(),
+        as_stats: parse_as_stats(unit), // includes the multi-arc card (`usesArcs`)
+        availability: BTreeMap::new(),
+    };
+    Ok(BuildOutcome { mech, unresolved_heat: Vec::new() })
 }
 
 /// Build a combat vehicle. Reuses the shared loadout parse and the mech armor model: vehicle record
@@ -929,6 +1032,65 @@ mod tests {
         // Weapons now KEEP their arc locations (no longer dropped).
         assert_eq!(m.weapons.len(), 2);
         assert_eq!(m.weapons[0].location, Location::Nose);
+    }
+
+    #[test]
+    fn large_craft_bakes_multi_arc_card_from_json() {
+        let unit = json!({
+            "type": "Aero",
+            "subtype": "Spheroid DropShip",
+            "chassis": "Union",
+            "model": "(2708)",
+            "tons": 3600,
+            "walk": 3,
+            "run": 5,
+            "as": {
+                "TP": "DS", "SZ": 2, "MV": "3p", "Arm": 10, "Str": 5, "Th": 1, "PV": 200,
+                "usesArcs": true, "usesTh": true,
+                "dmg": {"dmgS": "0", "dmgM": "0", "dmgL": "0", "dmgE": "0"},
+                "frontArc": {
+                    "STD":  {"dmgS": "4", "dmgM": "3", "dmgL": "2", "dmgE": "0*"},
+                    "CAP":  {"dmgS": "0", "dmgM": "0", "dmgL": "0", "dmgE": "0"},
+                    "SCAP": {"dmgS": "0", "dmgM": "0", "dmgL": "0", "dmgE": "0"},
+                    "MSL":  {"dmgS": "1", "dmgM": "1", "dmgL": "1", "dmgE": "1"},
+                    "specials": ["PNT1"]
+                },
+                "leftArc":  {"STD": {"dmgS": "2", "dmgM": "2", "dmgL": "1", "dmgE": "0"}},
+                "rightArc": {"STD": {"dmgS": "2", "dmgM": "2", "dmgL": "1", "dmgE": "0"}},
+                "rearArc":  {"STD": {"dmgS": "1", "dmgM": "0", "dmgL": "0", "dmgE": "0"}},
+                "specials": ["AT2-D2", "SPC", "CRW3"]
+            }
+        });
+        assert!(is_large_craft(&unit));
+        assert!(!is_aero_fighter(&unit));
+
+        let m = build_large_craft(&unit).unwrap().mech;
+        assert_eq!(m.unit_type, UnitType::Aerospace);
+        assert_eq!(m.subtype, "Spheroid DropShip");
+        // Single Arm/Str/Th pool + PV on the AS card; JSON-only (no doll, no loadout).
+        assert_eq!((m.as_stats.armor, m.as_stats.structure, m.as_stats.threshold), (10, 5, 1));
+        assert_eq!(m.as_stats.pv, 200);
+        assert!(m.armor.is_empty() && m.weapons.is_empty());
+        assert_eq!((m.walk, m.run), (3, 5), "safe/max thrust");
+
+        let arcs = m.as_stats.arcs.expect("large craft carries the multi-arc card");
+        assert_eq!(
+            (arcs.front.std.s.as_str(), arcs.front.std.m.as_str(), arcs.front.std.l.as_str()),
+            ("4", "3", "2")
+        );
+        assert_eq!(arcs.front.std.e, "0*", "minimal-damage token preserved, not collapsed to 0");
+        assert_eq!(arcs.front.msl.l, "1");
+        assert_eq!(arcs.front.specials, vec!["PNT1"]);
+        assert_eq!(arcs.rear.std.s, "1");
+        assert_eq!(arcs.left.cap.s, "0", "absent classes bake all-zero");
+
+        // A fighter (usesArcs = false) keeps arcs = None.
+        let fighter = json!({
+            "type": "Aero", "subtype": "Aerospace Fighter", "chassis": "X", "model": "Y",
+            "as": {"TP": "AF", "usesArcs": false, "dmg": {"dmgS": "3", "dmgM": "3", "dmgL": "2", "dmgE": "1"}}
+        });
+        assert!(!is_large_craft(&fighter));
+        assert!(parse_as_stats(&fighter).arcs.is_none());
     }
 
     #[test]

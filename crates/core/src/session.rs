@@ -4520,6 +4520,7 @@ mod tests {
                 overheat: 0,
                 threshold: 0,
                 specials: vec!["AC2/2/-".into(), "IF1".into()],
+                arcs: None,
             },
             availability: BTreeMap::new(),
         }

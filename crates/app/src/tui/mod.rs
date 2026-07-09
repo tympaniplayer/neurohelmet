@@ -209,6 +209,7 @@ mod tests {
                 overheat: 0,
                 threshold: 0,
                 specials: vec!["AC2/2/-".into(), "IF1".into(), "LRM1/1/1".into()],
+                arcs: None,
             },
             availability: BTreeMap::new(),
         }
@@ -385,6 +386,7 @@ mod tests {
             overheat: 0,
             threshold: 0,
             specials: vec!["AM".into(), "CAR4".into(), "MEC".into(), "STL".into()],
+            arcs: None,
         };
         m
     }
@@ -509,6 +511,7 @@ mod tests {
                 overheat: 0,
                 threshold: 3,
                 specials: vec!["BOMB2".into(), "FUEL20".into(), "VSTOL".into()],
+                arcs: None,
             },
             ..Default::default()
         }
@@ -1425,6 +1428,47 @@ mod tests {
         assert!(screen.contains("Heavy Emplacement"));
         assert!(screen.contains("IMMOBILE"));
         insta::assert_snapshot!(screen);
+    }
+
+    #[test]
+    fn large_craft_baked_with_multi_arc_card() {
+        // Phase 1 of the large-craft initiative: DropShips + Small Craft bake from the real bundle,
+        // typed Aerospace, carrying the multi-arc AS/BF card (front/left/right/rear ×
+        // STD/CAP/SCAP/MSL) over a single Arm/Str/Th pool.
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
+        let bundle = Bundle::load(std::path::Path::new(path)).expect("load bundle");
+        // Phase 1 fields DropShips + Small Craft (AS type codes DS / DA / SC). Key on those codes:
+        // large *support vehicles* (ground and fixed-wing) also legitimately carry firing arcs per
+        // the rules (`usesArcs` = large aerospace OR large SV), so "has arcs" alone is broader than
+        // the large-craft set.
+        let large_craft: Vec<_> = bundle
+            .mechs
+            .iter()
+            .filter(|m| matches!(m.as_stats.tp.as_str(), "DS" | "DA" | "SC"))
+            .collect();
+        assert!(
+            large_craft.len() >= 200,
+            "expected the ~248 baked DropShips/Small Craft, found {}",
+            large_craft.len()
+        );
+        for m in &large_craft {
+            assert!(m.is_aerospace(), "{} (DropShip/Small Craft) should be aerospace", m.display_name());
+            assert!(
+                m.as_stats.arcs.is_some(),
+                "{} (DropShip/Small Craft) should carry the multi-arc card",
+                m.display_name()
+            );
+        }
+        // At least one DropShip carries real (non-zero) front-arc STD short-range damage.
+        assert!(
+            large_craft.iter().any(|m| {
+                m.as_stats
+                    .arcs
+                    .as_ref()
+                    .is_some_and(|a| !a.front.std.s.is_empty() && a.front.std.s != "0")
+            }),
+            "expected some DropShip to have front-arc STD damage"
+        );
     }
 
     #[test]

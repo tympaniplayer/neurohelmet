@@ -114,23 +114,30 @@ fn main() {
     );
 
     let units = join::parse_units(&units_text).expect("parse units");
-    // 'Mechs + combat vehicles (tanks/VTOL/naval) + infantry/BA + aerospace fighters (§21 phase 1).
-    // Aerospace big iron (DropShips/WarShips/…) and protomechs are still excluded.
+    // 'Mechs + combat vehicles + infantry/BA + aerospace fighters + large craft (DropShips + Small
+    // Craft; Phase 1 of the large-craft initiative). WarShips/JumpShips/Space Stations and
+    // protomechs are still excluded.
     let mut meks: Vec<serde_json::Value> = units
         .into_iter()
         .filter(|u| {
-            join::is_mek(u) || join::is_vehicle(u) || join::is_infantry(u) || join::is_aero_fighter(u)
+            join::is_mek(u)
+                || join::is_vehicle(u)
+                || join::is_infantry(u)
+                || join::is_aero_fighter(u)
+                || join::is_large_craft(u)
         })
         .collect();
     let n_veh = meks.iter().filter(|u| join::is_vehicle(u)).count();
     let n_inf = meks.iter().filter(|u| join::is_infantry(u)).count();
     let n_aero = meks.iter().filter(|u| join::is_aero_fighter(u)).count();
+    let n_large = meks.iter().filter(|u| join::is_large_craft(u)).count();
     eprintln!(
-        "found {} units ({} vehicles, {} infantry/BA, {} aero fighters) in catalog",
+        "found {} units ({} vehicles, {} infantry/BA, {} aero fighters, {} large craft) in catalog",
         meks.len(),
         n_veh,
         n_inf,
-        n_aero
+        n_aero,
+        n_large
     );
 
     if let Some(f) = &args.filter {
@@ -169,7 +176,11 @@ fn main() {
             // have no crit-slot table — their criticals are a manual rolled table, not slots).
             // Battle Armor parses per-trooper pips from its sheet; conventional infantry has
             // no pips (its sheet is a strength/damage table) and bakes from JSON only.
-            let outcome = if join::is_aero_fighter(unit) {
+            let outcome = if join::is_large_craft(unit) {
+                // Large craft field on the AS/BF card only (multi-arc damage + single Arm/Str/Th
+                // pool from JSON); no SVG doll, no Classic loadout.
+                join::build_large_craft(unit).map_err(|e| format!("{name}: {e}"))?
+            } else if join::is_aero_fighter(unit) {
                 // Aerospace fighters: armor arcs + SI from the record-sheet SVG (like vehicles),
                 // plus the printed heat-sink count.
                 let rel = join::sheet_rel(unit).ok_or_else(|| format!("{name}: no sheet"))?;

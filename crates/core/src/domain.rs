@@ -643,6 +643,41 @@ pub enum GameMode {
     AbstractCombatSystem,
 }
 
+/// One weapon class's S/M/L/E damage within a large-craft firing arc, as printed strings
+/// (`"0*"` = minimal damage). Absent/empty bands bake as `"0"`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArcDamage {
+    pub s: String,
+    pub m: String,
+    pub l: String,
+    pub e: String,
+}
+
+/// One firing arc of a large-craft (DropShip→WarShip) AS/BF card: per-weapon-class damage plus
+/// arc-level specials (e.g. `ENE`, `PNT1`). Weapon classes are STD (standard), CAP (capital),
+/// SCAP (sub-capital), and MSL (capital/sub-capital missiles); a class absent from the arc is
+/// all-zero. The capital classes drive the to-hit weapon-class modifier and the crit
+/// weapon-class selection — not a damage rescale (arc values are already BF-scale).
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FiringArc {
+    pub std: ArcDamage,
+    pub cap: ArcDamage,
+    pub scap: ArcDamage,
+    pub msl: ArcDamage,
+    pub specials: Vec<String>,
+}
+
+/// A large-craft multi-arc AS/BF card: four firing arcs over the single Armor/Structure/Threshold
+/// pool carried on the parent [`AsStats`]. `front/left/right/rear` mirror the source
+/// `frontArc/leftArc/rightArc/rearArc`.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArcCard {
+    pub front: FiringArc,
+    pub left: FiringArc,
+    pub right: FiringArc,
+    pub rear: FiringArc,
+}
+
 /// A unit's Alpha Strike card stats, baked from the Mekbay `as` block. Damage values and special
 /// tags are kept as printed strings (`"0*"` = minimal damage; `"AC2/2/-"` = per-range special).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -667,6 +702,11 @@ pub struct AsStats {
     #[serde(default)]
     pub threshold: u8,
     pub specials: Vec<String>,
+    /// Large-craft multi-arc card (DropShips→WarShips): four firing arcs × weapon classes over the
+    /// single Arm/Str/Th pool above. `None` for single-arc units (fighters, ground). Optional +
+    /// `#[serde(default)]` so pre-arc session snapshots still load.
+    #[serde(default)]
+    pub arcs: Option<ArcCard>,
 }
 
 /// The immutable specification of a single mech, as baked from MegaMek/Mekbay data.
