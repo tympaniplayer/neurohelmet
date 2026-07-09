@@ -217,17 +217,49 @@ Remaining work (large):
 - Aerospace units are tracked as separate planned work, with their own structural-integrity and altitude
   sheet model.
 
-### Aerospace — Phase 2: capital-scale units
+### Large craft & capital-scale aerospace (Phase 2)
 
-Large. Phase 1 — aerospace and conventional fighters, in both Classic and Alpha Strike — is complete.
-Phase 2 covers the capital-scale craft that appear rarely at the table and are therefore scheduled last:
-DropShips (209 units: spheroid and aerodyne), WarShips (123), JumpShips (29), Small Craft (39), and
-Space Stations (33). These carry Alpha Strike blocks, but Alpha Strike plays them at their own scale,
-and their Classic record sheets are a substantially different model — capital armor and Structural
-Integrity, weapon bays, multi-arc capital fire, and docking. Deferred until the Phase 1 fighter model is
-proven in use.
+Large — a cross-cutting initiative, not a single mode. Phase 1 (aerospace + conventional fighters, in
+Classic and Alpha Strike) is complete, and fighters are already first-class in Standard BattleForce and
+SBF. Phase 2 makes the **capital-scale craft fieldable across the BattleForce ladder** — DropShips (209:
+spheroid + aerodyne), Small Craft (39), JumpShips (29), Space Stations (33), and WarShips (123) — as
+units *inside* BF / SBF / ACS (targets, air-to-ground / orbit-to-surface attackers, grounded units), not
+as a separate space-combat game. Full spec: `docs/large-craft-implementation-spec.md`.
 
-Fuel consumption (an Advanced/StratOps rule rather than Total Warfare) remains out of scope.
+**Decisions (2026-07-09).** Target the **full ladder at faithful IO:BF fidelity** (the multi-arc,
+capital-weapon-class Alpha Strike / BattleForce card), delivered in phases DropShips-first. Implement it
+as a **shared `crates/core/src/engine/large_craft.rs` layer** (arc model + capital/sub-capital damage +
+threshold) that BF, SBF, and ACS each consume, rather than triplicating the logic per mode.
+
+**Key data finding.** The source `units.json` **already carries the full multi-arc card** for the ~450
+arc-using craft — each has `frontArc`/`leftArc`/`rightArc`/`rearArc`, every arc split into `STD`/`CAP`/
+`SCAP`/`MSL` weapon classes with `dmgS/M/L/E`, over a single `Arm`/`Str`/`Th` pool, plus `usesArcs`,
+`TP`, `SZ`, `PV`. The bake simply discards it: `is_aero_fighter` (`bake/join.rs`) drops every large-craft
+subtype, and `parse_as_stats` reads only the single `dmg` block. So this is **transcription, not
+conversion** — no MegaMek `ASConverter` port is needed; the AS/BF card is 4 firing arcs (front/left/
+right/rear), not the 6-arc Total Warfare WarShip record sheet.
+
+**Shared foundation (unblocks all modes; do first):**
+
+- **Bake:** add an `is_large_craft` admit path alongside `is_aero_fighter` (`bake/join.rs`, `bake/main.rs`);
+  extend `parse_as_stats` to parse the four arcs × four weapon classes when `usesArcs` is set.
+- **Schema:** a multi-arc damage/armor representation on `AsStats` (today single-`dmg` only,
+  `domain.rs`); new `UnitType` variant(s) / subtype enum (today the flat `UnitType::Aerospace`); the
+  bundle-format bump + re-bake + ~10 MB bundle-size check that implies.
+- **Routing:** wire the `sbf_type_from_tp` large-craft arms (`DS/DA/JS/WS/SS`, today → the dead `La`
+  default) and the `Warship` move mode (coded but unreachable); resolve `isAerospaceSV` (`SV → As` vs `V`).
+
+**Phasing:** Phase 0 — two decoupled cheap wins already scoped: wire the never-called
+`AcsFormation::is_aerospace()` guard (aero elements currently silent-ground-aggregate in ACS) and the
+`isAerospaceSV` routing fix. Phase 1 — DropShips + Small Craft (4-arc, mostly standard-scale). Phase 2 —
+JumpShips / WarShips / Space Stations (adds capital / sub-capital weapon-class resolution) + special
+large-craft movement (IO:BF pp.77–81) and crit tables. Per-mode fielding (BF reachable placeholders →
+real effects; SBF Advanced Strategic Aerospace pp.182–196; ACS Abstract Combat Aerospace pp.251–255)
+layers on top of the shared engine.
+
+Positional/table-side machinery stays out of scope as everywhere else: capital radar map, orbital
+mechanics, jump-point/space movement, altitude/velocity. Fuel consumption (Advanced/StratOps) remains
+out of scope. What ships is the record-sheet state + the number-crunchers, per the whole-app doctrine.
 
 ### Infantry / Battle Armor: remaining attacks and ProtoMechs
 
