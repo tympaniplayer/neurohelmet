@@ -15,6 +15,10 @@ The **Modern** profile adds a Force sidebar listing every unit and the roster's 
 
 ![The Modern layout: a Force sidebar listing a four-'Mech lance beside the active unit's tracker.](../images/modern-force.png)
 
+The same layout in a real terminal (Nerd Font, hi-DPI) — a battle-damaged lance mid-game:
+
+![The Modern layout in a real terminal — Force sidebar plus the active unit's live-tracked doll, heat, pilot, and weapons panels.](../images/real-modern.png)
+
 ## Setting them without the picker
 
 Each has an environment-variable override that wins for a single launch, useful for scripting or trying

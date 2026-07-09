@@ -823,6 +823,63 @@ mod tests {
         set_profile(DisplayProfile::Pi);
     }
 
+    /// Dev-only: plant a few real, openable demo sessions in the REAL data dir (no isolation), so
+    /// the sessions browser has good material to screenshot from a real terminal. Distinct "Demo …"
+    /// names — it never touches your own sessions or the last-active pointer. Ignored by default:
+    ///   cargo test -p neurohelmet --bin neurohelmet seed_demo_sessions -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn seed_demo_sessions() {
+        use neurohelmet_core::domain::GameMode;
+        use neurohelmet_core::session::{save_named, sessions_dir};
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
+        let bundle = Bundle::load(std::path::Path::new(path)).expect("load bundle");
+        let find = |chassis: &str| {
+            bundle
+                .mechs
+                .iter()
+                .find(|m| m.chassis.eq_ignore_ascii_case(chassis))
+                .unwrap_or_else(|| panic!("no '{chassis}' in bundle"))
+                .clone()
+        };
+        std::fs::create_dir_all(sessions_dir()).unwrap();
+
+        // 1) Classic lance, battle-damaged on the active unit (Classic tracker + Modern force view).
+        let mut session = Session::new();
+        let mut specs = Vec::new();
+        for c in ["Atlas", "Marauder", "Warhammer", "Phoenix Hawk"] {
+            let m = find(c);
+            session.add_mech(m.clone());
+            specs.push(m);
+        }
+        let mut app = App::new(Bundle::new(specs), session, "Demo Lance".into());
+        for _ in 0..7 {
+            press(&mut app, KeyCode::Char(' ')); // damage the active unit into structure
+        }
+        for _ in 0..14 {
+            press(&mut app, KeyCode::Char('o')); // heat into the warning band
+        }
+        press(&mut app, KeyCode::Char('p')); // one pilot hit
+        save_named("Demo Lance", &app.session).unwrap();
+
+        // 2) Alpha Strike force (a 2×2 card grid), fresh.
+        let mut as_session = Session::new_with_mode(GameMode::AlphaStrike);
+        for c in ["Battlemaster", "Rifleman", "Wolverine", "Locust"] {
+            as_session.add_mech(find(c));
+        }
+        save_named("Demo Alpha Strike", &as_session).unwrap();
+
+        // 3) Override card, fresh.
+        let mut ov_session = Session::new_with_mode(GameMode::Override);
+        ov_session.add_mech(find("Atlas"));
+        save_named("Demo Override", &ov_session).unwrap();
+
+        println!(
+            "Seeded 3 demo sessions (Demo Lance / Demo Alpha Strike / Demo Override) in {}",
+            sessions_dir().display()
+        );
+    }
+
     #[test]
     fn ctrl_t_theme_picker_previews_and_keeps() {
         use super::app::Modal;

@@ -9,7 +9,18 @@ Neurohelmet tracks **six BattleTech game systems**, each a first-class mode with
 heat, ammo, crits, pilots, morale, fatigue) — you roll the dice and mark results, the app keeps the
 sheet and surfaces the consequences.
 
-![Neurohelmet's Classic tracker — an Atlas paper doll with heat, pilot, movement, and weapons panels.](docs/guide/src/images/classic-tracker.png)
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img alt="Neurohelmet's Classic tracker rendered by the built-in offline rasterizer" src="docs/guide/src/images/classic-tracker.png"><br>
+      <sub><em>Built-in offline rasterizer — the same engine behind the <code>--export</code> / <code>--publish</code> image output.</em></sub>
+    </td>
+    <td width="50%" valign="top">
+      <img alt="The Classic tracker running in a real terminal" src="docs/guide/src/images/real-classic.png"><br>
+      <sub><em>A real terminal — Nerd Font, hi-DPI. Same paper doll, live battle state.</em></sub>
+    </td>
+  </tr>
+</table>
 
 📖 **Documentation:** the [Neurohelmet guide](docs/guide/src/introduction.md) covers install, the six
 systems, sessions, the game log & publishing, and configuration. (Source under `docs/guide/`; rendered
