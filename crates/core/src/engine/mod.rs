@@ -27,6 +27,7 @@ pub mod gator;
 pub mod heat;
 pub mod infantry;
 pub mod internal;
+pub mod large_craft;
 pub mod movement;
 pub mod override_conv;
 pub mod pilot;

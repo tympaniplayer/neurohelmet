@@ -125,6 +125,9 @@ pub struct AsElement {
     pub turret_suas: BTreeMap<String, SuaVal>,
     /// `AsStats.pv` (the skill-4 base PV).
     pub base_pv: u16,
+    /// Large-craft multi-arc card (DropShip→WarShip), if any — the four firing arcs × weapon
+    /// classes. `None` for single-arc units (fighters, ground). See [`super::large_craft`].
+    pub arcs: Option<crate::domain::ArcCard>,
 }
 
 impl AsElement {
@@ -238,11 +241,12 @@ pub fn as_element(stats: &AsStats, name: &str, skill: u8) -> AsElement {
         suas,
         turret_suas,
         base_pv: stats.pv,
+        arcs: stats.arcs.clone(),
     }
 }
 
 /// A single main damage cell: `"0*"`→0.5, `"-"`→0.0, otherwise the integer (`ASDamage.java:151-153`).
-fn as_damage(s: &str) -> f32 {
+pub(crate) fn as_damage(s: &str) -> f32 {
     match s.trim() {
         "0*" => 0.5,
         "-" => 0.0,

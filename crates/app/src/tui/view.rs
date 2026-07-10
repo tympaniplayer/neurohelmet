@@ -29,6 +29,7 @@ use neurohelmet_core::domain::{
     Facing, GameMode, Location, Mech, Rarity, UnitType, WeaponMount, STANDARD_MUNITION,
 };
 use neurohelmet_core::engine::override_conv::{self, ArmorRegion, OverrideCard};
+use neurohelmet_core::engine::large_craft;
 use neurohelmet_core::engine::battleforce::{
     self, BfA2G, BfAeroAngle, BfAttackKind, BfMotive, BfMove, BfPhysical, BfRange, BfTargetKind,
     BfTargetMove,
@@ -4413,6 +4414,7 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
     let a = &tm.spec.as_stats;
     let el = bf_element_of(tm);
     let aero = battleforce::bf_is_aero(&el);
+    let large = a.arcs.is_some();
     let gray = Style::default().fg(theme().dim);
     let mut lines: Vec<Line> = Vec::new();
 
@@ -4488,37 +4490,64 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
     lines.push(pip_row("Armor", tm.as_armor_remaining(), a.armor));
     lines.push(pip_row("Structure", tm.as_struct_remaining(), a.structure));
 
-    // Heat: the shared 1 2 3 S ladder (p.26) + the OV rating.
-    let mut heat = vec![Span::styled(format!("{:<10}", "Heat"), gray)];
-    for h in 0..=4u8 {
-        let label = if h == 4 { "S".to_string() } else { h.to_string() };
-        if h == tm.as_heat {
-            heat.push(Span::styled(
-                format!("[{label}]"),
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
-            ));
-        } else {
-            heat.push(Span::styled(format!(" {label} "), gray));
+    // Heat: the shared 1 2 3 S ladder (p.26) + the OV rating. Large craft omit it — they don't
+    // overheat at BF scale, and dropping it keeps the taller multi-arc card within the card height.
+    if !large {
+        let mut heat = vec![Span::styled(format!("{:<10}", "Heat"), gray)];
+        for h in 0..=4u8 {
+            let label = if h == 4 { "S".to_string() } else { h.to_string() };
+            if h == tm.as_heat {
+                heat.push(Span::styled(
+                    format!("[{label}]"),
+                    Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+                ));
+            } else {
+                heat.push(Span::styled(format!(" {label} "), gray));
+            }
         }
+        if a.overheat > 0 {
+            heat.push(Span::styled(format!("  OV {}", a.overheat), Style::default().fg(theme().warning)));
+        }
+        lines.push(Line::from(heat));
     }
-    if a.overheat > 0 {
-        heat.push(Span::styled(format!("  OV {}", a.overheat), Style::default().fg(theme().warning)));
-    }
-    lines.push(Line::from(heat));
 
-    // Post-crit damage per bracket; ground E derives as L−1 at attack time (p.84, spec §1.1).
-    let dmg_cell = |label: &str, r: BfRange| {
-        let cell = bf_dmg_cell(app.session.bf_current_damage(i, r));
-        let style = if cell == "—" { gray } else { Style::default() };
-        Span::styled(format!("{label}{cell:<4}"), style)
-    };
-    lines.push(Line::from(vec![
-        Span::styled(format!("{:<10}", "Damage"), gray),
-        dmg_cell("S ", BfRange::Short),
-        dmg_cell("M ", BfRange::Medium),
-        dmg_cell("L ", BfRange::Long),
-        dmg_cell("E ", BfRange::Extreme),
-    ]));
+    // Damage: large craft show the multi-arc card (front/left/right/rear × weapon class); every
+    // other unit shows the single S/M/L/E line (post-crit; ground E derives as L−1, spec §1.1).
+    if let Some(card) = &a.arcs {
+        // Per-arc damage (S/M/L/E per weapon class) replaces the single damage line + range footer.
+        for arc in large_craft::Arc::ALL {
+            let disp = large_craft::arc_display_lines(card, arc);
+            if disp.is_empty() {
+                continue;
+            }
+            let mut spans = vec![Span::styled(format!("  {:<6}", arc.label()), gray)];
+            for (cls, s) in disp {
+                spans.push(Span::styled(format!("{} {}  ", cls.label(), s), Style::default()));
+            }
+            let arc_specials = &arc.of(card).specials;
+            if !arc_specials.is_empty() {
+                spans.push(Span::styled(
+                    format!("⟨{}⟩", arc_specials.join(" ")),
+                    Style::default().fg(theme().good),
+                ));
+            }
+            lines.push(Line::from(spans));
+        }
+    } else {
+        // Post-crit damage per bracket; ground E derives as L−1 at attack time (p.84, spec §1.1).
+        let dmg_cell = |label: &str, r: BfRange| {
+            let cell = bf_dmg_cell(app.session.bf_current_damage(i, r));
+            let style = if cell == "—" { gray } else { Style::default() };
+            Span::styled(format!("{label}{cell:<4}"), style)
+        };
+        lines.push(Line::from(vec![
+            Span::styled(format!("{:<10}", "Damage"), gray),
+            dmg_cell("S ", BfRange::Short),
+            dmg_cell("M ", BfRange::Medium),
+            dmg_cell("L ", BfRange::Long),
+            dmg_cell("E ", BfRange::Extreme),
+        ]));
+    }
 
     // To-Hit per bracket via the persisted shot context (spec §3.2) — or the status banner.
     if tm.bf_destroyed() {
@@ -4537,6 +4566,9 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
             "*** TP 0 — SHUTDOWN (engine) ***",
             Style::default().fg(theme().warning).add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
+    } else if a.arcs.is_some() {
+        // Large craft resolve to-hit per firing arc + weapon class (the arc block above), not the
+        // single-vector brackets, so no To-Hit row here. Per-arc shot builder: next increment.
     } else {
         let shot = app.bf_shot_for(i);
         let to_hit = |label: &str, r: BfRange| {
@@ -4592,11 +4624,14 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
         Span::styled(specials, Style::default().fg(theme().good)),
     ]));
 
-    // Hex-native range brackets (p.38) — NOT the AS inches÷2 labels (spec §1.1).
-    lines.push(Line::from(Span::styled(
-        format!("Rng {}", battleforce::bf_range_label(aero)),
-        gray,
-    )));
+    // Hex-native range brackets (p.38) — NOT the AS inches÷2 labels (spec §1.1). Large craft
+    // resolve per arc, so they omit the single range-bracket footer to keep the card compact.
+    if !large {
+        lines.push(Line::from(Span::styled(
+            format!("Rng {}", battleforce::bf_range_label(aero)),
+            gray,
+        )));
+    }
     lines
 }
 

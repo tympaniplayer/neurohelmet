@@ -4180,6 +4180,60 @@ mod tests {
         insta::assert_snapshot!(screen);
     }
 
+    fn sample_dropship() -> Mech {
+        use neurohelmet_core::domain::{ArcCard, ArcDamage, FiringArc, UnitType};
+        let ad = |s: &str, m: &str, l: &str, e: &str| ArcDamage {
+            s: s.into(),
+            m: m.into(),
+            l: l.into(),
+            e: e.into(),
+        };
+        Mech {
+            chassis: "Union".into(),
+            model: "(2708)".into(),
+            unit_type: UnitType::Aerospace,
+            as_stats: AsStats {
+                tp: "DS".into(),
+                size: 2,
+                movement: "3p".into(),
+                armor: 10,
+                structure: 5,
+                threshold: 1,
+                pv: 200,
+                arcs: Some(ArcCard {
+                    front: FiringArc {
+                        std: ad("4", "3", "2", "0*"),
+                        msl: ad("1", "1", "1", "1"),
+                        specials: vec!["PNT1".into()],
+                        ..Default::default()
+                    },
+                    left: FiringArc { std: ad("2", "2", "1", "0"), ..Default::default() },
+                    right: FiringArc { std: ad("2", "2", "1", "0"), ..Default::default() },
+                    rear: FiringArc { std: ad("1", "0", "0", "0"), ..Default::default() },
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn e2e_bf_large_craft_arc_card() {
+        // A DropShip renders its multi-arc card (per-arc STD/MSL damage, preserving 0*) in place of
+        // the single S/M/L/E line, plus a per-arc to-hit note.
+        let mut app = app_with_bf_mech(sample_dropship(), 1);
+        let screen = render(&mut app);
+        assert!(screen.contains("Union"), "DropShip name");
+        assert!(screen.contains("Nose"), "nose arc label");
+        assert!(screen.contains("STD 4/3/2/0*"), "front STD damage preserves 0*");
+        assert!(screen.contains("MSL 1/1/1/1"), "front MSL line");
+        assert!(screen.contains("PNT1"), "arc-level special");
+        assert!(screen.contains("TH 1"), "aerospace threshold row");
+        assert!(screen.contains("Crits"), "crits row still visible after the compact layout");
+        assert!(!screen.contains("Heat"), "large craft omit the heat row");
+        insta::assert_snapshot!(screen);
+    }
+
     #[test]
     fn e2e_bf_tracking() {
         // Damage, heat and a crit all react on the card AND in the unit-header live MV.

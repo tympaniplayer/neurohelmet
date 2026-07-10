@@ -973,6 +973,7 @@ mod tests {
             suas: BTreeMap::new(),
             turret_suas: BTreeMap::new(),
             base_pv: 30,
+            arcs: None,
         }
     }
 
