@@ -707,6 +707,16 @@ pub struct AsStats {
     /// `#[serde(default)]` so pre-arc session snapshots still load.
     #[serde(default)]
     pub arcs: Option<ArcCard>,
+    /// Large-craft DropShip-Transport (DT) rating — how many DropShips a JumpShip / WarShip /
+    /// Space Station can carry, parsed from the `DT#` SUA. The "Dock" critical (IO:BF p.85,
+    /// JumpShip column) reduces it by 1 per hit. 0 for non-transports and pre-Phase-2 bundles.
+    #[serde(default)]
+    pub dt_rating: u8,
+    /// Large-craft total transport-bay doors — the sum of the `-D#` suffixes on a unit's
+    /// transport SUAs (e.g. `AT40-D6` → 6). The "Door" critical (IO:BF p.85, DropShip column)
+    /// disables bay doors; tracked as a decrementing count. 0 when the unit carries no doored bays.
+    #[serde(default)]
+    pub door_count: u16,
 }
 
 /// The immutable specification of a single mech, as baked from MegaMek/Mekbay data.

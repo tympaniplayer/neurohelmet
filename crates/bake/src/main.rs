@@ -114,9 +114,9 @@ fn main() {
     );
 
     let units = join::parse_units(&units_text).expect("parse units");
-    // 'Mechs + combat vehicles + infantry/BA + aerospace fighters + large craft (DropShips + Small
-    // Craft; Phase 1 of the large-craft initiative). WarShips/JumpShips/Space Stations and
-    // protomechs are still excluded.
+    // 'Mechs + combat vehicles + infantry/BA + aerospace fighters + large craft. The large-craft
+    // ladder is now complete (Phase 1: DropShips + Small Craft; Phase 2: JumpShips + WarShips +
+    // Space Stations). Only protomechs remain excluded.
     let mut meks: Vec<serde_json::Value> = units
         .into_iter()
         .filter(|u| {

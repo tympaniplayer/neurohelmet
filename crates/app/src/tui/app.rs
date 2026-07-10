@@ -3938,6 +3938,11 @@ impl App {
                         BfCritCol::DropShip => format!(
                             "Engine hit {hits}: thrust −25% / −50% / shutdown by hit — apply at table (p.43)"
                         ),
+                        // JumpShips are station-keeping (thrust 0) and WarShips carry their own
+                        // drive; the movement/jump effect is table-side for large craft (spec §10).
+                        BfCritCol::JumpShip => format!(
+                            "Engine hit {hits}: drive / thrust damage — apply at table (p.87)"
+                        ),
                     }
                 }
                 BfCrit::FireControl => {
@@ -3949,8 +3954,16 @@ impl App {
                     String::new()
                 }
                 BfCrit::Weapon => {
-                    tm.bf.weapon += 1;
-                    format!("Weapon hit: −{} to every damage value", tm.bf.weapon)
+                    // Large craft halve EVERY attack type in ONE randomly-determined firing arc
+                    // (×0.5, round down; IO:BF p.85) — the random-arc pick and per-class halving are
+                    // table-side (spec §10), NOT the standard-scale −1/damage counter (which the
+                    // arc-damage path does not read). Standard elements use that counter.
+                    if matches!(col, BfCritCol::DropShip | BfCritCol::JumpShip) {
+                        "Weapon hit: halve one randomly-determined firing arc's attacks (×0.5, round down) — resolve at table (p.85)".into()
+                    } else {
+                        tm.bf.weapon += 1;
+                        format!("Weapon hit: −{} to every damage value", tm.bf.weapon)
+                    }
                 }
                 BfCrit::CrewStunned => {
                     tm.bf.crew_stunned = true;
@@ -3972,21 +3985,66 @@ impl App {
                     tm.bf.killed = Some(BfKill::ProtoDestroyed);
                     "ProtoMech destroyed".into()
                 }
-                // Large-craft crit results. The transport / jump / maneuver effects are inter-unit
-                // or positional — tracked here and resolved at the table (spec §10); Crew Hit's
-                // to-hit penalty is applied manually (auto-apply is a capital-phase refinement).
+                // Large-craft crit results (IO:BF p.85). Stage counters live on `tm.bf`; the
+                // transport / jump / maneuver *consequences* are inter-unit or positional and are
+                // resolved at the table (spec §10). Crew Hit auto-eliminates on its final stage.
                 BfCrit::KfBoom => {
-                    "KF Boom: K-F drive destroyed — no hyperspace jump (resolve at table)".into()
+                    tm.bf.kf_boom = true;
+                    "KF Boom destroyed: may still dock, but no hyperspace jump (resolve at table, p.85)".into()
                 }
                 BfCrit::DockingCollar => {
-                    "Docking Collar hit: may not dock with a station / JumpShip / WarShip (resolve at table)".into()
+                    tm.bf.docking_collar = true;
+                    "Docking Collar hit: may not dock with a station / JumpShip / WarShip (resolve at table, p.85)".into()
                 }
-                BfCrit::Thruster => "Thruster hit: maneuver / thrust loss (resolve at table)".into(),
+                BfCrit::Dock => {
+                    tm.bf.dock_hits += 1;
+                    let remaining = tm.spec.as_stats.dt_rating.saturating_sub(tm.bf.dock_hits);
+                    format!(
+                        "Dock hit {}: DropShip-Transport rating −1 → {remaining} capacity remaining (resolve at table, p.85)",
+                        tm.bf.dock_hits
+                    )
+                }
+                BfCrit::Thruster => {
+                    tm.bf.thruster = true;
+                    "Thruster hit: +1 Thrust per facing change (resolve at table, p.43)".into()
+                }
                 BfCrit::Door => {
-                    "Door hit: a transport-bay door lost — throttles launch / recovery (resolve at table)".into()
+                    tm.bf.door_hits += 1;
+                    let total = tm.spec.as_stats.door_count;
+                    let remaining = total.saturating_sub(u16::from(tm.bf.door_hits));
+                    format!(
+                        "Door hit {}: a transport-bay door lost → {remaining} of {total} remaining (resolve at table, p.85)",
+                        tm.bf.door_hits
+                    )
+                }
+                BfCrit::KfDrive => {
+                    // K-F Drive hits have no effect on Space Stations (p.85).
+                    if el.as_type == "SS" {
+                        "K-F Drive hit: no effect on a Space Station (p.85)".into()
+                    } else {
+                        tm.bf.kf_drive += 1;
+                        format!(
+                            "K-F Drive hit {}: −{} drive integrity — no hyperspace jump at 0 (resolve at table, p.85)",
+                            tm.bf.kf_drive,
+                            2 * tm.bf.kf_drive
+                        )
+                    }
                 }
                 BfCrit::CrewHit => {
-                    "Crew hit: +2 to-hit per hit (apply manually); the 3rd crew hit eliminates the crew (p.87)".into()
+                    tm.bf.crew_hit += 1;
+                    // DropShips/Small Craft: +2 then eliminate (2 stages). JumpShips/WarShips/
+                    // Space Stations: +2 / +4 / eliminate (3 stages), p.85.
+                    let stages = if col == BfCritCol::JumpShip { 3 } else { 2 };
+                    if tm.bf.crew_hit >= stages {
+                        tm.bf.killed = Some(BfKill::CrewKilled);
+                        format!("Crew hit {}: crew eliminated — element destroyed (p.85)", tm.bf.crew_hit)
+                    } else {
+                        format!(
+                            "Crew hit {}: +{} to-hit to all this element's shots (p.85)",
+                            tm.bf.crew_hit,
+                            2 * tm.bf.crew_hit
+                        )
+                    }
                 }
             };
         }

@@ -24,7 +24,8 @@ use std::path::Path;
 
 /// Bundle format version, bumped on incompatible layout changes.
 /// 22: `AsStats.arcs` (large-craft multi-arc card) + DropShip/Small-Craft units baked.
-pub const BUNDLE_VERSION: u32 = 22;
+/// 23: `AsStats.dt_rating`/`door_count` + JumpShip/WarShip/Space-Station units baked (large-craft Phase 2).
+pub const BUNDLE_VERSION: u32 = 23;
 
 /// A BattleTech era (§35), mirroring Mekbay/MUL era ids. Used to resolve a unit's availability
 /// scores (keyed by era id) and to map an intro year onto an era for the picker.

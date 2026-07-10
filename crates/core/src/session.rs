@@ -555,6 +555,31 @@ pub struct BfLive {
     /// An outright-kill crit result marked on the sheet (`None` = still standing).
     #[serde(default)]
     pub killed: Option<BfKill>,
+    // ---- large-craft crit ladders (IO:BF p.85; all #[serde(default)], mostly 0 for non-large
+    // craft). The transport/jump consequences are table-side (spec §10); these track the numbers.
+    /// Crew Hit stages (large craft): DropShip/Small Craft +2 then eliminate (2 stages); JumpShip /
+    /// WarShip / Space Station +2 / +4 / eliminate (3 stages). Each stage adds +2 to all shots.
+    #[serde(default)]
+    pub crew_hit: u8,
+    /// K-F Drive hits (JumpShip column): −2 drive integrity each; no jump at 0. No effect on
+    /// Space Stations.
+    #[serde(default)]
+    pub kf_drive: u8,
+    /// "Dock" hits (JumpShip column): −1 DropShip-Transport (DT) rating each.
+    #[serde(default)]
+    pub dock_hits: u8,
+    /// "Door" hits (DropShip column): one transport-bay door lost each.
+    #[serde(default)]
+    pub door_hits: u8,
+    /// KF Boom destroyed (DropShip column, roll 2): may dock but not jump.
+    #[serde(default)]
+    pub kf_boom: bool,
+    /// Docking Collar destroyed (DropShip column, roll 3): may not dock with a station/JS/WS.
+    #[serde(default)]
+    pub docking_collar: bool,
+    /// Thruster hit (large craft): +1 Thrust per facing change; hit once per element.
+    #[serde(default)]
+    pub thruster: bool,
 }
 
 /// The BF crit results that destroy an element outright when marked (spec §2.2): Ammo (no CASE
@@ -4521,6 +4546,7 @@ mod tests {
                 threshold: 0,
                 specials: vec!["AC2/2/-".into(), "IF1".into()],
                 arcs: None,
+                ..Default::default()
             },
             availability: BTreeMap::new(),
         }
@@ -6896,6 +6922,13 @@ mod tests {
             motive: BfMotive { half: true, ..Default::default() },
             arm_spent: true,
             killed: Some(BfKill::Ammo),
+            crew_hit: 2,
+            kf_drive: 3,
+            dock_hits: 1,
+            door_hits: 4,
+            kf_boom: true,
+            docking_collar: true,
+            thruster: true,
         };
         let json = serde_json::to_string(&s).unwrap();
         let back: Session = serde_json::from_str(&json).unwrap();

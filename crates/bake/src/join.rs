@@ -259,7 +259,7 @@ fn parse_as_stats(unit: &Value) -> AsStats {
             .unwrap_or("0")
             .to_string()
     };
-    let specials = a
+    let specials: Vec<String> = a
         .get("specials")
         .and_then(Value::as_array)
         .map(|arr| arr.iter().filter_map(Value::as_str).map(str::to_string).collect())
@@ -278,9 +278,30 @@ fn parse_as_stats(unit: &Value) -> AsStats {
         dmg_e: dmg("dmgE"),
         overheat: num_u8(a, "OV"),
         threshold: num_u8(a, "Th"),
-        specials,
+        dt_rating: dt_rating(&specials),
+        door_count: door_count(&specials),
         arcs: parse_arcs(a),
+        specials,
     }
+}
+
+/// The large-craft DropShip-Transport (DT) rating from a `DT#` SUA (e.g. `DT4` → 4). Large craft
+/// carry at most one; 0 if absent. Drives the "Dock" critical (IO:BF p.85).
+fn dt_rating(specials: &[String]) -> u8 {
+    specials
+        .iter()
+        .find_map(|t| t.strip_prefix("DT").and_then(|n| n.parse().ok()))
+        .unwrap_or(0)
+}
+
+/// Total transport-bay doors: the sum of the `-D#` suffixes across a unit's transport SUAs
+/// (e.g. `AT40-D6` contributes 6, `MT12-D4` contributes 4). Drives the "Door" critical
+/// (IO:BF p.85). 0 when the unit carries no doored bays.
+fn door_count(specials: &[String]) -> u16 {
+    specials
+        .iter()
+        .filter_map(|t| t.rsplit_once("-D").and_then(|(_, n)| n.parse::<u16>().ok()))
+        .sum()
 }
 
 /// Parse the large-craft multi-arc block (`frontArc/leftArc/rightArc/rearArc`) from an `as` block.
@@ -357,10 +378,11 @@ pub fn is_aero_fighter(unit: &Value) -> bool {
         )
 }
 
-/// Whether a unit is capital-scale large craft that fields on the AS/BF card. Phase 1 admits the
-/// **DropShip + Small Craft** subtypes (spheroid/aerodyne, civilian + military); Phase 2 extends
-/// this to JumpShip / WarShip / Space Station. All are `type == "Aero"` and carry the multi-arc
-/// card (`usesArcs`); baked from JSON only (no Classic capital record sheet).
+/// Whether a unit is capital-scale large craft that fields on the AS/BF card. Phase 1 admitted the
+/// **DropShip + Small Craft** subtypes (spheroid/aerodyne, civilian + military); Phase 2 adds
+/// **JumpShip / WarShip / Space Station** (military + civilian). All are `type == "Aero"` and carry
+/// the multi-arc card (`usesArcs`); baked from JSON only (no Classic capital record sheet). Every
+/// subtype string here is verified against the source `units.json`.
 pub fn is_large_craft(unit: &Value) -> bool {
     unit.get("type").and_then(Value::as_str) == Some("Aero")
         && matches!(
@@ -373,6 +395,10 @@ pub fn is_large_craft(unit: &Value) -> bool {
                     | "Aerodyne Small Craft"
                     | "Spheroid Small Craft"
                     | "Civilian Aerodyne Small Craft"
+                    | "JumpShip"
+                    | "WarShip"
+                    | "Military Space Station"
+                    | "Civilian Space Station"
             )
         )
 }

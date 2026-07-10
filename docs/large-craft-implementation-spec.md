@@ -355,10 +355,27 @@ DropShip crit column + effects). Small Craft are STD-only; DropShips carry SCAP/
 hooks (DropShip crit column, `AirborneDropship −2`, grounded-DropShip, A2G kinds). Highest value / lowest
 rulebook risk; needs no capital-scaling verification.
 
-**Phase 2 — capital weapons + JumpShip / WarShip / Space Station in BF.** Where CAP resolution, the
-`BfCritCol::JumpShip` column + `BfCrit::KfDrive`, the WarShip 16-attacks / per-arc-per-class budget, and the
-KF / K-F-Drive / crew ladders concentrate. Isolating capital here lets Phase 1 ship before the riskiest §9
-verifications are done. (No damage rescale — capital is a to-hit + crit-class distinction only.)
+**Phase 2 — capital weapons + JumpShip / WarShip / Space Station in BF. ✅ COMPLETE (2026-07-10).**
+Baked 185 new large craft (JS 29, WS 123, Mil SS 22, Civ SS 11 → 433 total; bundle v23, ~10.9 MB). Added the
+`BfCritCol::JumpShip` column + `BfCrit::{KfDrive, Dock}`, re-routed JS/WS/SS → JumpShip, and made the
+large-craft crit arms stateful (`BfLive`: `crew_hit`/`kf_drive`/`dock_hits`/`door_hits` counters +
+`kf_boom`/`docking_collar`/`thruster` flags) with the verified ladders: DropShip/SC crew-hit 2-stage
+(+2/eliminate), JS/WS/SS crew-hit 3-stage (+2/+4/eliminate); K-F Drive −2/hit
+(inert on Space Stations); Dock −1 DT/hit; Door −1/hit — all seeded from baked `AsStats.{dt_rating, door_count}`
+(new `DT#` / `-D#` parse). The **Weapon crit** (halve one random arc ×0.5) is described + resolved at the
+table (the random-arc pick is table-side, spec §10), not auto-applied. Capital classes (CAP/SCAP/MSL) now
+RESOLVE their to-hit in the shot builder. No
+damage rescale — capital is a to-hit + crit-class distinction only.
+
+> **KEY CORRECTION to §4a/§9 (verified on the rulebook 2026-07-10).** Standard BF does **not** use the
+> Capital-Scale Aerospace To-Hit table (p.191) — that table belongs to the *Advanced Strategic Aerospace*
+> (SBF) subsystem and is deferred to Phase 3. Standard BF large-craft fire uses the **Advanced Combat
+> Modifiers Table (IO:BF p.83)**: the existing `+0/+2/+4/+6` range ladder (unchanged) plus **"Capital Weapon
+> vs. Small Target +5 / Sub-Capital +3"** (footnote 28 — applies only vs an aerospace fighter / fighter
+> squadron / Small Craft / Satellite; `+0` vs large craft and vs ground). Missiles and standard weapons take
+> `+0`. There is **no capital bracket-reduction and no 8/6/4 attack cap in standard BF** (a BF WarShip may
+> make up to 16 attacks: 4 arcs × 4 classes, p.95); those are SBF rules. `WeaponClass::to_hit_mod` (CAP+3/
+> SCAP+2, p.191) is retained but marked SBF-only; the BF path uses the new `WeaponClass::bf_vs_small_mod`.
 
 **Phase 3 — SBF Advanced Strategic Aerospace.** The new `SbfCapitalShot` (p.191 table, kept separate from
 the built p.179), the Random Weapon Class 1D6 picker, Squadron composition + attack limits, the reachable
@@ -374,7 +391,19 @@ worst-extracting source tables.
 ## 9. NEEDS RULEBOOK — verify against a printed copy
 
 Every value below reached the spec via btrules **text extraction** (PDF folio runs ~2 ahead) or an
-inference, and must be confirmed on a printed IO:BF before it is coded:
+inference, and must be confirmed on a printed IO:BF before it is coded.
+
+**✅ Verified & resolved in Phase 2 (2026-07-10, btrules re-read):** Item **3** (crit columns) — DropShip &
+JumpShip columns confirmed cell-for-cell on p.85/PDF 87; WarShips + Space Stations use the JumpShip column
+(footnote **); Satellites use the DropShip column (footnote ‡). Item **4** (crit ladders) — Weapon = halve
+one random arc (×0.5, table-side); DropShip/SC crew-hit 2-stage, JS/WS/SS 3-stage; K-F Drive −2/hit (inert on Space Stations);
+Dock −1 DT; Door per-bay. Item **7** (Random Weapon Class 1D6: 1-2 Std / 3-4 Cap-non-missile / 5-6 Msl) —
+confirmed; the DS/JS/Sat 4, SS 6, WS 8 **attack limits are SBF (Strategic-Aerospace) caps, NOT standard BF**
+(a BF WarShip gets 16). Item **1/5** (to-hit) — **BF uses the p.83 Advanced Combat Modifiers Table, not the
+p.191 capital-scale table** (see the Phase-2 §8 correction); confirmed no damage rescale. Discrepancy fixed:
+p.191 "behind target" is −2, not the earlier +1. Items **2, 6, 8** remain open (SBF/ACS phases).
+
+Remaining to confirm against a printed IO:BF before the later phases code them:
 
 1. **Capital↔standard damage — no rescale.** Confirm BF applies the arc's `dmgS/M/L/E` directly (the class
    is a to-hit + crit-class distinction, not a damage multiplier). Data + MegaMek strongly support this;

@@ -4656,6 +4656,7 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         BfCritCol::Vehicle => "Vehicle",
         BfCritCol::Aerospace => "Aerospace",
         BfCritCol::DropShip => "DropShip",
+        BfCritCol::JumpShip => "JumpShip",
     };
     let rolls = battleforce::bf_crit_rolls(&el);
     lines.push(Line::from(Span::styled(
@@ -4682,9 +4683,35 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     if !hints.is_empty() {
         lines.push(Line::from(Span::styled(hints.join("   "), Style::default().fg(theme().warning))));
     }
+    // Large-craft crit ladders, shown only when they carry state (spec §10 table-side effects).
+    let large = {
+        let mut s = String::new();
+        if tm.bf.crew_hit > 0 {
+            s.push_str(&format!(" Crew{}", tm.bf.crew_hit));
+        }
+        if tm.bf.kf_drive > 0 {
+            s.push_str(&format!(" KF−{}", 2 * tm.bf.kf_drive));
+        }
+        if tm.bf.dock_hits > 0 {
+            s.push_str(&format!(" Dock−{}", tm.bf.dock_hits));
+        }
+        if tm.bf.door_hits > 0 {
+            s.push_str(&format!(" Door−{}", tm.bf.door_hits));
+        }
+        if tm.bf.kf_boom {
+            s.push_str(" KFBoom");
+        }
+        if tm.bf.docking_collar {
+            s.push_str(" NoDock");
+        }
+        if tm.bf.thruster {
+            s.push_str(" Thr");
+        }
+        s
+    };
     lines.push(Line::from(Span::styled(
         format!(
-            "live: Eng{} FC{} MP−{} Wpn{}{}{}{}{}",
+            "live: Eng{} FC{} MP−{} Wpn{}{}{}{}{}{}",
             tm.bf.engine,
             tm.bf.fire_control,
             tm.bf.mp_lost,
@@ -4693,6 +4720,7 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             if tm.bf.motive.minus_one { " MOT−1" } else { "" },
             if tm.bf.motive.half { " MOT½" } else { "" },
             if tm.bf.motive.immobile { " MOT0" } else { "" },
+            large,
         ),
         Style::default().fg(theme().dim),
     )));
@@ -4715,6 +4743,8 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         BfCrit::Thruster => "Thruster",
         BfCrit::Door => "Door",
         BfCrit::CrewHit => "Crew Hit",
+        BfCrit::KfDrive => "K-F Drive",
+        BfCrit::Dock => "Dock",
     };
     // BD gun emplacements: weapons-only crit vocabulary (spec §Data-fidelity 8) — every other
     // effect row "does not apply" and is +1 damage instead (p.42); render those dim with the
@@ -4795,8 +4825,11 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let yn = |b: bool| if b { "[x]" } else { "[ ]" };
 
     // Large craft: the per-arc TN + damage preview renders at the TOP so it stays visible above the
-    // (long) row editor. STD arc weapons resolve via the standard BF to-hit; capital classes
-    // (CAP/SCAP/MSL) show damage but defer the to-hit to the capital phase (display-vs-resolve, §4).
+    // (long) row editor. Every weapon class resolves through the standard BF to-hit (IO:BF p.83
+    // Advanced Combat Modifiers Table): base `bf_to_hit` (range +0/+2/+4/+6) + the capital /
+    // sub-capital "vs Small Target" modifier (CAP +5 / SCAP +3, applied only vs a small airborne
+    // aerospace target) + any live Crew-Hit penalty. There is no capital bracket-reduction and no
+    // 8/6/4 attack cap in standard BF — those are the Strategic-Aerospace (SBF) subsystem.
     if let Some(card) = &tm.spec.as_stats.arcs {
         let cls = s.weapon_class;
         let vec = large_craft::arc_damage(card, s.firing_arc, cls);
@@ -4813,24 +4846,23 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             BfRange::Long => "L",
             BfRange::Extreme => "E",
         };
-        if cls == large_craft::WeaponClass::Std {
-            let shot = app.bf_shot_for(app.session.active);
-            let n = battleforce::bf_to_hit(&el, tm.gunnery, tm.as_heat, tm.bf.fire_control, &shot);
+        let shot = app.bf_shot_for(app.session.active);
+        // "Small target" (p.83 footnote 28) = an airborne aerospace unit (fighter / Small Craft /
+        // Satellite); the capital-vs-small modifier is waived vs large-craft and ground targets.
+        let small_aero = matches!(shot.target_kind, battleforce::BfTargetKind::AirborneAero(_));
+        let cap_mod = cls.bf_vs_small_mod(small_aero);
+        let crew_mod = 2 * i32::from(tm.bf.crew_hit);
+        let n = battleforce::bf_to_hit(&el, tm.gunnery, tm.as_heat, tm.bf.fire_control, &shot)
+            + cap_mod
+            + crew_mod;
+        lines.push(Line::from(Span::styled(
+            format!("{} {} @ {rl}:  TN {n}+   damage {dmg_str}", s.firing_arc.label(), cls.label()),
+            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        )));
+        if cap_mod != 0 {
             lines.push(Line::from(Span::styled(
-                format!("{} STD @ {rl}:  TN {n}+   damage {dmg_str}", s.firing_arc.label()),
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
-            )));
-        } else {
-            lines.push(Line::from(Span::styled(
-                format!("{} {} @ {rl}:  damage {dmg_str}", s.firing_arc.label(), cls.label()),
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
-            )));
-            lines.push(Line::from(Span::styled(
-                format!(
-                    "  capital weapon (to-hit +{}) — resolve to-hit at table (Phase 2)",
-                    cls.to_hit_mod()
-                ),
-                Style::default().fg(theme().warning),
+                format!("  {} vs small target: +{cap_mod} to-hit (p.83)", cls.label()),
+                Style::default().fg(theme().dim),
             )));
         }
         lines.push(Line::from("")); // spacer before the row editor

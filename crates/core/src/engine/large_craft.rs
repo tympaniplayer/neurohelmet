@@ -33,12 +33,33 @@ impl WeaponClass {
         }
     }
 
-    /// Capital-scale weapon-class to-hit modifier (IO:BF p.191): CAP +3, SCAP +2, MSL/STD +0. This
-    /// is WAIVED when the target is itself large craft — applied by the to-hit layer, not here.
+    /// Capital-scale weapon-class to-hit modifier for **Advanced Strategic Aerospace** (the SBF /
+    /// Capital-Scale Aerospace Combat subsystem, IO:BF p.191): CAP +3, SCAP +2, MSL/STD +0, waived
+    /// vs large-craft targets. This is the SBF table (reserved for the SBF phase) — standard
+    /// BattleForce uses [`WeaponClass::bf_vs_small_mod`] instead (the p.83 Advanced Combat
+    /// Modifiers Table, a different subsystem with different values).
     pub fn to_hit_mod(self) -> i32 {
         match self {
             Self::Cap => 3,
             Self::ScAp => 2,
+            Self::Std | Self::Msl => 0,
+        }
+    }
+
+    /// Standard-BattleForce "Capital/Sub-Capital Weapon vs. Small Target" to-hit modifier
+    /// (IO:BF p.83 Advanced Combat Modifiers Table, footnote 28): a capital non-missile (CAP)
+    /// attack takes **+5** and a sub-capital non-missile (SCAP) attack **+3** *only* when the
+    /// target is a small aerospace unit — an aerospace/conventional fighter, fighter squadron,
+    /// Small Craft or Satellite. It does not apply to capital missiles, to standard weapons, or vs
+    /// large-craft / ground targets (`target_is_small_aero == false` → +0). This is the BF table;
+    /// the capital-scale p.191 table ([`to_hit_mod`]) is a separate SBF subsystem.
+    pub fn bf_vs_small_mod(self, target_is_small_aero: bool) -> i32 {
+        if !target_is_small_aero {
+            return 0;
+        }
+        match self {
+            Self::Cap => 5,
+            Self::ScAp => 3,
             Self::Std | Self::Msl => 0,
         }
     }
@@ -189,9 +210,17 @@ mod tests {
 
     #[test]
     fn to_hit_mods_and_threshold() {
+        // SBF/capital-scale table (p.191), reserved for the SBF phase.
         assert_eq!(WeaponClass::Cap.to_hit_mod(), 3);
         assert_eq!(WeaponClass::ScAp.to_hit_mod(), 2);
         assert_eq!(WeaponClass::Msl.to_hit_mod(), 0);
+        // Standard-BF table (p.83, footnote 28): CAP +5 / SCAP +3 vs a small aerospace target,
+        // +0 for missiles/standard and +0 vs any non-small target (large craft, ground).
+        assert_eq!(WeaponClass::Cap.bf_vs_small_mod(true), 5);
+        assert_eq!(WeaponClass::ScAp.bf_vs_small_mod(true), 3);
+        assert_eq!(WeaponClass::Msl.bf_vs_small_mod(true), 0);
+        assert_eq!(WeaponClass::Std.bf_vs_small_mod(true), 0);
+        assert_eq!(WeaponClass::Cap.bf_vs_small_mod(false), 0, "waived vs a large / ground target");
         assert!(WeaponClass::Msl.is_capital() && !WeaponClass::Std.is_capital());
         assert!(threshold_triggered(5.0, 5));
         assert!(!threshold_triggered(4.0, 5));

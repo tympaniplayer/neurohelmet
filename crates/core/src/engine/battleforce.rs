@@ -57,14 +57,18 @@ pub fn bf_range_label(aero: bool) -> &'static str {
     }
 }
 
-/// Whether an element fights at aerospace ranges: fighters and small craft (`AF`/`CF`/`SC`),
-/// plus aerodyne / spheroid / station-keeping movers — the movement mode is decisive for the
-/// fixed-wing-SV routing that `sbf_type_from_tp` cannot make (`isAerospaceSV` is not baked).
-/// Crit-column routing is [`bf_crit_col`]'s (SC rolls DropShip, not Aerospace). LAM/BIM 'Mechs
-/// count as ground until converted (table concern).
+/// Whether an element fights at aerospace ranges: fighters and small craft (`AF`/`CF`/`SC`) and
+/// the whole large-craft ladder (`DS`/`DA`/`JS`/`WS`/`SS`), plus any aerodyne / spheroid /
+/// station-keeping mover — the movement mode is decisive for the fixed-wing-SV routing that
+/// `sbf_type_from_tp` cannot make (`isAerospaceSV` is not baked). The explicit large-craft codes
+/// matter for WarShips, whose movement is a bare thrust number (the `Warship` mode, not `a/p/k`).
+/// Crit-column routing is [`bf_crit_col`]'s (SC rolls DropShip, JS/WS/SS roll JumpShip). LAM/BIM
+/// 'Mechs count as ground until converted (table concern).
 pub fn bf_is_aero(el: &AsElement) -> bool {
-    matches!(el.as_type.as_str(), "AF" | "CF" | "SC")
-        || matches!(el.primary_mode.as_str(), "a" | "p" | "k")
+    matches!(
+        el.as_type.as_str(),
+        "AF" | "CF" | "SC" | "DS" | "DA" | "JS" | "WS" | "SS"
+    ) || matches!(el.primary_mode.as_str(), "a" | "p" | "k")
 }
 
 /// Damage at a range bracket (p.39, p.41): the card's S/M/L values, −1 per Weapon crit, floored
@@ -557,9 +561,9 @@ pub fn bf_to_hit(el: &AsElement, skill: u8, heat: u8, fc_crits: u8, shot: &BfSho
 
 // ============================ §1.4 The crit table ============================
 
-/// Crit-table column (p.42 = the p.87 "Expanded" table — the same table for every column
-/// neurohelmet can field; p.87 adds only a JumpShip column, omitted as unreachable and unused in
-/// standard play — spec §Data-fidelity 7).
+/// Crit-table column (p.42 = the p.87 "Expanded" table). All six columns neurohelmet can field:
+/// the p.42 set plus the p.87 JumpShip column (JumpShips/WarShips/Space Stations), added in
+/// large-craft Phase 2.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BfCritCol {
     Mech,
@@ -567,6 +571,9 @@ pub enum BfCritCol {
     Vehicle,
     Aerospace,
     DropShip,
+    /// JumpShips, WarShips and Space Stations (IO:BF p.85 "JumpShips**" column, footnote **
+    /// "Includes Warships and Space Stations"). Appended last for ordinal stability.
+    JumpShip,
 }
 
 /// One result on the type-columned crit table (p.42). Effect semantics (§1.4) land in the
@@ -591,23 +598,29 @@ pub enum BfCrit {
     Thruster,
     Door,
     CrewHit,
+    /// K-F Drive hit (JumpShip column, roll 10): −2 drive integrity per hit; no jump at 0. No
+    /// effect on Space Stations (IO:BF p.85). Appended last for ordinal stability.
+    KfDrive,
+    /// Docking-hardpoint "Dock" hit (JumpShip column, roll 3): −1 DropShip-Transport (DT) rating
+    /// per hit (IO:BF p.85) — distinct from a DropShip's binary DockingCollar hit.
+    Dock,
 }
 
 /// The column an element rolls on (p.42): BM/IM → 'Mech (IndustrialMechs roll TWICE and apply
 /// both, p.42 — [`bf_crit_rolls`]); PM → ProtoMech; CV, ground SV, BD (neurohelmet-local gun
 /// emplacement, weapons-only crit vocabulary — spec §Data-fidelity 8) and MS → Vehicle; AF/CF
-/// and fixed-wing SV → Aerospace; Small Craft and the DS family → DropShip (both printings
-/// footnote the DropShips column "Includes Small Craft" — p.42 ‡, p.87 ‡ — and the p.43 Engine
-/// text gives DropShip/Small Craft the 3-stage −25%/50%/shutdown ladder, not the fighter one;
-/// mark-only until small craft are baked, spec §Data-fidelity 7). `None` = infantry and BA,
-/// which never take crits (p.42).
+/// and fixed-wing SV → Aerospace; Small Craft and the DropShip family (SC/DS/DA) → DropShip (both
+/// printings footnote the DropShips column "Includes Satellites and Small Craft" — p.42 ‡, p.87 ‡);
+/// JumpShips, WarShips and Space Stations (JS/WS/SS) → JumpShip (p.87 footnote ** "Includes Warships
+/// and Space Stations"). `None` = infantry and BA, which never take crits (p.42).
 pub fn bf_crit_col(el: &AsElement) -> Option<BfCritCol> {
     match el.as_type.as_str() {
         "BM" | "IM" => Some(BfCritCol::Mech),
         "PM" => Some(BfCritCol::ProtoMech),
         "BA" | "CI" => None,
         "AF" | "CF" => Some(BfCritCol::Aerospace),
-        "SC" | "DS" | "DA" | "JS" | "WS" | "SS" => Some(BfCritCol::DropShip),
+        "SC" | "DS" | "DA" => Some(BfCritCol::DropShip),
+        "JS" | "WS" | "SS" => Some(BfCritCol::JumpShip),
         _ if bf_is_aero(el) => Some(BfCritCol::Aerospace), // fixed-wing SV
         _ => Some(BfCritCol::Vehicle),                     // CV, ground SV, BD, MS
     }
@@ -698,6 +711,20 @@ pub fn bf_crit(roll_2d6: i32, col: BfCritCol) -> BfCrit {
             11 => Engine,
             12 => CrewHit,
             _ => NoCrit, // 4, 10
+        },
+        // JumpShips / WarShips / Space Stations (p.87 "JumpShips**" column). Differs from the
+        // DropShip column: roll 2 is a Door hit (not KF Boom), roll 3 is a "Dock" hit (−1 DT, not
+        // a binary Docking Collar), and roll 10 is a K-F Drive hit (the DropShip column has none).
+        BfCritCol::JumpShip => match roll_2d6 {
+            2 => Door,
+            3 => Dock,
+            4 => FireControl,
+            6 | 7 => Weapon,
+            8 => Thruster,
+            10 => KfDrive,
+            11 => Engine,
+            12 => CrewHit,
+            _ => NoCrit, // 5, 9
         },
     }
 }
@@ -1486,22 +1513,28 @@ mod tests {
     fn crit_table_all_cells() {
         use BfCrit::*;
         use BfCritCol::*;
-        // The full p.42 table, row by row: ['Mech, ProtoMech, Vehicle, Aerospace, DropShip].
-        let rows: [(i32, [BfCrit; 5]); 11] = [
-            (2, [Ammo, Weapon, Ammo, Fuel, KfBoom]),
-            (3, [Engine, Weapon, CrewStunned, FireControl, DockingCollar]),
-            (4, [FireControl, FireControl, FireControl, Engine, NoCrit]),
-            (5, [NoCrit, Mp, FireControl, Weapon, FireControl]),
-            (6, [Weapon, NoCrit, NoCrit, NoCrit, Weapon]),
-            (7, [Mp, Mp, NoCrit, NoCrit, Thruster]),
-            (8, [Weapon, NoCrit, NoCrit, NoCrit, Weapon]),
-            (9, [NoCrit, Mp, Weapon, Weapon, Door]),
-            (10, [FireControl, ProtoDestroyed, Weapon, Engine, NoCrit]),
-            (11, [Engine, Weapon, CrewKilled, FireControl, Engine]),
-            (12, [HeadBlownOff, Weapon, Engine, CrewKilled, CrewHit]),
+        // The full p.42/p.87 table, row by row:
+        // ['Mech, ProtoMech, Vehicle, Aerospace, DropShip, JumpShip]. The JumpShip column (JS/WS/SS,
+        // p.87 footnote **) differs from DropShip: roll 2 Door (not KF Boom), 3 Dock (not Docking
+        // Collar), 4 FCS, 10 K-F Drive; 5/9 No Crit.
+        let rows: [(i32, [BfCrit; 6]); 11] = [
+            (2, [Ammo, Weapon, Ammo, Fuel, KfBoom, Door]),
+            (3, [Engine, Weapon, CrewStunned, FireControl, DockingCollar, Dock]),
+            (4, [FireControl, FireControl, FireControl, Engine, NoCrit, FireControl]),
+            (5, [NoCrit, Mp, FireControl, Weapon, FireControl, NoCrit]),
+            (6, [Weapon, NoCrit, NoCrit, NoCrit, Weapon, Weapon]),
+            (7, [Mp, Mp, NoCrit, NoCrit, Thruster, Weapon]),
+            (8, [Weapon, NoCrit, NoCrit, NoCrit, Weapon, Thruster]),
+            (9, [NoCrit, Mp, Weapon, Weapon, Door, NoCrit]),
+            (10, [FireControl, ProtoDestroyed, Weapon, Engine, NoCrit, KfDrive]),
+            (11, [Engine, Weapon, CrewKilled, FireControl, Engine, Engine]),
+            (12, [HeadBlownOff, Weapon, Engine, CrewKilled, CrewHit, CrewHit]),
         ];
         for (roll, want) in rows {
-            for (col, w) in [Mech, ProtoMech, Vehicle, Aerospace, DropShip].into_iter().zip(want) {
+            for (col, w) in [Mech, ProtoMech, Vehicle, Aerospace, DropShip, JumpShip]
+                .into_iter()
+                .zip(want)
+            {
                 assert_eq!(bf_crit(roll, col), w, "roll {roll} col {col:?}");
             }
         }
@@ -1516,6 +1549,7 @@ mod tests {
             BfCritCol::Vehicle,
             BfCritCol::Aerospace,
             BfCritCol::DropShip,
+            BfCritCol::JumpShip,
         ] {
             assert_eq!(bf_crit(1, col), BfCrit::NoCrit);
             assert_eq!(bf_crit(0, col), BfCrit::NoCrit);
@@ -1545,10 +1579,16 @@ mod tests {
         sv_air.primary_mode = "a".into();
         assert_eq!(bf_crit_col(&sv_air), Some(BfCritCol::Aerospace)); // fixed-wing SV
         assert_eq!(bf_crit_col(&el("AF")), Some(BfCritCol::Aerospace));
-        // Small Craft roll the DropShips column ("‡Includes Small Craft", p.42/p.87) — a
-        // mark-only path until small craft are baked (spec §Data-fidelity 7).
+        // Small Craft + the DropShip family roll the DropShips column ("‡Includes Satellites and
+        // Small Craft", p.42/p.87).
         assert_eq!(bf_crit_col(&el("SC")), Some(BfCritCol::DropShip));
         assert_eq!(bf_crit_col(&el("DS")), Some(BfCritCol::DropShip));
+        assert_eq!(bf_crit_col(&el("DA")), Some(BfCritCol::DropShip));
+        // JumpShips / WarShips / Space Stations roll the JumpShips column (p.87 footnote **
+        // "Includes Warships and Space Stations").
+        assert_eq!(bf_crit_col(&el("JS")), Some(BfCritCol::JumpShip));
+        assert_eq!(bf_crit_col(&el("WS")), Some(BfCritCol::JumpShip));
+        assert_eq!(bf_crit_col(&el("SS")), Some(BfCritCol::JumpShip));
         // Infantry and BA never take crits (p.42).
         assert_eq!(bf_crit_col(&el("CI")), None);
         assert_eq!(bf_crit_col(&el("BA")), None);

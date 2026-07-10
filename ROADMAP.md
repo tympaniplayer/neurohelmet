@@ -249,13 +249,15 @@ right/rear), not the 6-arc Total Warfare WarShip record sheet.
 - **Routing:** wire the `sbf_type_from_tp` large-craft arms (`DS/DA/JS/WS/SS`, today → the dead `La`
   default) and the `Warship` move mode (coded but unreachable); resolve `isAerospaceSV` (`SV → As` vs `V`).
 
-**Phasing:** Phase 0 — two decoupled cheap wins already scoped: wire the never-called
-`AcsFormation::is_aerospace()` guard (aero elements currently silent-ground-aggregate in ACS) and the
-`isAerospaceSV` routing fix. Phase 1 — DropShips + Small Craft (4-arc, mostly standard-scale). Phase 2 —
-JumpShips / WarShips / Space Stations (adds capital / sub-capital weapon-class resolution) + special
-large-craft movement (IO:BF pp.77–81) and crit tables. Per-mode fielding (BF reachable placeholders →
-real effects; SBF Advanced Strategic Aerospace pp.182–196; ACS Abstract Combat Aerospace pp.251–255)
-layers on top of the shared engine.
+**Phasing:** Phase 0 ✅ — the `AcsFormation::is_aerospace()` guard + `isAerospaceSV` routing (commit 014fb14).
+Phase 1 ✅ — DropShips + Small Craft in Standard BF (multi-arc card, DropShip crit column, per-arc shot
+builder; commits 8b0a5c9…543c255). **Phase 2 ✅ (2026-07-10)** — JumpShips / WarShips / Space Stations baked
+(433 large craft total, bundle v23); `BfCritCol::JumpShip` + `BfCrit::{KfDrive, Dock}` with the stateful
+crew/K-F/Dock/Door ladders; capital (CAP/SCAP/MSL) to-hit resolved via the **p.83 Advanced Combat Modifiers
+Table** (CAP+5/SCAP+3 vs small aerospace targets — *not* the p.191 capital-scale table, which is SBF). Still
+to come: SBF Advanced Strategic Aerospace (Phase 3, pp.182–196, the p.191 table + Squadron limits + the
+reachable `Warship` move mode) and ACS Abstract Combat Aerospace (Phase 4, pp.251–255) — both layer on the
+shared `large_craft.rs` engine.
 
 Positional/table-side machinery stays out of scope as everywhere else: capital radar map, orbital
 mechanics, jump-point/space movement, altitude/velocity. Fuel consumption (Advanced/StratOps) remains

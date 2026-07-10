@@ -210,6 +210,7 @@ mod tests {
                 threshold: 0,
                 specials: vec!["AC2/2/-".into(), "IF1".into(), "LRM1/1/1".into()],
                 arcs: None,
+                ..Default::default()
             },
             availability: BTreeMap::new(),
         }
@@ -387,6 +388,7 @@ mod tests {
             threshold: 0,
             specials: vec!["AM".into(), "CAR4".into(), "MEC".into(), "STL".into()],
             arcs: None,
+            ..Default::default()
         };
         m
     }
@@ -512,6 +514,7 @@ mod tests {
                 threshold: 3,
                 specials: vec!["BOMB2".into(), "FUEL20".into(), "VSTOL".into()],
                 arcs: None,
+                ..Default::default()
             },
             ..Default::default()
         }
@@ -1468,6 +1471,56 @@ mod tests {
                     .is_some_and(|a| !a.front.std.s.is_empty() && a.front.std.s != "0")
             }),
             "expected some DropShip to have front-arc STD damage"
+        );
+    }
+
+    #[test]
+    fn capital_ships_baked_phase2() {
+        use super::app::bf_element_of;
+        use neurohelmet_core::engine::battleforce::{bf_crit_col, bf_is_aero, BfCritCol};
+        // Phase 2: JumpShips / WarShips / Space Stations bake from the real bundle, typed Aerospace,
+        // carrying the multi-arc card and — where the source SUAs have them — a DT rating and doors.
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
+        let bundle = Bundle::load(std::path::Path::new(path)).expect("load bundle");
+        let capital: Vec<_> = bundle
+            .mechs
+            .iter()
+            .filter(|m| matches!(m.as_stats.tp.as_str(), "JS" | "WS" | "SS"))
+            .collect();
+        assert!(
+            capital.len() >= 180,
+            "expected the ~185 baked JumpShips/WarShips/Space Stations, found {}",
+            capital.len()
+        );
+        for m in &capital {
+            assert!(m.is_aerospace(), "{} should be aerospace-typed", m.display_name());
+            assert!(m.as_stats.arcs.is_some(), "{} should carry the multi-arc card", m.display_name());
+            let el = bf_element_of(&neurohelmet_core::session::TrackedMech::new((*m).clone()));
+            assert!(bf_is_aero(&el), "{} fights at aerospace ranges", m.display_name());
+            assert_eq!(
+                bf_crit_col(&el),
+                Some(BfCritCol::JumpShip),
+                "{} rolls the JumpShip crit column",
+                m.display_name()
+            );
+        }
+        // WarShips carry the CAP capital class in at least one arc, and the DT/door SUAs bake into
+        // the numeric fields the Dock/Door crits decrement.
+        let aegis = capital
+            .iter()
+            .find(|m| m.chassis.contains("Aegis"))
+            .expect("Aegis WarShip baked");
+        let arcs = aegis.as_stats.arcs.as_ref().unwrap();
+        assert!(
+            [&arcs.front, &arcs.left, &arcs.right, &arcs.rear]
+                .iter()
+                .any(|a| !a.cap.s.is_empty() && a.cap.s != "0"),
+            "the Aegis carries capital (CAP) weapons"
+        );
+        assert!(aegis.as_stats.dt_rating > 0, "the Aegis has a baked DT rating");
+        assert!(
+            capital.iter().any(|m| m.as_stats.door_count > 0),
+            "some capital ship bakes a transport-bay door count"
         );
     }
 
@@ -4249,11 +4302,16 @@ mod tests {
         assert!(screen.contains("damage 4"), "front STD short-range damage");
         assert!(screen.contains("TN"), "STD arc weapons resolve a standard to-hit");
 
-        // A capital class (MSL) shows its damage but defers the to-hit (display-vs-resolve).
+        // Phase 2: a capital class (MSL) now RESOLVES its to-hit through the standard BF table —
+        // no more "resolve at table" deferral. MSL takes no capital-vs-small modifier.
         app.bf_shot.weapon_class = WeaponClass::Msl;
         let screen = render(&mut app);
         assert!(screen.contains("Nose MSL @ S:"), "per-arc MSL preview");
-        assert!(screen.contains("resolve to-hit at table"), "capital to-hit deferred to Phase 2");
+        assert!(screen.contains("TN"), "capital classes resolve a real to-hit in Phase 2");
+        assert!(
+            !screen.contains("resolve to-hit at table"),
+            "capital to-hit is no longer deferred"
+        );
     }
 
     #[test]
@@ -4265,6 +4323,177 @@ mod tests {
         press(&mut app, KeyCode::Enter); // row 0 = roll 2 = KF Boom on the DropShip column
         assert!(app.status.contains("KF Boom"), "KF Boom effect described: {}", app.status);
         assert!(app.status.contains("resolve at table"), "table-side flag: {}", app.status);
+        // The KF Boom flag persists (stateful in Phase 2), not just a status string.
+        assert!(app.session.mechs[0].bf.kf_boom, "KF Boom flag set");
+    }
+
+    /// An Aegis-class WarShip: a capital front arc (CAP + MSL + STD), the big Arm/Str/Th pool,
+    /// the bare-number `Warship` movement mode, and baked DT rating + bay-door counts.
+    fn sample_warship() -> Mech {
+        use neurohelmet_core::domain::{ArcCard, ArcDamage, FiringArc, UnitType};
+        let ad = |s: &str, m: &str, l: &str, e: &str| ArcDamage {
+            s: s.into(),
+            m: m.into(),
+            l: l.into(),
+            e: e.into(),
+        };
+        Mech {
+            chassis: "Aegis".into(),
+            model: "Heavy Cruiser".into(),
+            unit_type: UnitType::Aerospace,
+            as_stats: AsStats {
+                tp: "WS".into(),
+                size: 2,
+                movement: "2".into(), // the Warship move mode (bare thrust)
+                armor: 193,
+                structure: 75,
+                threshold: 16,
+                pv: 5000,
+                dt_rating: 4,
+                door_count: 6,
+                arcs: Some(ArcCard {
+                    front: FiringArc {
+                        std: ad("10", "10", "8", "6"),
+                        cap: ad("170", "170", "0", "0"),
+                        msl: ad("2", "2", "2", "2"),
+                        ..Default::default()
+                    },
+                    left: FiringArc { cap: ad("85", "85", "0", "0"), ..Default::default() },
+                    right: FiringArc { cap: ad("85", "85", "0", "0"), ..Default::default() },
+                    rear: FiringArc { std: ad("4", "4", "2", "0"), ..Default::default() },
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn e2e_bf_warship_rolls_jumpship_column() {
+        // A WarShip rolls the JumpShip column (p.87 footnote **), NOT the DropShip column.
+        let mut app = app_with_bf_mech(sample_warship(), 1);
+        press(&mut app, KeyCode::Char('c'));
+        let screen = render(&mut app);
+        assert!(screen.contains("JumpShip column"), "WarShip uses the JumpShip crit column");
+
+        // Roll 10 (row 8) = K-F Drive: −2 integrity per hit, stateful.
+        for _ in 0..8 {
+            press(&mut app, KeyCode::Down);
+        }
+        press(&mut app, KeyCode::Enter);
+        assert!(app.status.contains("K-F Drive hit 1"), "K-F Drive status: {}", app.status);
+        assert_eq!(app.session.mechs[0].bf.kf_drive, 1, "K-F Drive hit tracked");
+
+        // Roll 3 (row 1) = Dock: −1 DT rating; the baked DT 4 → 3 remaining.
+        for _ in 0..7 {
+            press(&mut app, KeyCode::Up);
+        }
+        press(&mut app, KeyCode::Enter);
+        assert!(app.status.contains("Dock hit 1"), "Dock status: {}", app.status);
+        assert!(app.status.contains("3 capacity"), "DT decrement 4→3: {}", app.status);
+        assert_eq!(app.session.mechs[0].bf.dock_hits, 1);
+    }
+
+    #[test]
+    fn e2e_bf_kf_drive_no_effect_on_space_station() {
+        // A Space Station rolls the JumpShip column but K-F Drive hits have no effect on it (p.85).
+        let mut m = sample_warship();
+        m.as_stats.tp = "SS".into();
+        let mut app = app_with_bf_mech(m, 1);
+        press(&mut app, KeyCode::Char('c'));
+        for _ in 0..8 {
+            press(&mut app, KeyCode::Down); // row 8 = roll 10 = K-F Drive
+        }
+        press(&mut app, KeyCode::Enter);
+        assert!(
+            app.status.contains("no effect on a Space Station"),
+            "K-F Drive is inert on a station: {}",
+            app.status
+        );
+        assert_eq!(app.session.mechs[0].bf.kf_drive, 0, "no K-F integrity spent on a station");
+    }
+
+    #[test]
+    fn e2e_bf_crew_hit_ladders() {
+        // JumpShip-column craft (WS/JS/SS) take a 3-stage crew-hit ladder: +2 / +4 / eliminate.
+        let mut app = app_with_bf_mech(sample_warship(), 1);
+        press(&mut app, KeyCode::Char('c'));
+        for _ in 0..10 {
+            press(&mut app, KeyCode::Down); // row 10 = roll 12 = Crew Hit
+        }
+        press(&mut app, KeyCode::Enter);
+        assert!(app.status.contains("Crew hit 1: +2"), "1st crew hit +2: {}", app.status);
+        press(&mut app, KeyCode::Enter);
+        assert!(app.status.contains("Crew hit 2: +4"), "2nd crew hit +4: {}", app.status);
+        assert!(app.session.mechs[0].bf.killed.is_none(), "still alive after 2 crew hits");
+        press(&mut app, KeyCode::Enter);
+        assert!(app.status.contains("crew eliminated"), "3rd crew hit kills: {}", app.status);
+        assert!(app.session.mechs[0].bf.killed.is_some(), "3rd crew hit destroys the WarShip");
+
+        // DropShip-column craft take a 2-stage ladder: +2 / eliminate.
+        let mut ds = app_with_bf_mech(sample_dropship(), 1);
+        press(&mut ds, KeyCode::Char('c'));
+        for _ in 0..10 {
+            press(&mut ds, KeyCode::Down); // row 10 = roll 12 = Crew Hit (DropShip column)
+        }
+        press(&mut ds, KeyCode::Enter);
+        assert!(ds.status.contains("Crew hit 1: +2"), "1st crew hit +2: {}", ds.status);
+        assert!(ds.session.mechs[0].bf.killed.is_none(), "DropShip alive after 1 crew hit");
+        press(&mut ds, KeyCode::Enter);
+        assert!(ds.status.contains("crew eliminated"), "2nd crew hit kills a DropShip: {}", ds.status);
+    }
+
+    #[test]
+    fn e2e_bf_large_craft_weapon_crit_is_table_side() {
+        // A large-craft Weapon crit halves ONE random firing arc (×0.5, p.85) — resolved at the
+        // table, NOT the standard-scale −1/damage counter (which the arc-damage path ignores).
+        let mut app = app_with_bf_mech(sample_warship(), 1);
+        press(&mut app, KeyCode::Char('c'));
+        for _ in 0..4 {
+            press(&mut app, KeyCode::Down); // row 4 = roll 6 = Weapon on the JumpShip column
+        }
+        press(&mut app, KeyCode::Enter);
+        assert!(
+            app.status.contains("halve one randomly-determined firing arc"),
+            "table-side weapon effect: {}",
+            app.status
+        );
+        assert!(app.status.contains("resolve at table"), "flagged table-side: {}", app.status);
+        assert_eq!(
+            app.session.mechs[0].bf.weapon, 0,
+            "large craft do NOT increment the standard −1/damage weapon counter"
+        );
+    }
+
+    #[test]
+    fn e2e_bf_capital_to_hit_vs_small_target() {
+        use neurohelmet_core::engine::battleforce::{BfAeroAngle, BfRange, BfTargetKind};
+        use neurohelmet_core::engine::large_craft::WeaponClass;
+        // A capital (CAP) attack takes +5 to-hit vs a small airborne aerospace target (p.83
+        // footnote 28); a standard attack takes no such modifier and neither does a shot at a
+        // large-craft / ground target.
+        let mut app = app_with_bf_mech(sample_warship(), 1);
+        press(&mut app, KeyCode::Char('t')); // open the BF shot modal
+        app.bf_shot.range = BfRange::Short;
+        app.bf_shot.target_kind = BfTargetKind::AirborneAero(BfAeroAngle::Nose);
+        app.bf_shot.weapon_class = WeaponClass::Cap;
+        let screen = render(&mut app);
+        assert!(screen.contains("Nose CAP @ S:"), "per-arc CAP preview with a resolved TN");
+        assert!(screen.contains("CAP vs small target: +5"), "capital-vs-small +5 note: {screen}");
+
+        // Vs a large-craft target the modifier is waived.
+        app.bf_shot.target_kind = BfTargetKind::AirborneDropship;
+        let screen = render(&mut app);
+        assert!(
+            !screen.contains("vs small target"),
+            "capital modifier waived vs a large-craft target"
+        );
+
+        // A standard-class shot never takes the capital-vs-small modifier.
+        app.bf_shot.target_kind = BfTargetKind::AirborneAero(BfAeroAngle::Nose);
+        app.bf_shot.weapon_class = WeaponClass::Std;
+        let screen = render(&mut app);
+        assert!(!screen.contains("vs small target"), "STD takes no capital modifier");
     }
 
     #[test]
