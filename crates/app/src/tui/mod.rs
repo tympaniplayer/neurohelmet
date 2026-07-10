@@ -4235,6 +4235,28 @@ mod tests {
     }
 
     #[test]
+    fn e2e_bf_large_craft_shot_builder() {
+        use neurohelmet_core::engine::battleforce::BfRange;
+        use neurohelmet_core::engine::large_craft::WeaponClass;
+        let mut app = app_with_bf_mech(sample_dropship(), 1);
+        press(&mut app, KeyCode::Char('t')); // open the BF shot modal
+        app.bf_shot.range = BfRange::Short;
+        let screen = render(&mut app);
+        assert!(screen.contains("Firing arc"), "arc picker row");
+        assert!(screen.contains("Weapon class"), "weapon-class picker row");
+        // Default arc = Nose, class = STD, range = Short → standard BF to-hit + front STD short (4).
+        assert!(screen.contains("Nose STD @ S:"), "per-arc STD preview");
+        assert!(screen.contains("damage 4"), "front STD short-range damage");
+        assert!(screen.contains("TN"), "STD arc weapons resolve a standard to-hit");
+
+        // A capital class (MSL) shows its damage but defers the to-hit (display-vs-resolve).
+        app.bf_shot.weapon_class = WeaponClass::Msl;
+        let screen = render(&mut app);
+        assert!(screen.contains("Nose MSL @ S:"), "per-arc MSL preview");
+        assert!(screen.contains("resolve to-hit at table"), "capital to-hit deferred to Phase 2");
+    }
+
+    #[test]
     fn e2e_bf_tracking() {
         // Damage, heat and a crit all react on the card AND in the unit-header live MV.
         let mut app = app_with_bf(4);

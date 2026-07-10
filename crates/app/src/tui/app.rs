@@ -32,6 +32,7 @@ use neurohelmet_core::engine::battleforce::{
 use neurohelmet_core::engine::sbf::{self, SbfAeroTarget, SbfRange};
 use neurohelmet_core::session::SbfDoctrine;
 use neurohelmet_core::engine::{inches_to_hexes, override_conv, ClusterProfile, PILOT_MAX};
+use neurohelmet_core::engine::large_craft;
 use neurohelmet_core::session::{
     self, AsCritKind, BfAssign, BfKill, CritRow, MotiveLevel, Session, SessionMeta, CREW_MAX,
     DEFAULT_GUNNERY, DEFAULT_PILOTING, OV_TARGET_TMM_MAX, SKILL_MAX,
@@ -407,6 +408,10 @@ pub struct BfShotUi {
     /// halving (p.41, §1.5). Damage-side only (no TN row); bombing never strikes the rear
     /// (p.48), so the row is active for Strafing/Striking only.
     pub strike_rear: bool,
+    /// Large-craft per-arc shot (only meaningful when the element carries a multi-arc card): which
+    /// firing arc + weapon class the preview resolves.
+    pub firing_arc: large_craft::Arc,
+    pub weapon_class: large_craft::WeaponClass,
 }
 
 /// The typed AS element a tracked mech fields in Standard BF — the BF element IS the AS card
@@ -4029,7 +4034,17 @@ impl App {
     }
 
     /// Number of rows in the BF shot modal (see [`view`]'s `bf_shot_modal_lines` for the order).
-    pub(crate) const BF_SHOT_ROWS: usize = 22;
+    pub(crate) const BF_SHOT_ROWS: usize = 24;
+
+    /// Row count of the BF shot editor for the active unit: large craft add the firing-arc +
+    /// weapon-class picker (24 rows); ground units stop before them (22).
+    fn bf_shot_row_count(&self) -> usize {
+        if self.session.active_mech().is_some_and(|tm| tm.spec.as_stats.arcs.is_some()) {
+            Self::BF_SHOT_ROWS
+        } else {
+            Self::BF_SHOT_ROWS - 2
+        }
+    }
 
     /// Drive the BF to-hit shot editor (the p.39 table): ↑↓ pick a row, ←→/Space adjust it. All
     /// state is the ephemeral [`BfShotUi`] — nothing session-side mutates, so no undo steps.
@@ -4144,7 +4159,7 @@ impl App {
                 18 => s.target_underwater = !s.target_underwater,
                 19 => s.target_stealth = !s.target_stealth,
                 20 => s.target_carrying_ba = !s.target_carrying_ba,
-                _ => {
+                21 => {
                     // Strafing/striking rear +1 damage (p.41); bombing never strikes the rear
                     // (p.48) and nothing else composes with the toggle.
                     if matches!(
@@ -4158,6 +4173,21 @@ impl App {
                                 .into();
                     }
                 }
+                22 => {
+                    // Large-craft firing arc (Nose/Left/Right/Aft).
+                    let order = large_craft::Arc::ALL;
+                    let cur = order.iter().position(|&a| a == s.firing_arc).unwrap_or(0) as i32;
+                    s.firing_arc =
+                        order[(cur + delta.signum()).rem_euclid(order.len() as i32) as usize];
+                }
+                23 => {
+                    // Large-craft weapon class (STD/CAP/SCAP/MSL).
+                    let order = large_craft::WeaponClass::ALL;
+                    let cur = order.iter().position(|&c| c == s.weapon_class).unwrap_or(0) as i32;
+                    s.weapon_class =
+                        order[(cur + delta.signum()).rem_euclid(order.len() as i32) as usize];
+                }
+                _ => {}
             }
         };
         match key.code {
@@ -4166,7 +4196,7 @@ impl App {
                 self.modal = Some(Modal::BfShot { sel: sel.saturating_sub(1) });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::BfShot { sel: (sel + 1).min(Self::BF_SHOT_ROWS - 1) });
+                self.modal = Some(Modal::BfShot { sel: (sel + 1).min(self.bf_shot_row_count() - 1) });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);

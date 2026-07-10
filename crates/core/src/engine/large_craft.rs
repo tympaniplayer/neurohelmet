@@ -12,8 +12,9 @@ use crate::domain::{ArcCard, ArcDamage, FiringArc};
 /// AS/BF weapon classes. `Std` is standard-scale; `Cap`/`ScAp`/`Msl` are capital, sub-capital, and
 /// capital/sub-capital missiles. Small Craft carry only `Std`; DropShips add `ScAp`/`Msl`; capital
 /// craft (Phase 2) add `Cap`. Order fixed.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum WeaponClass {
+    #[default]
     Std,
     Cap,
     ScAp,
@@ -58,8 +59,9 @@ impl WeaponClass {
 }
 
 /// The four AS/BF firing arcs. `Nose`/`Aft` are the card's front/rear.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Arc {
+    #[default]
     Nose,
     Left,
     Right,

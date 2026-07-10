@@ -4790,8 +4790,51 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let Some(tm) = app.session.active_mech() else { return lines };
     let el = bf_element_of(tm);
     let aero = battleforce::bf_is_aero(&el);
+    let large = el.arcs.is_some();
     let s = app.bf_shot;
     let yn = |b: bool| if b { "[x]" } else { "[ ]" };
+
+    // Large craft: the per-arc TN + damage preview renders at the TOP so it stays visible above the
+    // (long) row editor. STD arc weapons resolve via the standard BF to-hit; capital classes
+    // (CAP/SCAP/MSL) show damage but defer the to-hit to the capital phase (display-vs-resolve, §4).
+    if let Some(card) = &tm.spec.as_stats.arcs {
+        let cls = s.weapon_class;
+        let vec = large_craft::arc_damage(card, s.firing_arc, cls);
+        let band = match s.range {
+            BfRange::Short => vec.s,
+            BfRange::Medium => vec.m,
+            BfRange::Long => vec.l.unwrap_or(0.0),
+            BfRange::Extreme => vec.e.unwrap_or(0.0),
+        };
+        let dmg_str = if band == 0.5 { "0*".to_string() } else { format!("{}", band as u32) };
+        let rl = match s.range {
+            BfRange::Short => "S",
+            BfRange::Medium => "M",
+            BfRange::Long => "L",
+            BfRange::Extreme => "E",
+        };
+        if cls == large_craft::WeaponClass::Std {
+            let shot = app.bf_shot_for(app.session.active);
+            let n = battleforce::bf_to_hit(&el, tm.gunnery, tm.as_heat, tm.bf.fire_control, &shot);
+            lines.push(Line::from(Span::styled(
+                format!("{} STD @ {rl}:  TN {n}+   damage {dmg_str}", s.firing_arc.label()),
+                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            )));
+        } else {
+            lines.push(Line::from(Span::styled(
+                format!("{} {} @ {rl}:  damage {dmg_str}", s.firing_arc.label(), cls.label()),
+                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            )));
+            lines.push(Line::from(Span::styled(
+                format!(
+                    "  capital weapon (to-hit +{}) — resolve to-hit at table (Phase 2)",
+                    cls.to_hit_mod()
+                ),
+                Style::default().fg(theme().warning),
+            )));
+        }
+        lines.push(Line::from("")); // spacer before the row editor
+    }
 
     let move_label = match s.attacker_move {
         BfMove::StoodStill => "stood still (−1)",
@@ -4845,7 +4888,7 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         matches!(s.kind, BfAttackKind::AirToGround(BfA2G::Strafing | BfA2G::Striking));
 
     // (label, value, active) — inactive rows render dim (the AS shot-modal pattern).
-    let rows: Vec<(&str, String, bool)> = vec![
+    let mut rows: Vec<(&str, String, bool)> = vec![
         ("Attacker move", move_label.into(), true),
         ("Range", range_label.into(), true),
         ("Attack kind", bf_kind_label(s.kind).into(), true),
@@ -4869,6 +4912,11 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         ("Target carrying BA (+3)", yn(s.target_carrying_ba).into(), physical),
         ("Strikes rear (+1 dmg)", yn(s.strike_rear).into(), rear_active),
     ];
+    // Large craft add a firing-arc + weapon-class picker; ground units never see these rows.
+    if large {
+        rows.push(("Firing arc", s.firing_arc.label().into(), true));
+        rows.push(("Weapon class", s.weapon_class.label().into(), true));
+    }
     for (i, (name, val, active)) in rows.into_iter().enumerate() {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
@@ -4882,9 +4930,14 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         lines.push(Line::from(Span::styled(format!("{marker}{name:<30} {val}"), style)));
     }
 
-    // Live TN + damage preview for the active element (the composed, eligibility-sanitized shot).
+    // Live TN + damage preview (non-large; large craft render their per-arc preview at the TOP of
+    // the modal, above the row editor, so it stays visible even when the row list is long).
+    if large {
+        return lines;
+    }
     let i = app.session.active;
     let shot = app.bf_shot_for(i);
+
     let n = battleforce::bf_to_hit(&el, tm.gunnery, tm.as_heat, tm.bf.fire_control, &shot);
     let dmg = match shot.kind {
         BfAttackKind::Standard => format!(
