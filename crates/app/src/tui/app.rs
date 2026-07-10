@@ -3930,9 +3930,14 @@ impl App {
                                 "Engine: thrust −50% (round down, min 1 lost)".into()
                             }
                         }
-                        // No Engine row on the PM column; DropShips/Small Craft are mark-only
-                        // (unreachable in the baked catalog, spec §DF-7).
-                        BfCritCol::ProtoMech | BfCritCol::DropShip => "Engine hit marked".into(),
+                        BfCritCol::ProtoMech => "Engine hit marked".into(),
+                        // DropShip/Small Craft engine ladder (p.43): thrust −25% / −50% / shutdown by
+                        // hit. MV is table-side for large craft, so the hit is tracked here and the
+                        // thrust reduction is applied at the table (spec §10, like the other
+                        // large-craft movement effects).
+                        BfCritCol::DropShip => format!(
+                            "Engine hit {hits}: thrust −25% / −50% / shutdown by hit — apply at table (p.43)"
+                        ),
                     }
                 }
                 BfCrit::FireControl => {
@@ -3967,12 +3972,22 @@ impl App {
                     tm.bf.killed = Some(BfKill::ProtoDestroyed);
                     "ProtoMech destroyed".into()
                 }
-                // DropShip-column marks (unreachable in the baked catalog, spec §DF-7).
-                BfCrit::KfBoom => "KF Boom hit (DropShip mark, p.42)".into(),
-                BfCrit::DockingCollar => "Docking Collar hit (DropShip mark, p.42)".into(),
-                BfCrit::Thruster => "Thruster hit (DropShip mark, p.42)".into(),
-                BfCrit::Door => "Door hit (DropShip mark, p.42)".into(),
-                BfCrit::CrewHit => "Crew hit (DropShip mark, p.42)".into(),
+                // Large-craft crit results. The transport / jump / maneuver effects are inter-unit
+                // or positional — tracked here and resolved at the table (spec §10); Crew Hit's
+                // to-hit penalty is applied manually (auto-apply is a capital-phase refinement).
+                BfCrit::KfBoom => {
+                    "KF Boom: K-F drive destroyed — no hyperspace jump (resolve at table)".into()
+                }
+                BfCrit::DockingCollar => {
+                    "Docking Collar hit: may not dock with a station / JumpShip / WarShip (resolve at table)".into()
+                }
+                BfCrit::Thruster => "Thruster hit: maneuver / thrust loss (resolve at table)".into(),
+                BfCrit::Door => {
+                    "Door hit: a transport-bay door lost — throttles launch / recovery (resolve at table)".into()
+                }
+                BfCrit::CrewHit => {
+                    "Crew hit: +2 to-hit per hit (apply manually); the 3rd crew hit eliminates the crew (p.87)".into()
+                }
             };
         }
         if mp_crit {

@@ -4257,6 +4257,17 @@ mod tests {
     }
 
     #[test]
+    fn e2e_bf_large_craft_crit_column() {
+        // A DropShip crit rolls the DropShip column; roll 2 (row 0) = KF Boom, whose transport-side
+        // effect is described and flagged as resolved at the table.
+        let mut app = app_with_bf_mech(sample_dropship(), 1);
+        press(&mut app, KeyCode::Char('c')); // open the crit modal
+        press(&mut app, KeyCode::Enter); // row 0 = roll 2 = KF Boom on the DropShip column
+        assert!(app.status.contains("KF Boom"), "KF Boom effect described: {}", app.status);
+        assert!(app.status.contains("resolve at table"), "table-side flag: {}", app.status);
+    }
+
+    #[test]
     fn e2e_bf_tracking() {
         // Damage, heat and a crit all react on the card AND in the unit-header live MV.
         let mut app = app_with_bf(4);
