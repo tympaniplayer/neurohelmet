@@ -4178,6 +4178,50 @@ mod tests {
         assert_eq!(after, base + 2 + 1, "Long (+2 over Medium) and TMM +1");
     }
 
+    fn app_with_acs_large_craft(m: Mech) -> App {
+        let bundle = Bundle::new(vec![m.clone()]);
+        let mut session = Session::new_with_mode(GameMode::AbstractCombatSystem);
+        session.acs.formations.clear();
+        session.add_mech(m);
+        session.acs_new_formation("Fleet", 0..1);
+        let mut app = App::new(bundle, session, "test".to_string());
+        app.dirty = false;
+        app
+    }
+
+    #[test]
+    fn e2e_acs_aerospace_readout() {
+        use neurohelmet_core::engine::acs::acs_aero_to_hit;
+        // A WarShip Formation is an aerospace type: the detail pane shows the real p.250 aero readout
+        // (with the cross-type matchup + Ground-Support missions), not the old "not supported" banner.
+        let mut app = app_with_acs_large_craft(sample_warship());
+        assert!(app.acs_active_formation_is_aero(), "a WarShip Formation is aerospace type");
+        let screen = render(&mut app);
+        assert!(screen.contains("To-Hit"), "aero to-hit readout renders:\n{screen}");
+        assert!(!screen.contains("not yet supported"), "the aero banner is gone");
+        assert!(screen.contains("matchup"), "cross-type matchup row");
+
+        // Cycling the cross-type matchup None → aero→WarShip applies the −3 (p.241).
+        let before = acs_aero_to_hit(&app.acs_aero_to_hit_ctx().unwrap());
+        press(&mut app, KeyCode::Char('x'));
+        let after = acs_aero_to_hit(&app.acs_aero_to_hit_ctx().unwrap());
+        assert_eq!(after - before, -3, "aero → WarShip cross-type row is −3");
+
+        // Cycling the Ground-Support mission surfaces its calculator readout.
+        press(&mut app, KeyCode::Char('y')); // space combat → CAP
+        assert!(render(&mut app).contains("CAP"), "Ground-Support CAP mission readout");
+
+        // The capital weapon-class penalty is waived vs a large-craft target (p.191 Notes) — for a
+        // same-type (WS→WS) target the 6-row matchup can't encode, the explicit toggle does it.
+        app.acs_shot.matchup = neurohelmet_core::engine::acs::AcsAeroMatchup::None;
+        app.acs_shot.weapon_class = neurohelmet_core::engine::large_craft::WeaponClass::Cap;
+        app.acs_shot.target_large_craft = false;
+        let with_pen = acs_aero_to_hit(&app.acs_aero_to_hit_ctx().unwrap());
+        app.acs_shot.target_large_craft = true;
+        let waived = acs_aero_to_hit(&app.acs_aero_to_hit_ctx().unwrap());
+        assert_eq!(with_pen - waived, 3, "CAP +3 waived vs a large-craft target");
+    }
+
     #[test]
     fn e2e_acs_commander_leader_unique() {
         let mut app = app_with_acs(6);

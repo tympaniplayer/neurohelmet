@@ -334,7 +334,7 @@ pub fn art_damage(code: &str) -> i64 {
 
 /// The numeric value of a resolved SUA (for aggregation): `Num→v`, `Art→c`, `Dmg→S`, `Flag→1`
 /// (MegaMek's `null value → +1` merge), `Lam`/`Bim → 0`.
-pub(crate) fn suaval_num(v: &SuaVal) -> f64 {
+pub fn suaval_num(v: &SuaVal) -> f64 {
     match v {
         SuaVal::Num(x) => *x as f64,
         SuaVal::Art(c) => *c as f64,

@@ -392,10 +392,26 @@ manual-dice doctrine — no persisted per-arc knockout). LA composition (WarShip
 advisory readout. `SbfMoveMode::Warship` is now reachable (WarShips bake). **SBF has NO Threshold** — the
 existing below-half-armor `crit_check_due` gate + generic SBF crit table already cover LA (single armor pool).
 
-**Phase 4 — ACS Abstract Combat Aerospace.** The aero range path (+Extreme), `AcsAeroToHitCtx`/damage
-mirroring p.252 + the Master Modifier (Aerospace) pp.242–243, Ground-Support missions, and the live
-`is_aerospace` gate/composition rules. Last — depends on the Phase-3 capital-scale to-hit shape and has the
-worst-extracting source tables.
+**Phase 4 — ACS Abstract Combat Aerospace. ✅ COMPLETE (2026-07-10) — the initiative is DONE.** Added
+`AcsAeroToHitCtx` + `acs_aero_to_hit` (folio **p.250** aero to-hit — the page refs were off: it's p.250 not
+p.252, and the Master Modifier is pp.240–241 not 242–243). The aero range ladder, `capital_range`, and the
+whole capital leg **reuse the SBF Phase-3 pieces** (`SbfRange`/`sbf_range_mod`/`capital_range`/`SbfCapital`) —
+ACS aero "uses the Capital-Scale Strategic Aerospace rules." On top: the six verified cross-type rows
+(`AcsAeroMatchup`, p.241 — aero→WS −3 / aero→DS −2 / DS→aero +2 / DS→WS −2 / WS→aero +5 / WS→DS −1; no other
+pairing) and the ACS-only rows (robotic +1, attacked-by-aero +2, target-recon +3, >50% large-aero −2).
+`AcsCombatUnit.arcs` threads the card (gated on `La`; Small Craft are `As`). **All five Ground-Support
+missions** (folio pp.251–252): CAP −1, Ground Strike (½S / BOMB 5-pt clusters), Aerial Recon −4,
+Orbit-to-Surface (¼+1 min 1 / secondary ½ / scatter 5-6), and the full **Combat Drop Results Table**
+(MoS → drop value / drop-damage % / mods). `is_aerospace` is now the live routing key (replacing the
+"not yet supported" banner) in `acs_to_hit_ctx`/`draw_acs_detail`. **SBF-model reuse:** ACS has no crit table
+and no threshold — the existing Damage-Threshold→Morale model already covers aero (single armor pool).
+
+> **§9 corrections (verified 2026-07-10 via layout-preserving PDF extraction):** ACS Formations are **1–8
+> Combat Units uniformly** (the spec's "aero 1–4 / ground 2–6" was unsourced — mechdoll already uses 1–8);
+> the aero to-hit table is folio **p.250** (PDF 252), the Master Modifier pp.**240–241** (PDF 242–243), and
+> the missions folio **pp.251–252** (PDF 253–254). An adversarial review caught + fixed two app-layer bugs:
+> the CAP/SCAP waiver missed same-type/station large-craft targets (added an explicit `target_large_craft`
+> toggle), and the mission calculators read the ~0 aggregated band instead of the arc card for large craft.
 
 ---
 

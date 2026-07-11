@@ -258,8 +258,12 @@ Table** (CAP+5/SCAP+3 vs small aerospace targets — *not* the p.191 capital-sca
 model (`SbfUnit.arcs`), the p.191 capital-scale to-hit as a `capital` leg on `SbfAeroShot` (full table +
 `capital_range` bracket-reduction + Random-Weapon-Class describe), advisory LA Squadron composition + attack
 limits, and the now-reachable `Warship` move mode (SBF has no Threshold — it reuses the below-half-armor crit
-gate). Still to come: ACS Abstract Combat Aerospace (Phase 4, pp.251–255) — layers on the shared
-`large_craft.rs` engine.
+gate). **Phase 4 ✅ (2026-07-10) — the initiative is COMPLETE.** ACS Abstract Combat Aerospace:
+`AcsAeroToHitCtx` + `acs_aero_to_hit` (folio p.250 aero table + p.241 cross-type rows), reusing the SBF
+capital pieces; `AcsCombatUnit.arcs` for per-arc capital fire; all five Ground-Support missions (CAP /
+Ground Strike / Aerial Recon / Orbit-to-Surface / the full Combat Drop table); `is_aerospace` is now the
+live routing key (the "not yet supported" banner is gone). The whole DropShip→WarShip ladder is now
+fieldable across Standard BF, SBF, and ACS.
 
 Positional/table-side machinery stays out of scope as everywhere else: capital radar map, orbital
 mechanics, jump-point/space movement, altitude/velocity. Fuel consumption (Advanced/StratOps) remains

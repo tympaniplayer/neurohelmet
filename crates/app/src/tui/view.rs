@@ -42,8 +42,11 @@ use neurohelmet_core::engine::{
 };
 use neurohelmet_core::engine::as_element::SbfElementType;
 use neurohelmet_core::engine::acs::{
-    acs_damage, acs_damage_band, acs_fatigue_band, acs_morale_tn, acs_to_hit, AcsDamageBand,
-    AcsDamageCtx, AcsExperience, AcsFatigueBand, AcsMorale, AcsMoraleCtx, AcsRange,
+    acs_aero_range, acs_aero_to_hit, acs_bomb_clusters, acs_combat_drop_result, acs_damage,
+    acs_damage_band, acs_fatigue_band, acs_ground_strike_damage, acs_morale_tn,
+    acs_orbit_to_surface_primary, acs_orbit_to_surface_secondary, acs_to_hit, AcsCombatUnit,
+    AcsDamageBand, AcsDamageCtx, AcsExperience, AcsFatigueBand, AcsMorale, AcsMoraleCtx, AcsRange,
+    ACS_AERIAL_RECON_MOD, ACS_CAP_ENGAGEMENT_MOD, ACS_GROUND_STRIKE_TOHIT,
 };
 use neurohelmet_core::engine::sbf::{self as sbf_engine, SbfA2G, SbfAeroKind, SbfAeroTarget, SbfRange};
 use neurohelmet_core::session::{
@@ -4035,6 +4038,117 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
 
 /// Right pane: the active Combat Unit's derived stat line, the to-hit / damage / morale readouts
 /// (Phase 3 calculators), and the Combat-Team derivation fold.
+/// The ACS aerospace to-hit / damage / Ground-Support readout (IO:BF pp.250/241/251-252), shown for
+/// an aero Formation in place of the ground p.248 calc. Large craft resolve per-arc capital damage
+/// off the arc card; a plain aero Formation uses its aggregated band.
+fn acs_aero_readout(app: &App, derived: &AcsCombatUnit, lines: &mut Vec<Line<'static>>) {
+    use super::app::AcsAeroMission;
+    let Some(ctx) = app.acs_aero_to_hit_ctx() else { return };
+    let s = app.acs_shot;
+    let tn = acs_aero_to_hit(&ctx);
+    // The capital range reduction feeds the TN and the damage lookup — label the effective bracket.
+    let eff = acs_aero_range(ctx.range, ctx.capital.as_ref());
+    lines.push(Line::from(vec![
+        Span::styled("To-Hit ", Style::default().fg(theme().dim)),
+        Span::styled(
+            format!("{tn}+"),
+            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!(
+                "  (aero {} vs TMM{}{})",
+                sbf_range_label(eff),
+                ctx.target_tmm,
+                if ctx.secondary_target { ", 2nd" } else { "" },
+            ),
+            Style::default().fg(theme().dim),
+        ),
+    ]));
+    // Per-arc capital damage (large craft) or the aggregated band (plain aero), run through the ACS
+    // fractional-damage formula.
+    let band = match &derived.arcs {
+        Some(card) => large_craft::arc_damage(card, s.firing_arc, s.weapon_class).band(eff),
+        None => derived.damage.band(eff),
+    };
+    let dmg = acs_damage(
+        band,
+        &AcsDamageCtx {
+            secondary_target: ctx.secondary_target,
+            attacker_fatigue: ctx.fatigue,
+            attacker_morale: ctx.own_morale,
+            ..Default::default()
+        },
+    );
+    let src = if derived.arcs.is_some() {
+        format!("{} {} @ {}", s.firing_arc.label(), s.weapon_class.label(), sbf_range_label(eff))
+    } else {
+        format!("band {}", sbf_range_label(eff))
+    };
+    lines.push(Line::from(vec![
+        Span::styled("Damage ", Style::default().fg(theme().dim)),
+        Span::styled(
+            format!("{dmg}"),
+            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(format!("  ({src})"), Style::default().fg(theme().dim)),
+    ]));
+    lines.push(Line::from(Span::styled(
+        format!(
+            "matchup: {} ({:+}){}   [w] class · [v] arc · [x] matchup · [L] large-tgt · [y] mission",
+            s.matchup.label(),
+            s.matchup.to_hit_mod(),
+            if s.target_large_craft { " · large-craft tgt (class waived)" } else { "" },
+        ),
+        Style::default().fg(theme().dim),
+    )));
+    // Ground-Support mission readout (p.251-252) for the selected mission. Large craft carry ~0
+    // aggregated damage (their weapons live on the arc card), so the mission damage reads the chosen
+    // arc/class off the card, matching the space-combat line above.
+    let cu_dmg = |r: SbfRange| -> f32 {
+        match &derived.arcs {
+            Some(card) => large_craft::arc_damage(card, s.firing_arc, s.weapon_class).band(r),
+            None => derived.damage.band(r),
+        }
+    };
+    let short = cu_dmg(SbfRange::Short);
+    let bomb = derived
+        .suas
+        .get("BOMB")
+        .map(neurohelmet_core::engine::sbf::suaval_num)
+        .unwrap_or(0.0) as i64;
+    let mission_line = match s.aero_mission {
+        AcsAeroMission::SpaceCombat => None,
+        AcsAeroMission::Cap => {
+            Some(format!("CAP: {ACS_CAP_ENGAGEMENT_MOD} Engagement Control (p.251)"))
+        }
+        AcsAeroMission::GroundStrike => Some(format!(
+            "Ground Strike (TN Skill+{ACS_GROUND_STRIKE_TOHIT}): Strike ½S={} · Bomb {} cluster(s) of 5 (p.251)",
+            acs_ground_strike_damage(short),
+            acs_bomb_clusters(bomb),
+        )),
+        AcsAeroMission::AerialRecon => {
+            Some(format!("Aerial Recon: {ACS_AERIAL_RECON_MOD} Recon (−3 if engaged, +2 in air-air) (p.251)"))
+        }
+        AcsAeroMission::OrbitToSurface => {
+            let p = acs_orbit_to_surface_primary(short.max(cu_dmg(SbfRange::Medium)));
+            Some(format!(
+                "Orbit-to-Surface: primary ¼+1={p} (min 1) · secondary {} · scatter 5-6 (p.251)",
+                acs_orbit_to_surface_secondary(p),
+            ))
+        }
+        AcsAeroMission::CombatDrop => {
+            let r = acs_combat_drop_result(0);
+            Some(format!(
+                "Combat Drop (TN 6): MoS 0 → drop {:+}, {} (fail: {}% armor) — MoS-driven (p.251)",
+                r.drop_value, r.result, r.drop_damage_pct,
+            ))
+        }
+    };
+    if let Some(m) = mission_line {
+        lines.push(Line::from(Span::styled(m, Style::default().fg(theme().good))));
+    }
+}
+
 fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
     let Some(fs) = app.session.acs.formations.get(app.session.acs.active_formation) else {
         return;
@@ -4061,16 +4175,7 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
     let derived = app.session.acs_combat_unit(cu);
     let mut lines: Vec<Line> = Vec::new();
 
-    if app.session.acs_formation_is_aerospace(fs) {
-        lines.push(Line::from(Span::styled(
-            "⚠ aerospace — Abstract Combat Aerospace is not yet supported.",
-            Style::default().fg(theme().warning),
-        )));
-        lines.push(Line::from(Span::styled(
-            "  Stats below are ground-converted; resolve aero combat at the table.",
-            Style::default().fg(theme().warning),
-        )));
-    }
+    let aero = app.session.acs_formation_is_aerospace(fs);
 
     lines.push(Line::from(Span::styled(
         format!(
@@ -4109,7 +4214,9 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
 
     // The to-hit / damage readout (hand-set range + target TMM).
     lines.push(Line::from(""));
-    if let Some(ctx) = app.acs_to_hit_ctx() {
+    if aero {
+        acs_aero_readout(app, &derived, &mut lines);
+    } else if let Some(ctx) = app.acs_to_hit_ctx() {
         let tn = acs_to_hit(&ctx);
         let band = ctx.range.band(&derived.damage);
         let dmg = acs_damage(

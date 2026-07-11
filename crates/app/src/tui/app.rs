@@ -302,6 +302,53 @@ pub struct AcsShotUi {
     pub range: neurohelmet_core::engine::acs::AcsRange,
     pub target_tmm: i64,
     pub secondary: bool,
+    // ---- aerospace (IO:BF p.250 Aerospace To-Hit + p.241 cross-type), read only for an aero
+    // Formation. The aero range ladder has an Extreme bracket, so it is `SbfRange`, not `AcsRange`.
+    pub aero_range: neurohelmet_core::engine::sbf::SbfRange,
+    pub weapon_class: large_craft::WeaponClass,
+    pub firing_arc: large_craft::Arc,
+    pub matchup: neurohelmet_core::engine::acs::AcsAeroMatchup,
+    /// The target is itself a large craft (DropShip/JumpShip/station/WarShip) — waives the
+    /// capital weapon-class penalty (p.191 Notes). Auto-true for the large-craft `matchup` cases;
+    /// the toggle covers same-type (WS→WS) and Space-Station targets the 6-row matchup can't encode.
+    pub target_large_craft: bool,
+    /// The hand-entered aerospace Ground-Support mission the readout previews.
+    pub aero_mission: AcsAeroMission,
+}
+
+/// The ACS aerospace Ground-Support missions (IO:BF folio pp.251-252), a readout selector.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub enum AcsAeroMission {
+    /// Space combat (the aero to-hit table); no ground-support mission.
+    #[default]
+    SpaceCombat,
+    Cap,
+    GroundStrike,
+    AerialRecon,
+    OrbitToSurface,
+    CombatDrop,
+}
+
+impl AcsAeroMission {
+    pub const ALL: [AcsAeroMission; 6] = [
+        Self::SpaceCombat,
+        Self::Cap,
+        Self::GroundStrike,
+        Self::AerialRecon,
+        Self::OrbitToSurface,
+        Self::CombatDrop,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::SpaceCombat => "space combat",
+            Self::Cap => "CAP / close air support",
+            Self::GroundStrike => "ground strike",
+            Self::AerialRecon => "aerial recon",
+            Self::OrbitToSurface => "orbit-to-surface",
+            Self::CombatDrop => "combat drop",
+        }
+    }
 }
 
 /// Hand-entered SBF shot legs (IO:BF p.172 To-Hit Modifiers Table; the aero rows are the p.179
@@ -3376,19 +3423,27 @@ impl App {
                     self.status = "Formation deleted".into();
                 }
             }
-            KeyCode::Char('[') => {
-                self.acs_shot.range = match self.acs_shot.range {
-                    AcsRange::Short => AcsRange::Long,
-                    AcsRange::Medium => AcsRange::Short,
-                    AcsRange::Long => AcsRange::Medium,
-                };
-            }
-            KeyCode::Char(']') => {
-                self.acs_shot.range = match self.acs_shot.range {
-                    AcsRange::Short => AcsRange::Medium,
-                    AcsRange::Medium => AcsRange::Long,
-                    AcsRange::Long => AcsRange::Short,
-                };
+            KeyCode::Char('[') | KeyCode::Char(']') => {
+                let fwd = key.code == KeyCode::Char(']');
+                if self.acs_active_formation_is_aero() {
+                    // Aero range ladder has an Extreme bracket (SbfRange).
+                    use neurohelmet_core::engine::sbf::SbfRange::*;
+                    const ORDER: [neurohelmet_core::engine::sbf::SbfRange; 4] =
+                        [Short, Medium, Long, Extreme];
+                    let i = ORDER.iter().position(|&r| r == self.acs_shot.aero_range).unwrap_or(1)
+                        as i32;
+                    let n = ORDER.len() as i32;
+                    self.acs_shot.aero_range = ORDER[(i + if fwd { 1 } else { -1 }).rem_euclid(n) as usize];
+                } else {
+                    self.acs_shot.range = match (self.acs_shot.range, fwd) {
+                        (AcsRange::Short, true) => AcsRange::Medium,
+                        (AcsRange::Medium, true) => AcsRange::Long,
+                        (AcsRange::Long, true) => AcsRange::Short,
+                        (AcsRange::Short, false) => AcsRange::Long,
+                        (AcsRange::Medium, false) => AcsRange::Short,
+                        (AcsRange::Long, false) => AcsRange::Medium,
+                    };
+                }
             }
             KeyCode::Char('+') | KeyCode::Char('=') => {
                 self.acs_shot.target_tmm = (self.acs_shot.target_tmm + 1).min(9);
@@ -3397,8 +3452,45 @@ impl App {
                 self.acs_shot.target_tmm = (self.acs_shot.target_tmm - 1).max(-4);
             }
             KeyCode::Char('s') => self.acs_shot.secondary = !self.acs_shot.secondary,
+            // Aero-only cycles: weapon class, cross-type matchup, Ground-Support mission.
+            KeyCode::Char('w') if self.acs_active_formation_is_aero() => {
+                let all = large_craft::WeaponClass::ALL;
+                let i = all.iter().position(|&c| c == self.acs_shot.weapon_class).unwrap_or(0);
+                self.acs_shot.weapon_class = all[(i + 1) % all.len()];
+            }
+            KeyCode::Char('v') if self.acs_active_formation_is_aero() => {
+                let all = large_craft::Arc::ALL;
+                let i = all.iter().position(|&a| a == self.acs_shot.firing_arc).unwrap_or(0);
+                self.acs_shot.firing_arc = all[(i + 1) % all.len()];
+            }
+            KeyCode::Char('L') if self.acs_active_formation_is_aero() => {
+                self.acs_shot.target_large_craft = !self.acs_shot.target_large_craft;
+            }
+            KeyCode::Char('x') if self.acs_active_formation_is_aero() => {
+                let all = neurohelmet_core::engine::acs::AcsAeroMatchup::ALL;
+                let i = all.iter().position(|&m| m == self.acs_shot.matchup).unwrap_or(0);
+                self.acs_shot.matchup = all[(i + 1) % all.len()];
+            }
+            KeyCode::Char('y') if self.acs_active_formation_is_aero() => {
+                let all = AcsAeroMission::ALL;
+                let i = all.iter().position(|&m| m == self.acs_shot.aero_mission).unwrap_or(0);
+                self.acs_shot.aero_mission = all[(i + 1) % all.len()];
+                self.status = format!("Ground-Support mission: {}", self.acs_shot.aero_mission.label());
+            }
             _ => {}
         }
+    }
+
+    /// Whether the active ACS Formation is an aerospace type — routes the shot readout/editor to the
+    /// aero (p.250) path instead of the ground (p.248) one.
+    pub(crate) fn acs_active_formation_is_aero(&self) -> bool {
+        self.acs_active_unit().is_some_and(|(fi, _)| {
+            self.session
+                .acs
+                .formations
+                .get(fi)
+                .is_some_and(|f| self.session.acs_formation_is_aerospace(f))
+        })
     }
 
     /// The active `(formation, combat unit)` indices, if a real Combat Unit is selected.
@@ -3659,6 +3751,54 @@ impl App {
             fatigue: acs_fatigue_band(st.fatigue_points(), exp),
             secondary_target: self.acs_shot.secondary,
             ..AcsToHitCtx::default()
+        })
+    }
+
+    /// The ACS **aerospace** to-hit context (IO:BF p.250 + p.241) for the active aero Combat Unit —
+    /// the aero range ladder + the cross-type matchup + the shared capital leg (built only for a
+    /// large craft carrying an arc card). Mirror of [`Self::acs_to_hit_ctx`] for aero Formations.
+    pub fn acs_aero_to_hit_ctx(&self) -> Option<neurohelmet_core::engine::acs::AcsAeroToHitCtx> {
+        use neurohelmet_core::engine::acs::{acs_fatigue_band, AcsAeroMatchup, AcsAeroToHitCtx, AcsExperience};
+        use neurohelmet_core::engine::sbf::{SbfAcm, SbfCapital};
+        let (fi, ui) = self.acs_active_unit()?;
+        let st = &self.session.acs.formations[fi].units[ui];
+        let derived = self.session.acs_combat_unit(st);
+        let exp = AcsExperience::from_skill(derived.skill);
+        let s = self.acs_shot;
+        // The weapon-class penalty is waived vs ANY large-craft target (p.191 Notes): the four
+        // large-craft `matchup` cases imply it, plus the explicit toggle for same-type / station
+        // targets the 6-row matrix can't represent.
+        let target_large = s.target_large_craft
+            || matches!(
+                s.matchup,
+                AcsAeroMatchup::AeroVsWarship
+                    | AcsAeroMatchup::AeroVsDropship
+                    | AcsAeroMatchup::DropshipVsWarship
+                    | AcsAeroMatchup::WarshipVsDropship
+            );
+        let capital = derived.arcs.is_some().then_some(SbfCapital {
+            weapon_class: s.weapon_class,
+            target_is_large_craft: target_large,
+            high_speed: false,
+            atmospheric: false,
+            point_defense: 0,
+            screen: 0,
+            naval_c3: false,
+            teleoperated: false,
+            crippled: false,
+            grappled: false,
+            acm: SbfAcm::Off,
+        });
+        Some(AcsAeroToHitCtx {
+            range: s.aero_range,
+            attacker: exp,
+            target_tmm: s.target_tmm,
+            matchup: s.matchup,
+            capital,
+            own_morale: st.morale,
+            fatigue: acs_fatigue_band(st.fatigue_points(), exp),
+            secondary_target: s.secondary,
+            ..AcsAeroToHitCtx::default()
         })
     }
 

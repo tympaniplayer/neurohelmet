@@ -42,7 +42,10 @@
 //! aerospace Formations as unsupported.
 
 use super::as_element::{jround, DamageVector, SbfElementType, SuaVal};
-use super::sbf::{convert_formation, majority_type, mean, suaval_num, SbfMoveMode, SbfUnit};
+use super::sbf::{
+    capital_range, convert_formation, majority_type, mean, sbf_range_mod, suaval_num, SbfCapital,
+    SbfMoveMode, SbfRange, SbfUnit,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -93,6 +96,11 @@ pub struct AcsCombatUnit {
     pub armor: i64,
     /// Step 3F: **total** each band across Teams (no further ÷3).
     pub damage: DamageVector,
+    /// Large-Aerospace multi-arc capital card, if this is a large-craft (`La`) aero Combat Unit —
+    /// the aggregated `damage` band is ~0 for large craft (their weapons live on the card), so aero
+    /// combat resolves per-arc off this instead. `None` for fighters/ground. A Combat Unit is
+    /// abstract (a battalion): it carries the card of its representative large craft.
+    pub arcs: Option<crate::domain::ArcCard>,
     pub tactics: i64,
     pub morale_rating: i64,
     /// Step 3H: the 75% / 50% / 25% armor marks; crossing one in a turn triggers a Morale Check.
@@ -331,6 +339,15 @@ fn combat_unit_from_teams(name: &str, teams: &[AcsCombatTeam]) -> AcsCombatUnit 
     // Step 3J — point value: total team PV ÷3, round normal.
     let point_value = jround(teams.iter().map(|t| t.point_value as f64).sum::<f64>() / 3.0);
 
+    // The capital card of the Combat Unit's representative large craft (a `La` SBF Unit). Gated on
+    // `La`, not merely `arcs.is_some()` — Small Craft carry a card but are standard `As` (see the
+    // SBF Phase-3 gate); ACS aero fire on that card resolves per-arc.
+    let arcs = teams
+        .iter()
+        .flat_map(|t| &t.units)
+        .find(|u| u.sbf_type == SbfElementType::La)
+        .and_then(|u| u.arcs.clone());
+
     AcsCombatUnit {
         name: name.to_string(),
         acs_type,
@@ -342,6 +359,7 @@ fn combat_unit_from_teams(name: &str, teams: &[AcsCombatTeam]) -> AcsCombatUnit 
         tmm,
         armor,
         damage,
+        arcs,
         tactics,
         morale_rating,
         damage_thresholds,
@@ -920,6 +938,243 @@ pub fn acs_morale_result(band: AcsDamageBand, margin_of_failure: i64) -> AcsMora
     table[row]
 }
 
+// ============================ Aerospace combat (IO:BF pp.240-241 Master Modifier + p.250 Aerospace
+// To-Hit + pp.251-252 Ground Support) ============================
+//
+// ACS aerospace "uses the Capital-Scale Strategic Aerospace rules except as noted" (p.248), so it
+// REUSES the SBF Phase-3 pieces wholesale: `SbfRange` + `sbf_range_mod` (the S+0/M+1/L+2/E+3 aero
+// ladder, distinct from the ground `AcsRange` S−1/M+2/L+4), `capital_range` (the −1 bracket for
+// capital classes), and `SbfCapital` (the p.191 = p.250 capital weapon-class / high-speed /
+// point-defense / screen leg). On top it adds the six large-craft cross-type rows (p.241) and a few
+// ACS-only rows, plus the Ground-Support mission calculators. Damage still flows through the existing
+// single-pool / Damage-Threshold model — ACS has no crit table (see `acs_damage_band`).
+
+/// The six large-craft cross-type to-hit rows (IO:BF Master Modifier Table, folio p.241), keyed on
+/// (attacker craft class → target craft class). Every other pairing (WS-vs-WS, aero-vs-aero, any
+/// Space-Station pairing) has NO printed modifier, i.e. `None` = +0.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AcsAeroMatchup {
+    #[default]
+    None,
+    AeroVsWarship,
+    AeroVsDropship,
+    DropshipVsAero,
+    DropshipVsWarship,
+    WarshipVsAero,
+    WarshipVsDropship,
+}
+
+impl AcsAeroMatchup {
+    pub const ALL: [AcsAeroMatchup; 7] = [
+        Self::None,
+        Self::AeroVsWarship,
+        Self::AeroVsDropship,
+        Self::DropshipVsAero,
+        Self::DropshipVsWarship,
+        Self::WarshipVsAero,
+        Self::WarshipVsDropship,
+    ];
+
+    /// The to-hit modifier (IO:BF p.241): aero→WS −3, aero→DS −2, DS→aero +2, DS→WS −2, WS→aero +5,
+    /// WS→DS −1. No other pairing is printed (+0).
+    pub fn to_hit_mod(self) -> i64 {
+        match self {
+            Self::None => 0,
+            Self::AeroVsWarship => -3,
+            Self::AeroVsDropship => -2,
+            Self::DropshipVsAero => 2,
+            Self::DropshipVsWarship => -2,
+            Self::WarshipVsAero => 5,
+            Self::WarshipVsDropship => -1,
+        }
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::AeroVsWarship => "aero → WarShip",
+            Self::AeroVsDropship => "aero → DropShip",
+            Self::DropshipVsAero => "DropShip → aero",
+            Self::DropshipVsWarship => "DropShip → WarShip",
+            Self::WarshipVsAero => "WarShip → aero",
+            Self::WarshipVsDropship => "WarShip → DropShip",
+        }
+    }
+}
+
+/// Inputs to the ACS aerospace to-hit calculator (folio p.250 Aerospace To-Hit Modifiers Table +
+/// p.241 Master Modifier cross-type rows). The capital weapon-class / high-speed / point-defense /
+/// screen rows come from the shared [`SbfCapital`] leg (identical to the SBF p.191 subsystem).
+#[derive(Clone, Copy, Debug)]
+pub struct AcsAeroToHitCtx {
+    pub range: SbfRange,
+    pub attacker: AcsExperience,
+    pub target_tmm: i64,
+    /// The six large-craft cross-type rows (p.241).
+    pub matchup: AcsAeroMatchup,
+    /// The capital-scale leg (weapon class, high-speed, point-defense, screen, atmospheric, …); the
+    /// range-bracket reduction for capital classes is applied to `range` before the ladder lookup.
+    pub capital: Option<SbfCapital>,
+    /// The attacker's own morale rung and fatigue band (ACS attacker state, like the ground calc).
+    pub own_morale: AcsMorale,
+    pub fatigue: AcsFatigueBand,
+    /// Secondary target: +1 (p.250 — distinct from the ground +2).
+    pub secondary_target: bool,
+    /// Attacker is a Robotic Unit: +1 (p.250).
+    pub robotic: bool,
+    /// The attacking Formation is itself being attacked by another aerospace Formation: +2 (p.250).
+    pub attacked_by_aero: bool,
+    /// The target is a Recon Formation: +3 (p.250).
+    pub target_recon: bool,
+    /// The attacking aerospace Formation is more than 50% Large Aerospace: −2 (p.250).
+    pub over_half_large_aero: bool,
+    /// Hand-set sum of any remaining Master-Modifier rows the app doesn't model (orbit-to-surface
+    /// zone splits, SDS, atmospheric-interface gating, cumulative targeting-damage per hit, …).
+    pub misc_mod: i64,
+}
+
+impl Default for AcsAeroToHitCtx {
+    fn default() -> Self {
+        AcsAeroToHitCtx {
+            range: SbfRange::Medium,
+            attacker: AcsExperience::Regular,
+            target_tmm: 0,
+            matchup: AcsAeroMatchup::None,
+            capital: None,
+            own_morale: AcsMorale::Normal,
+            fatigue: AcsFatigueBand::Rested,
+            secondary_target: false,
+            robotic: false,
+            attacked_by_aero: false,
+            target_recon: false,
+            over_half_large_aero: false,
+            misc_mod: 0,
+        }
+    }
+}
+
+/// The modified 2D6 target number for an ACS aerospace attack (folio p.250 + p.241): base 4, the ACS
+/// attacker framework terms (experience / own morale / fatigue), the aero range ladder, and the
+/// aerospace-specific rows. Capital/sub-capital weapons drop the range bracket by 1 first.
+pub fn acs_aero_to_hit(c: &AcsAeroToHitCtx) -> i64 {
+    let range = match &c.capital {
+        Some(cap) => capital_range(c.range, cap.weapon_class),
+        None => c.range,
+    };
+    let mut tn = 4;
+    tn += c.attacker.to_hit_mod();
+    tn += sbf_range_mod(range);
+    tn += c.target_tmm;
+    tn += c.matchup.to_hit_mod();
+    if let Some(cap) = &c.capital {
+        tn += cap.to_hit_mod();
+    }
+    tn += c.own_morale.own_attack_mod();
+    tn += c.fatigue.combat_mod();
+    tn += i64::from(c.secondary_target);
+    tn += i64::from(c.robotic);
+    tn += 2 * i64::from(c.attacked_by_aero);
+    tn += 3 * i64::from(c.target_recon);
+    tn -= 2 * i64::from(c.over_half_large_aero);
+    tn += c.misc_mod;
+    tn
+}
+
+/// The aerospace damage-lookup range bracket for a shot — the same capital −1 reduction the to-hit
+/// applies (IO:BF p.190 "Capital Weapon Ranges").
+pub fn acs_aero_range(range: SbfRange, capital: Option<&SbfCapital>) -> SbfRange {
+    match capital {
+        Some(cap) => capital_range(range, cap.weapon_class),
+        None => range,
+    }
+}
+
+// ---- Aerospace Ground-Support Missions (IO:BF folio pp.251-252) ----
+
+/// CAP / Close Air Support (p.251): a CAP Formation gets −1 to its Engagement Control roll.
+pub const ACS_CAP_ENGAGEMENT_MOD: i64 = -1;
+/// Aerial Recon (p.251): the base −4 to the Reconnaissance roll (−3 if a hostile aero engages it,
+/// +2 if it loses air-to-air — those nuances are table-side).
+pub const ACS_AERIAL_RECON_MOD: i64 = -4;
+/// Ground Strike / Bombing base to-hit (p.251): the Formation's base TN is its Skill + 3.
+pub const ACS_GROUND_STRIKE_TOHIT: i64 = 3;
+
+/// Ground Strike damage per Combat Unit (p.251): one-half the Combat Unit's short-range damage
+/// (round normal).
+pub fn acs_ground_strike_damage(short: f32) -> i64 {
+    jround(short as f64 / 2.0)
+}
+
+/// Bomb delivery (p.251): the BOMB rating applied in 5-point clusters — the number of clusters.
+pub fn acs_bomb_clusters(bomb: i64) -> i64 {
+    if bomb <= 0 {
+        0
+    } else {
+        (bomb + 4) / 5
+    }
+}
+
+/// Orbit-to-Surface / Surface-to-Orbit PRIMARY damage (p.251): one-quarter (round UP) of the Combat
+/// Unit's damage value + 1, minimum 1.
+pub fn acs_orbit_to_surface_primary(damage: f32) -> i64 {
+    ((damage as f64 / 4.0).ceil() as i64 + 1).max(1)
+}
+
+/// Orbit-to-Surface SECONDARY damage (p.251): one-half the primary (round up). Scatter (5-6, same
+/// hex) does the same as a successful secondary.
+pub fn acs_orbit_to_surface_secondary(primary: i64) -> i64 {
+    (primary as f64 / 2.0).ceil() as i64
+}
+
+/// One row of the Combat Drop Results Table (IO:BF folio p.251), read by the Margin of Success.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AcsCombatDropResult {
+    /// The Drop Value row key (drives follow-on effects and, on a failed drop, the drop-damage %).
+    pub drop_value: i64,
+    /// Drop Damage: the % of the dropped Combat Units' initial Armor lost on a FAILED drop (0 = none).
+    pub drop_damage_pct: u8,
+    /// Combat Roll Modifier to the dropped units' first-turn attacks.
+    pub combat_roll_mod: i64,
+    /// Damage Modifier to the dropped units the turn they land (halve, round down, next turn; drop
+    /// once ≤ 0).
+    pub damage_mod: f32,
+    pub result: &'static str,
+}
+
+/// The Combat Drop Results Table (IO:BF folio p.251), keyed on the Combat Drop roll's Margin of
+/// Success (roll − TN 6). Better MoS = a tighter drop pattern. The `>12` boundary (folio) is treated
+/// as `>12`; a MoS of exactly 12 folds into the next band (a book gap).
+pub fn acs_combat_drop_result(mos: i64) -> AcsCombatDropResult {
+    let mk = |drop_value, drop_damage_pct, combat_roll_mod, damage_mod, result| AcsCombatDropResult {
+        drop_value,
+        drop_damage_pct,
+        combat_roll_mod,
+        damage_mod,
+        result,
+    };
+    if mos > 12 {
+        mk(5, 0, -4, 0.0, "Parade-ground precision")
+    } else if mos >= 9 {
+        mk(4, 0, -3, 0.0, "Concentrated avalanche")
+    } else if mos >= 6 {
+        mk(3, 0, -2, 0.0, "Strong pattern, little scattering")
+    } else if mos >= 3 {
+        mk(2, 0, -1, 0.0, "Adequate drop pattern")
+    } else if mos >= 0 {
+        mk(1, 0, 0, -0.1, "Scattered but effective")
+    } else if mos >= -3 {
+        mk(-1, 0, 1, -0.1, "Poor pattern, moderate scattering")
+    } else if mos >= -6 {
+        mk(-2, 5, 2, -0.2, "Scattered concentrations")
+    } else if mos >= -9 {
+        mk(-3, 10, 3, -0.4, "Scattered and disorganized")
+    } else if mos >= -12 {
+        mk(-4, 15, 4, -0.6, "Scattered beyond recovery")
+    } else {
+        mk(-5, 20, 5, -0.8, "Unmitigated disaster")
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1192,6 +1447,96 @@ mod tests {
             acs_morale_result(AcsDamageBand::NoDamage, 8),
             AcsMorale::Unsteady
         );
+    }
+
+    #[test]
+    fn aero_matchup_cross_type_rows() {
+        use AcsAeroMatchup::*;
+        // IO:BF p.241 Master Modifier cross-type rows.
+        assert_eq!(AeroVsWarship.to_hit_mod(), -3);
+        assert_eq!(AeroVsDropship.to_hit_mod(), -2);
+        assert_eq!(DropshipVsAero.to_hit_mod(), 2);
+        assert_eq!(DropshipVsWarship.to_hit_mod(), -2);
+        assert_eq!(WarshipVsAero.to_hit_mod(), 5);
+        assert_eq!(WarshipVsDropship.to_hit_mod(), -1);
+        assert_eq!(None.to_hit_mod(), 0);
+    }
+
+    #[test]
+    fn aero_to_hit_assembly() {
+        use crate::engine::large_craft::WeaponClass;
+        use crate::engine::sbf::SbfAcm;
+        let base = AcsAeroToHitCtx::default();
+        // Base 4 + Regular experience(−1) + Medium(+1) = 4.
+        assert_eq!(acs_aero_to_hit(&base), 4);
+        // WarShip→aero cross-type (+5) + secondary (+1): 4 + 5 + 1 = 10.
+        assert_eq!(
+            acs_aero_to_hit(&AcsAeroToHitCtx {
+                matchup: AcsAeroMatchup::WarshipVsAero,
+                secondary_target: true,
+                ..base
+            }),
+            10
+        );
+        // A CAP shot at Long: capital_range Long→Medium (+1) + CAP +3 (vs a non-large target):
+        // 4 − 1 + 1 + 3 = 7.
+        let cap = SbfCapital {
+            weapon_class: WeaponClass::Cap,
+            target_is_large_craft: false,
+            high_speed: false,
+            atmospheric: false,
+            point_defense: 0,
+            screen: 0,
+            naval_c3: false,
+            teleoperated: false,
+            crippled: false,
+            grappled: false,
+            acm: SbfAcm::Off,
+        };
+        assert_eq!(
+            acs_aero_to_hit(&AcsAeroToHitCtx { range: SbfRange::Long, capital: Some(cap), ..base }),
+            7
+        );
+        // ACS-specific rows on the base 4: robotic +1, attacked-by-aero +2, target-recon +3,
+        // >50% large aero −2 = 4 + 1 + 2 + 3 − 2 = 8.
+        assert_eq!(
+            acs_aero_to_hit(&AcsAeroToHitCtx {
+                robotic: true,
+                attacked_by_aero: true,
+                target_recon: true,
+                over_half_large_aero: true,
+                ..base
+            }),
+            8
+        );
+    }
+
+    #[test]
+    fn ground_support_mission_calculators() {
+        // Ground Strike ½ short (p.251); Bomb in 5-pt clusters.
+        assert_eq!(acs_ground_strike_damage(10.0), 5);
+        assert_eq!(acs_bomb_clusters(12), 3);
+        assert_eq!(acs_bomb_clusters(0), 0);
+        // Orbit-to-Surface: primary ¼(round up)+1 min 1; secondary ½ primary (round up).
+        assert_eq!(acs_orbit_to_surface_primary(10.0), 4);
+        assert_eq!(acs_orbit_to_surface_primary(0.0), 1);
+        assert_eq!(acs_orbit_to_surface_secondary(4), 2);
+        assert_eq!(acs_orbit_to_surface_secondary(3), 2);
+    }
+
+    #[test]
+    fn combat_drop_results_table() {
+        // IO:BF p.251 Combat Drop Results Table, by Margin of Success.
+        assert_eq!(acs_combat_drop_result(15).drop_value, 5);
+        assert_eq!(acs_combat_drop_result(10).drop_value, 4);
+        assert_eq!(acs_combat_drop_result(0).drop_value, 1);
+        assert_eq!(acs_combat_drop_result(0).damage_mod, -0.1);
+        let bad = acs_combat_drop_result(-8);
+        assert_eq!(bad.drop_value, -3);
+        assert_eq!(bad.drop_damage_pct, 10);
+        let worst = acs_combat_drop_result(-20);
+        assert_eq!(worst.drop_value, -5);
+        assert_eq!(worst.drop_damage_pct, 20);
     }
 
     #[test]
