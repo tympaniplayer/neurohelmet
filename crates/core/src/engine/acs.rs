@@ -944,6 +944,7 @@ mod tests {
                 l: Some(l),
                 e: None,
             },
+            arcs: None,
             skill,
             point_value: pv,
             suas: BTreeMap::new(),

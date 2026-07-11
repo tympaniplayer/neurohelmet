@@ -2826,7 +2826,7 @@ impl SbfUnitState {
 
 impl Session {
     /// The typed AS element for pool index `i` (skill = the tracked mech's gunnery).
-    fn sbf_element(&self, i: usize) -> AsElement {
+    pub fn sbf_element(&self, i: usize) -> AsElement {
         let tm = &self.mechs[i];
         as_element::as_element(&tm.spec.as_stats, &tm.spec.display_name(), tm.gunnery)
     }
@@ -2945,6 +2945,36 @@ impl Session {
                     .filter(|e| e.sbf_type.is_ground())
                     .any(|e| !e.has_any_sua(&["SOA", "LAM", "BIM"]))
             {
+                return false;
+            }
+        }
+        // Large-Aerospace Squadron composition (IO:BF p.183), advisory: each large craft is a
+        // single-element Flight, a Squadron takes at most one WarShip Flight and at most two
+        // Space-Station Flights (station-keeping). The 6-Flight cap is already the aero `max_units`.
+        let la: Vec<&'static str> = f
+            .units
+            .iter()
+            .filter(|u| matches!(self.sbf_unit(u).sbf_type, SbfElementType::La))
+            .filter_map(|u| {
+                let i = *u.elements.first()?;
+                Some(match self.sbf_element(i).as_type.as_str() {
+                    "WS" => "WS",
+                    "SS" => "SS",
+                    _ => "other", // DropShip / JumpShip family
+                })
+            })
+            .collect();
+        if !la.is_empty() {
+            if la.iter().filter(|t| **t == "WS").count() > 1 {
+                return false; // only one WarShip Flight per Squadron
+            }
+            if la.iter().filter(|t| **t == "SS").count() > 2 {
+                return false; // at most two Space-Station Flights (station-keeping)
+            }
+            // A large craft is one Flight = one element (only Satellites pair, and none are baked).
+            if f.units.iter().any(|u| {
+                matches!(self.sbf_unit(u).sbf_type, SbfElementType::La) && u.elements.len() != 1
+            }) {
                 return false;
             }
         }
@@ -6780,6 +6810,79 @@ mod tests {
             ..Default::default()
         });
         s
+    }
+
+    fn sbf_large_craft(tp: &str) -> crate::domain::Mech {
+        use crate::domain::{ArcCard, ArcDamage, FiringArc};
+        let ad = |s: &str| ArcDamage { s: s.into(), m: s.into(), l: s.into(), e: "0".into() };
+        crate::domain::Mech {
+            chassis: tp.into(),
+            model: "test".into(),
+            unit_type: crate::domain::UnitType::Aerospace,
+            as_stats: crate::domain::AsStats {
+                tp: tp.into(),
+                size: 2,
+                movement: if tp == "WS" { "2".into() } else { "0.2k".into() },
+                armor: 100,
+                structure: 30,
+                pv: 1000,
+                arcs: Some(ArcCard {
+                    front: FiringArc { std: ad("10"), ..Default::default() },
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            ..Default::default()
+        }
+    }
+
+    /// A Squadron of one large craft per Flight, by AS type code.
+    fn sbf_la_squadron(tps: &[&str]) -> Session {
+        let mut s = Session::new_with_mode(GameMode::StrategicBattleForce);
+        s.sbf.formations.clear();
+        for tp in tps {
+            s.mechs.push(TrackedMech::new(sbf_large_craft(tp)));
+        }
+        let units: Vec<SbfUnitState> = (0..tps.len())
+            .map(|k| SbfUnitState {
+                name: format!("Flight {}", k + 1),
+                elements: vec![k],
+                ..Default::default()
+            })
+            .collect();
+        s.sbf.formations.push(SbfFormationState {
+            name: "Squadron".into(),
+            units,
+            ..Default::default()
+        });
+        s
+    }
+
+    #[test]
+    fn sbf_large_aero_squadron_composition() {
+        // Large-Aerospace Squadron composition (IO:BF p.183), advisory: one large craft = one
+        // Flight; at most one WarShip Flight and at most two Space-Station Flights per Squadron.
+        let ok = sbf_la_squadron(&["WS", "DS", "DS"]);
+        assert!(ok.sbf_can_convert(&ok.sbf.formations[0]), "1 WarShip + DropShips is legal");
+        let two_ws = sbf_la_squadron(&["WS", "WS"]);
+        assert!(!two_ws.sbf_can_convert(&two_ws.sbf.formations[0]), "only one WarShip Flight");
+        let two_ss = sbf_la_squadron(&["SS", "SS"]);
+        assert!(two_ss.sbf_can_convert(&two_ss.sbf.formations[0]), "two Space Stations are legal");
+        let three_ss = sbf_la_squadron(&["SS", "SS", "SS"]);
+        assert!(
+            !three_ss.sbf_can_convert(&three_ss.sbf.formations[0]),
+            "at most two Space-Station Flights"
+        );
+        let seven = sbf_la_squadron(&["DS", "DS", "DS", "DS", "DS", "DS", "DS"]);
+        assert!(!seven.sbf_can_convert(&seven.sbf.formations[0]), "7 Flights bust the 6-Flight cap");
+        // A large craft is a single-element Flight: a WarShip Flight of two elements is illegal.
+        let mut fat = sbf_la_squadron(&["WS", "DS"]);
+        fat.mechs.push(TrackedMech::new(sbf_large_craft("DS")));
+        fat.sbf.formations[0].units[0].elements.push(2);
+        assert!(
+            !fat.sbf_can_convert(&fat.sbf.formations[0]),
+            "a large craft is a one-element Flight"
+        );
     }
 
     #[test]

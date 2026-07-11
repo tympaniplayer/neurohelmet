@@ -254,10 +254,12 @@ Phase 1 ✅ — DropShips + Small Craft in Standard BF (multi-arc card, DropShip
 builder; commits 8b0a5c9…543c255). **Phase 2 ✅ (2026-07-10)** — JumpShips / WarShips / Space Stations baked
 (433 large craft total, bundle v23); `BfCritCol::JumpShip` + `BfCrit::{KfDrive, Dock}` with the stateful
 crew/K-F/Dock/Door ladders; capital (CAP/SCAP/MSL) to-hit resolved via the **p.83 Advanced Combat Modifiers
-Table** (CAP+5/SCAP+3 vs small aerospace targets — *not* the p.191 capital-scale table, which is SBF). Still
-to come: SBF Advanced Strategic Aerospace (Phase 3, pp.182–196, the p.191 table + Squadron limits + the
-reachable `Warship` move mode) and ACS Abstract Combat Aerospace (Phase 4, pp.251–255) — both layer on the
-shared `large_craft.rs` engine.
+Table** (CAP+5/SCAP+3 vs small aerospace targets — *not* the p.191 capital-scale table, which is SBF). **Phase 3 ✅ (2026-07-10)** — SBF Advanced Strategic Aerospace: the 4-arc card threaded through the SBF Unit
+model (`SbfUnit.arcs`), the p.191 capital-scale to-hit as a `capital` leg on `SbfAeroShot` (full table +
+`capital_range` bracket-reduction + Random-Weapon-Class describe), advisory LA Squadron composition + attack
+limits, and the now-reachable `Warship` move mode (SBF has no Threshold — it reuses the below-half-armor crit
+gate). Still to come: ACS Abstract Combat Aerospace (Phase 4, pp.251–255) — layers on the shared
+`large_craft.rs` engine.
 
 Positional/table-side machinery stays out of scope as everywhere else: capital radar map, orbital
 mechanics, jump-point/space movement, altitude/velocity. Fuel consumption (Advanced/StratOps) remains

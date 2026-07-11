@@ -1,5 +1,6 @@
 ---
 source: crates/app/src/tui/mod.rs
+assertion_line: 3668
 expression: screen
 ---
 ┌ FORMATIONS · Round 0 · PV 40 ──┐╔ Squadron 1 ══════════════════╗┌ Flight 1 ──────────────────────┐
@@ -19,7 +20,7 @@ expression: screen
 │                ║  Terrain              +0                                       ║                │
 │                ║▶ Aero attack          air-to-air (+0)                          ║ each (min 1)   │
 │                ║  Aero target          airborne aero (+0)                       ║                │
-│                ║  Behind target (−2)   [ ]                                      ║                │
+│                ║  Behind target        [ ]                                      ║                │
 │                ║  Cluster bombs (−1)   [ ]                                      ║                │
 │                ║  (no TMM vs airborne — target movement/terrain suppressed)     ║                │
 │                ║                                                                ║                │

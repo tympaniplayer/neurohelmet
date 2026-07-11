@@ -1,6 +1,6 @@
 ---
 source: crates/app/src/tui/mod.rs
-assertion_line: 3344
+assertion_line: 3593
 expression: screen
 ---
 ┌ FORMATIONS · Round 0 · PV 69 ──┐╔ Lance 1 ═════════════════════╗┌ Lance 1 ───────────────────────┐
@@ -21,7 +21,7 @@ expression: screen
 │                   ║  Terrain              +0                                 ║ PV 69             │
 │                   ║  Aero attack          off                                ║                   │
 │                   ║  Aero target          —                                  ║                   │
-│                   ║  Behind target (−2)   [ ]                                ║                   │
+│                   ║  Behind target        [ ]                                ║                   │
 │                   ║  Cluster bombs (−1)   [ ]                                ║                   │
 │                   ║                                                          ║                   │
 │                   ║To-Hit   8+   (each firing unit rolls 2d6 ≥ 8)            ║                   │

@@ -140,9 +140,25 @@ pub fn arc_lines(card: &ArcCard, arc: Arc) -> Vec<(WeaponClass, DamageVector)> {
 
 /// Whether a single attack's damage meets the card's damage Threshold (triggers a crit roll — it
 /// does NOT bypass armor; IO:BF p.40). A `0`/absent threshold never triggers; minimal `0.5` damage
-/// can never meet an integer threshold ≥ 1.
+/// can never meet an integer threshold ≥ 1. Standard-BattleForce (Element-scale) only — SBF uses a
+/// below-half-armor crit gate instead (there is no Threshold at Strategic scale).
 pub fn threshold_triggered(single_attack_dmg: f32, threshold: u8) -> bool {
     threshold > 0 && single_attack_dmg >= threshold as f32
+}
+
+/// The Random Weapon Class pick (IO:BF p.190, 1D6): 1-2 Standard, 3-4 Capital non-missile, 5-6
+/// Capital/sub-capital missile. Used on an SBF "Weapon Damage" critical against a Flight that
+/// carries more than one weapon class in the struck arc, to pick which class the crit knocks out.
+/// The table has only three buckets — a sub-capital non-missile (`ScAp`) falls in the 3-4 "Capital
+/// non-missile" bucket (it is broken out only on the to-hit table). Returns `None` for a roll
+/// outside 1..=6.
+pub fn random_weapon_class(d6: u8) -> Option<WeaponClass> {
+    match d6 {
+        1 | 2 => Some(WeaponClass::Std),
+        3 | 4 => Some(WeaponClass::Cap),
+        5 | 6 => Some(WeaponClass::Msl),
+        _ => None,
+    }
 }
 
 /// The printed form of one class's damage in an arc (`"4/3/2/0*"`), preserving `0*` and rendering
@@ -206,6 +222,19 @@ mod tests {
         let lines: Vec<WeaponClass> = arc_lines(&c, Arc::Nose).into_iter().map(|(w, _)| w).collect();
         assert_eq!(lines, vec![WeaponClass::Std, WeaponClass::Msl], "Nose carries STD + MSL only");
         assert!(arc_lines(&c, Arc::Left).is_empty(), "an empty arc has no lines");
+    }
+
+    #[test]
+    fn random_weapon_class_buckets() {
+        // 1D6 → three buckets (p.190); SCAP folds into the 3-4 Capital-non-missile bucket.
+        assert_eq!(random_weapon_class(1), Some(WeaponClass::Std));
+        assert_eq!(random_weapon_class(2), Some(WeaponClass::Std));
+        assert_eq!(random_weapon_class(3), Some(WeaponClass::Cap));
+        assert_eq!(random_weapon_class(4), Some(WeaponClass::Cap));
+        assert_eq!(random_weapon_class(5), Some(WeaponClass::Msl));
+        assert_eq!(random_weapon_class(6), Some(WeaponClass::Msl));
+        assert_eq!(random_weapon_class(0), None);
+        assert_eq!(random_weapon_class(7), None);
     }
 
     #[test]

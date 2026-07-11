@@ -3678,6 +3678,50 @@ mod tests {
         assert!(render(&mut app).contains("(Medium strafing)"));
     }
 
+    fn app_with_sbf_large_craft(m: Mech) -> App {
+        let bundle = Bundle::new(vec![m.clone()]);
+        let mut session = Session::new_with_mode(GameMode::StrategicBattleForce);
+        session.add_mech(m);
+        session.sbf_group_doctrine(neurohelmet_core::session::SbfDoctrine::InnerSphere);
+        let mut app = App::new(bundle, session, "test".to_string());
+        app.dirty = false;
+        app
+    }
+
+    #[test]
+    fn e2e_sbf_capital_shot_builder() {
+        // A WarShip fields in SBF as a Large-Aerospace Flight that keeps its 4-arc capital card
+        // (not the collapsed single damage vector). The shot modal grows the p.191 capital rows.
+        let mut app = app_with_sbf_large_craft(sample_warship());
+        assert!(
+            app.sbf_firing_unit_is_large_craft(),
+            "the WarShip converts to a large-craft SBF unit carrying arcs"
+        );
+        press(&mut app, KeyCode::Char('t')); // open the SBF shot modal
+        // Row 10 = aero attack kind; switch Off → air-to-air so the capital leg builds.
+        for _ in 0..10 {
+            press(&mut app, KeyCode::Down);
+        }
+        press(&mut app, KeyCode::Char(' '));
+        let screen = render(&mut app);
+        assert!(screen.contains("Firing arc"), "arc picker row appears:\n{screen}");
+        assert!(screen.contains("Weapon class"), "weapon-class picker row appears");
+        assert!(screen.contains("attack limit 8/turn"), "WarShip per-Flight attack limit:\n{screen}");
+        assert!(screen.contains("Nose STD @"), "per-arc capital damage preview (default Nose STD)");
+
+        // Cycle the weapon class STD → CAP (row 15): the preview switches to CAP at the
+        // bracket-reduced range (Medium → Short) and the TN gains the CAP +3 (net +2 after −1 range).
+        let before = neurohelmet_core::engine::sbf::sbf_to_hit(&app.sbf_to_hit_ctx().unwrap());
+        for _ in 0..5 {
+            press(&mut app, KeyCode::Down); // row 10 → row 15 (weapon class)
+        }
+        press(&mut app, KeyCode::Char(' ')); // STD → CAP
+        let screen = render(&mut app);
+        assert!(screen.contains("Nose CAP @ Short"), "CAP fires at the reduced bracket:\n{screen}");
+        let after = neurohelmet_core::engine::sbf::sbf_to_hit(&app.sbf_to_hit_ctx().unwrap());
+        assert_eq!(after - before, 2, "CAP +3 minus the −1 capital range reduction = +2");
+    }
+
     #[test]
     fn e2e_sbf_ground_to_air_gate() {
         // A GROUND formation firing ground-to-air takes the +2 airborne target row (the p.179

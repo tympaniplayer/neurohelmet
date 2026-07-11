@@ -3511,6 +3511,23 @@ fn sbf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         "      10-11 both   12 unit destroyed",
         Style::default().fg(theme().dim),
     )));
+    // Large craft with more than one weapon class in an arc: a Weapon-Damage result hits only ONE
+    // class — the player rolls 1D6 on the Random Weapon Class table and applies the −1 to that
+    // class at the table (table-side; the arc card carries raw per-class damage).
+    if derived
+        .arcs
+        .as_ref()
+        .is_some_and(|c| large_craft::Arc::ALL.iter().any(|&a| large_craft::arc_lines(c, a).len() > 1))
+    {
+        lines.push(Line::from(Span::styled(
+            "large craft: on a Damage result roll 1D6 (Random Weapon Class):",
+            Style::default().fg(theme().warning),
+        )));
+        lines.push(Line::from(Span::styled(
+            "  1-2 STD   3-4 CAP (non-missile)   5-6 MSL — apply −1 at table (p.190)",
+            Style::default().fg(theme().dim),
+        )));
+    }
     lines.push(Line::from(Span::styled(
         "[↑↓] select   [←→/space] adjust   [Esc] close",
         Style::default().fg(theme().dim),
@@ -3560,7 +3577,14 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             format!("{} ({:+})", sbf_aero_target_label(a.target), a.target_mod()),
         ),
     };
-    let rows = [
+    let s = app.sbf_shot;
+    // Capital-scale (p.191) rows for a Large-Aerospace firing unit. They stay visible (so the
+    // player can pre-set them) but are only active — and only priced — once an aero kind is on,
+    // which is when the `capital` leg is built.
+    let large = app.sbf_firing_unit_is_large_craft();
+    let cap = aero.and_then(|a| a.capital);
+    let cap_active = cap.is_some();
+    let mut rows: Vec<(&str, String, bool)> = vec![
         ("Range", format!("{} (+{})", sbf_range_label(ctx.range), sbf_engine::sbf_range_mod(ctx.range)), true),
         ("Indirect fire", yn(ctx.indirect_fire).to_string(), true),
         ("Formation JUMP used", ctx.attacker_jump.to_string(), true),
@@ -3573,9 +3597,89 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         ("Terrain", format!("+{}", ctx.terrain), !suppressed),
         ("Aero attack", kind_val, true),
         ("Aero target", target_val, aero.is_some()),
-        ("Behind target (−2)", yn(app.sbf_shot.behind_target).to_string(), aero.is_some()),
-        ("Cluster bombs (−1)", yn(app.sbf_shot.cluster).to_string(), app.sbf_shot.aero_kind.is_bombing()),
+        ("Behind target", yn(s.behind_target).to_string(), aero.is_some()),
+        ("Cluster bombs (−1)", yn(s.cluster).to_string(), s.aero_kind.is_bombing()),
     ];
+    if large {
+        let pd = match s.point_defense {
+            0 => "0".to_string(),
+            1 => "1 (+1)".to_string(),
+            _ => "2+ (auto-fail)".to_string(),
+        };
+        let acm = match s.acm {
+            sbf_engine::SbfAcm::Off => "off",
+            sbf_engine::SbfAcm::SameSector => "same sector (+0)",
+            sbf_engine::SbfAcm::AdjacentSector => "adjacent (+2)",
+        };
+        rows.extend([
+            ("Firing arc", s.firing_arc.label().to_string(), cap_active),
+            ("Weapon class", s.weapon_class.label().to_string(), cap_active),
+            ("Target is large craft (waive)", yn(s.target_large_craft).to_string(), cap_active),
+            ("High-speed attack (+8)", yn(s.high_speed).to_string(), cap_active),
+            ("Atmospheric (+2)", yn(s.atmospheric).to_string(), cap_active),
+            ("Point defense (vs MSL)", pd, cap_active),
+            ("Screen launchers (SCR)", format!("+{}", (s.screen).min(4)), cap_active),
+            ("Naval C3 (−1)", yn(s.naval_c3).to_string(), cap_active),
+            ("Teleoperated MSL (−1)", yn(s.teleoperated).to_string(), cap_active),
+            ("Target crippled (−2)", yn(s.crippled).to_string(), cap_active),
+            ("Target grappled (−4)", yn(s.grappled).to_string(), cap_active),
+            ("Adv capital missile", acm.to_string(), cap_active),
+        ]);
+    }
+    // A large craft's row list is long; render the To-Hit + capital damage/limit summary at the
+    // TOP so it stays on-screen above the editor (mirrors the BF large-craft modal).
+    if large {
+        let n = sbf_engine::sbf_to_hit(&ctx);
+        lines.push(Line::from(Span::styled(
+            format!("To-Hit   {n}+   (2d6 ≥ {n} per attack)"),
+            Style::default().fg(theme().warning),
+        )));
+        if let Some(c) = cap {
+            let sbf = &app.session.sbf;
+            if let Some(u) = sbf
+                .formations
+                .get(sbf.active_formation)
+                .and_then(|f| f.units.get(sbf.active_unit))
+            {
+                if let Some(card) = app.session.sbf_unit(u).arcs {
+                    let eff = sbf_engine::capital_range(ctx.range, c.weapon_class);
+                    let dmg = large_craft::arc_damage(&card, s.firing_arc, c.weapon_class).band(eff);
+                    let dmg_str =
+                        if dmg == 0.5 { "0*".to_string() } else { format!("{}", dmg as u32) };
+                    let mut line = format!(
+                        "{} {} @ {}:  damage {dmg_str}",
+                        s.firing_arc.label(),
+                        s.weapon_class.label(),
+                        sbf_range_label(eff)
+                    );
+                    if let Some(lim) = u
+                        .elements
+                        .first()
+                        .map(|&i| app.session.sbf_element(i))
+                        .and_then(|e| sbf_engine::large_aero_attack_limit(&e.as_type))
+                    {
+                        line.push_str(&format!("   ·   attack limit {lim}/turn per Flight"));
+                    }
+                    lines.push(Line::from(Span::styled(
+                        line,
+                        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                    )));
+                }
+            }
+            if c.auto_fail() {
+                lines.push(Line::from(Span::styled(
+                    "point defense (2+) eliminates this capital-missile attack — AUTO-FAIL (p.191)",
+                    Style::default().fg(theme().warning),
+                )));
+            }
+        } else {
+            lines.push(Line::from(Span::styled(
+                "select an Aero attack to fire capital weapons (p.191)",
+                Style::default().fg(theme().dim),
+            )));
+        }
+        lines.push(Line::from(""));
+    }
     for (i, (name, val, active)) in rows.into_iter().enumerate() {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
@@ -3623,11 +3727,15 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         )));
     }
     lines.push(Line::from(""));
-    let n = sbf_engine::sbf_to_hit(&ctx);
-    lines.push(Line::from(Span::styled(
-        format!("To-Hit   {n}+   (each firing unit rolls 2d6 ≥ {n})"),
-        Style::default().fg(theme().warning),
-    )));
+    // Non-large-craft shots print the To-Hit here; a large craft has it (with its capital damage +
+    // attack-limit summary) at the TOP so it survives the long capital row list.
+    if !large {
+        let n = sbf_engine::sbf_to_hit(&ctx);
+        lines.push(Line::from(Span::styled(
+            format!("To-Hit   {n}+   (each firing unit rolls 2d6 ≥ {n})"),
+            Style::default().fg(theme().warning),
+        )));
+    }
     lines.push(Line::from(Span::styled(
         "target morale is manual — not a to-hit term (§4.3)",
         Style::default().fg(theme().dim),

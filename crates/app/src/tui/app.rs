@@ -322,10 +322,28 @@ pub struct SbfShotUi {
     pub aero_kind: SbfAeroUiKind,
     /// Aero target-type row (only read when `aero_kind` is on).
     pub aero_target: SbfAeroTarget,
-    /// Attacker is "behind" the target: −2 (p.179 Misc).
+    /// Attacker is "behind" the target: −2 (p.179 Misc), or −1 for a Large-Aerospace tailer.
     pub behind_target: bool,
     /// Cluster Bomb −1, folded into the bombing kinds at ctx build (inert for other kinds).
     pub cluster: bool,
+    // ---- Large-Aerospace capital-scale legs (IO:BF p.191); only read when the firing Unit is a
+    // large craft carrying an arc card. Each (firing_arc, weapon_class) is its own to-hit roll.
+    pub firing_arc: large_craft::Arc,
+    pub weapon_class: large_craft::WeaponClass,
+    /// The target is itself a large craft (DropShip/JumpShip/station/WarShip) — waives the
+    /// weapon-class penalty (p.191 Notes).
+    pub target_large_craft: bool,
+    pub high_speed: bool,
+    pub atmospheric: bool,
+    /// Defender point-defense damage assigned vs a missile attack (0/1/2+ — 2+ auto-fails).
+    pub point_defense: u8,
+    /// Screen-launcher rating in play (SCR#): +SCR to-hit, capped at +4.
+    pub screen: u8,
+    pub naval_c3: bool,
+    pub teleoperated: bool,
+    pub crippled: bool,
+    pub grappled: bool,
+    pub acm: sbf::SbfAcm,
 }
 
 /// The shot modal's aero attack-kind cycle: Off (ground shot) plus the SAS kinds (IO:BF
@@ -3050,6 +3068,20 @@ impl App {
             } else {
                 sbf::SbfSvFireControl::Afc // +0 — not a support vehicle, the row does not apply
             };
+            // A large craft (arc card) firing an aero attack uses the p.191 capital-scale table.
+            let capital = unit.arcs.is_some().then_some(sbf::SbfCapital {
+                weapon_class: s.weapon_class,
+                target_is_large_craft: s.target_large_craft,
+                high_speed: s.high_speed,
+                atmospheric: s.atmospheric,
+                point_defense: s.point_defense,
+                screen: s.screen,
+                naval_c3: s.naval_c3,
+                teleoperated: s.teleoperated,
+                crippled: s.crippled,
+                grappled: s.grappled,
+                acm: s.acm,
+            });
             sbf::SbfAeroShot {
                 kind,
                 target: s.aero_target,
@@ -3057,8 +3089,9 @@ impl App {
                 // test; grounded/landed nuance is out of scope (no landing/liftoff in std SAS).
                 attacker_airborne_aero: derived.is_aerospace(),
                 behind_target: s.behind_target,
-                grounded_dropship: false, // large-craft AS types are not baked (Open Q 20)
+                grounded_dropship: false,
                 sv_fire_control,
+                capital,
             }
         });
         Some(sbf::SbfToHitCtx {
@@ -3125,6 +3158,30 @@ impl App {
     /// row 3 = units withholding fire (−1 each, floor −2), rows 4–5 = spotting / secondary,
     /// rows 6–9 = hand-entered target TMM / jump points / evaded / terrain, rows 10–13 = the
     /// Strategic Aerospace leg (p.179): attack kind / target type / behind-target / cluster.
+    /// Whether the active SBF firing unit is a large craft (carries an arc card) — gates the
+    /// capital-scale rows in the shot modal.
+    pub(crate) fn sbf_firing_unit_is_large_craft(&self) -> bool {
+        self.sbf_active_unit().is_some_and(|(fi, ui)| {
+            self.session
+                .sbf
+                .formations
+                .get(fi)
+                .and_then(|f| f.units.get(ui))
+                .is_some_and(|u| self.session.sbf_unit(u).arcs.is_some())
+        })
+    }
+
+    /// SBF shot-editor rows: 14 base p.172/p.179 rows, plus the 12 capital-scale (p.191) rows a
+    /// large craft adds (firing arc + weapon class + ten modifier toggles).
+    const SBF_SHOT_BASE_ROWS: usize = 14;
+    fn sbf_shot_row_count(&self) -> usize {
+        if self.sbf_firing_unit_is_large_craft() {
+            Self::SBF_SHOT_BASE_ROWS + 12
+        } else {
+            Self::SBF_SHOT_BASE_ROWS
+        }
+    }
+
     fn sbf_shot_modal_key(&mut self, sel: usize, key: KeyEvent) {
         let adjust = |app: &mut App, delta: i32| match sel {
             0 => {
@@ -3181,7 +3238,40 @@ impl App {
                 app.sbf_shot.aero_target = ORDER[j];
             }
             12 => app.sbf_shot.behind_target = !app.sbf_shot.behind_target,
-            _ => app.sbf_shot.cluster = !app.sbf_shot.cluster,
+            13 => app.sbf_shot.cluster = !app.sbf_shot.cluster,
+            // ---- Large-Aerospace capital-scale rows (IO:BF p.191), only shown for a large craft.
+            14 => {
+                let all = large_craft::Arc::ALL;
+                let i = all.iter().position(|&a| a == app.sbf_shot.firing_arc).unwrap_or(0) as i32;
+                app.sbf_shot.firing_arc = all[(i + delta).rem_euclid(all.len() as i32) as usize];
+            }
+            15 => {
+                let all = large_craft::WeaponClass::ALL;
+                let i =
+                    all.iter().position(|&c| c == app.sbf_shot.weapon_class).unwrap_or(0) as i32;
+                app.sbf_shot.weapon_class = all[(i + delta).rem_euclid(all.len() as i32) as usize];
+            }
+            16 => app.sbf_shot.target_large_craft = !app.sbf_shot.target_large_craft,
+            17 => app.sbf_shot.high_speed = !app.sbf_shot.high_speed,
+            18 => app.sbf_shot.atmospheric = !app.sbf_shot.atmospheric,
+            19 => {
+                app.sbf_shot.point_defense =
+                    (app.sbf_shot.point_defense as i32 + delta).clamp(0, 2) as u8;
+            }
+            20 => app.sbf_shot.screen = (app.sbf_shot.screen as i32 + delta).clamp(0, 4) as u8,
+            21 => app.sbf_shot.naval_c3 = !app.sbf_shot.naval_c3,
+            22 => app.sbf_shot.teleoperated = !app.sbf_shot.teleoperated,
+            23 => app.sbf_shot.crippled = !app.sbf_shot.crippled,
+            24 => app.sbf_shot.grappled = !app.sbf_shot.grappled,
+            _ => {
+                use sbf::SbfAcm::*;
+                app.sbf_shot.acm = match (app.sbf_shot.acm, delta > 0) {
+                    (Off, true) => SameSector,
+                    (SameSector, true) | (AdjacentSector, true) => AdjacentSector,
+                    (AdjacentSector, false) => SameSector,
+                    (SameSector, false) | (Off, false) => Off,
+                };
+            }
         };
         /// Withholding is bounded by the formation's unit count (you can't withhold more units
         /// than you have).
@@ -3198,7 +3288,8 @@ impl App {
                 self.modal = Some(Modal::SbfShot { sel: sel.saturating_sub(1) });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::SbfShot { sel: (sel + 1).min(13) });
+                let last = self.sbf_shot_row_count().saturating_sub(1);
+                self.modal = Some(Modal::SbfShot { sel: (sel + 1).min(last) });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);

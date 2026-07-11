@@ -377,9 +377,20 @@ damage rescale — capital is a to-hit + crit-class distinction only.
 > make up to 16 attacks: 4 arcs × 4 classes, p.95); those are SBF rules. `WeaponClass::to_hit_mod` (CAP+3/
 > SCAP+2, p.191) is retained but marked SBF-only; the BF path uses the new `WeaponClass::bf_vs_small_mod`.
 
-**Phase 3 — SBF Advanced Strategic Aerospace.** The new `SbfCapitalShot` (p.191 table, kept separate from
-the built p.179), the Random Weapon Class 1D6 picker, Squadron composition + attack limits, the reachable
-`Warship` move mode. Depends on Phase-2 capital math.
+**Phase 3 — SBF Advanced Strategic Aerospace. ✅ COMPLETE (2026-07-10).** Threaded the 4-arc card through
+the SBF Unit model (`SbfUnit.arcs`, populated in `convert_unit` **only for `La`** — Small Craft are baked
+with a card but are a standard `As` Squadron in SBF, p.183). The capital-scale p.191 to-hit is a **`capital:
+Option<SbfCapital>` leg on the existing `SbfAeroShot`** (not a parallel `SbfCapitalShot` — the p.191 table
+shares the range ladder, target-type rows, and SV-fire-control ladder with the built p.179 table). Full
+p.191 legs: weapon-class `WeaponClass::to_hit_mod` (CAP+3/SCAP+2, waived vs large craft), the `capital_range`
+bracket-reduction −1 (to-hit **and** damage), High-Speed +8 (suppresses Naval-C3/Teleoperated/Point-Defense/
+Screen incl. the auto-fail), Atmospheric +2, Point-Defense (PNT#, 1→+1 / 2+→auto-fail vs missiles), Screen
+(SCR# max +4), Naval-C3 −1, Teleoperated −1, Crippled −2, Grappled −4, ACM same/adjacent (+0/+2), and the
+LA-tailer −1 behind adjustment. `random_weapon_class(1D6)` + a crit-modal describe note (table-side per the
+manual-dice doctrine — no persisted per-arc knockout). LA composition (WarShip ≤1, Space Station ≤2, each a
+1-element Flight) is advisory in `sbf_can_convert`; the per-Flight Attack Limits (DS/JS 4, SS 6, WS 8) are an
+advisory readout. `SbfMoveMode::Warship` is now reachable (WarShips bake). **SBF has NO Threshold** — the
+existing below-half-armor `crit_check_due` gate + generic SBF crit table already cover LA (single armor pool).
 
 **Phase 4 — ACS Abstract Combat Aerospace.** The aero range path (+Extreme), `AcsAeroToHitCtx`/damage
 mirroring p.252 + the Master Modifier (Aerospace) pp.242–243, Ground-Support missions, and the live

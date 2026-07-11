@@ -30,6 +30,7 @@
 //! integer `/2` is floor.
 
 use super::as_element::{jround, AsElement, DamageVector, SbfElementType, SuaVal};
+use super::large_craft::WeaponClass;
 use std::collections::BTreeMap;
 
 /// SBF movement mode (`SBFMovementMode.java`). Lower [`SbfMoveMode::rank`] = more restrictive.
@@ -144,7 +145,7 @@ pub fn mode_for_element(unit_is_aero: bool, el: &AsElement) -> SbfMoveMode {
             if matches!(t, "BM" | "PM" | "IM") {
                 MekWalk
             } else if t == "WS" {
-                Warship // unreachable in neurohelmet's catalog (no WS baked)
+                Warship // reachable since large-craft Phase 2 bakes WarShips (bare "N" thrust)
             } else if t == "BA" {
                 BaWalk
             } else {
@@ -218,6 +219,10 @@ pub struct SbfUnit {
     pub tmm: i64,
     pub armor: i64,
     pub damage: DamageVector,
+    /// The large-craft (Large Aerospace) multi-arc capital card, if this Unit is a large craft.
+    /// `None` for every other type — a fighter/ground Unit fires the single [`Self::damage`]
+    /// vector. An LA Flight is one large craft (composition §), so the card is that element's.
+    pub arcs: Option<crate::domain::ArcCard>,
     pub skill: i64,
     pub point_value: i64,
     pub suas: BTreeMap<String, SuaVal>,
@@ -765,6 +770,17 @@ pub fn convert_unit(name: &str, elems: &[AsElement]) -> SbfUnit {
     }
     let point_value = jround(result).max(1);
 
+    // (12) The large-craft capital card — only for a Large Aerospace (`La`) Unit. An LA Flight is a
+    // single large craft (a WarShip Flight is one WarShip — composition §), so the Unit's card is
+    // that element's. Gated on the `La` type, NOT merely on `arcs.is_some()`: Small Craft are baked
+    // with an arc card too (for BF) but are a standard `As` Squadron in SBF (p.183) and fire the
+    // single aggregated damage vector, not the p.191 capital path. `None` for fighters/ground/SC.
+    let arcs = if unit_type == SbfElementType::La {
+        elems.iter().find_map(|e| e.arcs.clone())
+    } else {
+        None
+    };
+
     SbfUnit {
         name: name.to_string(),
         sbf_type: unit_type,
@@ -777,6 +793,7 @@ pub fn convert_unit(name: &str, elems: &[AsElement]) -> SbfUnit {
         tmm,
         armor,
         damage,
+        arcs,
         skill,
         point_value,
         suas,
@@ -1037,9 +1054,95 @@ impl SbfSvFireControl {
     }
 }
 
-/// The Strategic Aerospace leg of a shot — the p.179 Aerospace To-Hit Modifiers Table, hand-entered
-/// like the rest of [`SbfToHitCtx`] (the radar-map positional procedure that *produces* these facts
-/// — engagement control, tailing, flight paths — stays at the table).
+/// Advanced Capital Missile sector targeting (IO:BF p.192): an ACM attack resolves at Extreme
+/// range; +0 if the target is in the same Capital Radar Map sector, +2 if adjacent. The sector
+/// geometry is table-side — the player asserts which applies.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SbfAcm {
+    #[default]
+    Off,
+    SameSector,
+    AdjacentSector,
+}
+
+/// The capital-scale leg of a Large-Aerospace shot (IO:BF p.191 Capital-Scale Aerospace To-Hit
+/// Modifiers Table). Rides inside [`SbfAeroShot`] as `capital: Some(..)`; `None` = the standard
+/// p.179 table. The range-bracket −1 for capital/sub-capital weapons is applied to the shot's
+/// range bracket by [`capital_range`] before [`sbf_range_mod`], not here.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SbfCapital {
+    /// Which weapon class this arc fires (one to-hit roll per class per arc, p.190).
+    pub weapon_class: WeaponClass,
+    /// The CAP+3 / SCAP+2 weapon-class penalty is WAIVED when the target is itself a large craft
+    /// (DropShip/JumpShip/station/WarShip) — the p.191 Notes.
+    pub target_is_large_craft: bool,
+    /// High-Speed Attack +8 (p.194). Suppresses the Naval C3, Teleoperated, Point-Defense and
+    /// Screen-Launcher rows (they "have no effect on a high-speed attack").
+    pub high_speed: bool,
+    /// Atmospheric Combat +2 — applies only when both attacker and target are at/below the
+    /// space-atmosphere interface.
+    pub atmospheric: bool,
+    /// Defender Point Defense (PNT#) assigned vs a capital/sub-capital MISSILE attack: 1 pt → +1,
+    /// 2+ pts → the attack auto-fails ([`Self::auto_fail`]).
+    pub point_defense: u8,
+    /// Screen Launchers used (SCR#): +SCR to-hit, capped at +4 (applies to both sides).
+    pub screen: u8,
+    /// Attacker in a Naval C3 network (target in the same sector): −1.
+    pub naval_c3: bool,
+    /// Teleoperated capital/sub-capital missile (TELE + MSL): −1.
+    pub teleoperated: bool,
+    /// Target crippled or adrift (Thrust loss / shutdown): −2.
+    pub crippled: bool,
+    /// Target has Grappled the attacker (boarding): −4.
+    pub grappled: bool,
+    /// Advanced Capital Missile sector targeting.
+    pub acm: SbfAcm,
+}
+
+impl SbfCapital {
+    /// The weapon-class penalty (p.191): CAP +3 / SCAP +2 / MSL,STD +0 — waived vs a large-craft
+    /// target (this is the SBF p.191 value, `WeaponClass::to_hit_mod`, NOT the BF p.83 table).
+    pub fn class_mod(&self) -> i64 {
+        if self.target_is_large_craft {
+            0
+        } else {
+            self.weapon_class.to_hit_mod() as i64
+        }
+    }
+
+    /// Whether the defender's point defense auto-fails this attack: 2+ points assigned vs a
+    /// capital/sub-capital missile (p.191). The to-hit number is then irrelevant. Point defense
+    /// "has no effect on a high-speed attack" (p.194), so a high-speed attack never auto-fails here.
+    pub fn auto_fail(&self) -> bool {
+        !self.high_speed && self.weapon_class == WeaponClass::Msl && self.point_defense >= 2
+    }
+
+    /// The summed capital-scale to-hit rows (p.191). A High-Speed Attack (+8) cannot be combined
+    /// with the Naval C3, Teleoperated, Point-Defense or Screen-Launcher rows (p.194), so those
+    /// are suppressed when `high_speed`.
+    pub fn to_hit_mod(&self) -> i64 {
+        let mut n = self.class_mod()
+            + 8 * i64::from(self.high_speed)
+            + 2 * i64::from(self.atmospheric)
+            - 2 * i64::from(self.crippled)
+            - 4 * i64::from(self.grappled)
+            + i64::from(matches!(self.acm, SbfAcm::AdjacentSector)) * 2;
+        if !self.high_speed {
+            if self.weapon_class == WeaponClass::Msl && self.point_defense == 1 {
+                n += 1;
+            }
+            n += (self.screen as i64).min(4);
+            n -= i64::from(self.naval_c3);
+            n -= i64::from(self.teleoperated);
+        }
+        n
+    }
+}
+
+/// The Strategic Aerospace leg of a shot — the p.179 Aerospace To-Hit Modifiers Table (or, when
+/// `capital` is set, the p.191 Capital-Scale table for a Large-Aerospace Squadron), hand-entered
+/// like the rest of [`SbfToHitCtx`] (the radar-map positional procedure that *produces* these
+/// facts — engagement control, tailing, flight paths — stays at the table).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SbfAeroShot {
     pub kind: SbfAeroKind,
@@ -1047,14 +1150,17 @@ pub struct SbfAeroShot {
     /// Gates the +2 airborne-aerospace target row: "Apply only if attacker is not an airborne
     /// aerospace Squadron" (p.179 fn). Derived from the firing formation's type.
     pub attacker_airborne_aero: bool,
-    /// Attacker is "behind" the target: −2 (p.179 Misc).
+    /// Attacker is "behind" the target: −2 (p.179 Misc). When `capital` is set (a Large-Aerospace
+    /// tailer), it is only −1 (p.189) — [`sbf_to_hit`] applies the adjustment.
     pub behind_target: bool,
-    /// Attacker is a grounded DropShip: −2 (p.179 Misc). Unreachable from the baked catalog
-    /// (large-craft AS types are not baked — spec Open Q 20); the row is priced anyway.
+    /// Attacker is a grounded DropShip: −2 (p.179 Misc).
     pub grounded_dropship: bool,
     /// The SV fire-control row (p.179 Misc) — supersedes the ctx's ground `bfc` row (both price
     /// the same fire control; applying both would double-count BFC).
     pub sv_fire_control: SbfSvFireControl,
+    /// The capital-scale (p.191) leg for a Large-Aerospace Squadron firing per-arc capital weapons;
+    /// `None` = a standard AS Squadron using the p.179 table.
+    pub capital: Option<SbfCapital>,
 }
 
 impl SbfAeroShot {
@@ -1092,13 +1198,50 @@ pub fn sbf_range_mod(r: SbfRange) -> i64 {
     }
 }
 
+/// The Large Aerospace Attack Limits Table (IO:BF p.190): the maximum weapon attacks per turn a
+/// single large-craft Flight may make, by AS type — DropShips/JumpShips 4, Space Stations 6,
+/// WarShips 8 (Satellites 4, but none are baked). `None` for non-large-craft types (Small Craft is
+/// a standard `As` Squadron, one attack per Flight). Advisory: neurohelmet shows it, never enforces.
+pub fn large_aero_attack_limit(as_type: &str) -> Option<u8> {
+    match as_type {
+        "DS" | "DA" | "JS" => Some(4),
+        "SS" => Some(6),
+        "WS" => Some(8),
+        _ => None,
+    }
+}
+
+/// The effective range bracket for a capital-scale weapon class (IO:BF p.190 "Capital Weapon
+/// Ranges"): capital and sub-capital weapons — including capital/sub-capital missiles — reduce the
+/// selected bracket by 1 (to a minimum of Short). Standard weapons keep their bracket. Feeds BOTH
+/// the to-hit range term and the per-arc damage lookup, so they stay consistent.
+pub fn capital_range(r: SbfRange, class: WeaponClass) -> SbfRange {
+    if !class.is_capital() {
+        return r;
+    }
+    match r {
+        SbfRange::Short | SbfRange::Medium => SbfRange::Short,
+        SbfRange::Long => SbfRange::Medium,
+        SbfRange::Extreme => SbfRange::Long,
+    }
+}
+
 /// SBF to-hit target number (§4.1, the p.172 table; with an [`SbfToHitCtx::aero`] leg, the p.179
 /// Aerospace To-Hit Modifiers Table): hit iff `2d6 >= n` ("equals or exceeds", Step 4 — no
 /// natural-2/12 auto results). Each firing unit rolls against this number.
 pub fn sbf_to_hit(atk: &SbfToHitCtx) -> i64 {
+    // Capital/sub-capital weapons reduce the chosen range bracket by 1 (p.190) — applied here so
+    // the range term matches the per-arc damage lookup.
+    let range = match &atk.aero {
+        Some(a) => match &a.capital {
+            Some(c) => capital_range(atk.range, c.weapon_class),
+            None => atk.range,
+        },
+        None => atk.range,
+    };
     let mut n = atk.attacker_skill
         + atk.firing_unit_targeting_crits as i64
-        + sbf_range_mod(atk.range)
+        + sbf_range_mod(range)
         + atk.indirect_fire as i64
         + atk.attacker_jump as i64
         - (atk.withheld_units as i64).min(2) // −1 per withholding unit, max −2
@@ -1117,6 +1260,14 @@ pub fn sbf_to_hit(atk: &SbfToHitCtx) -> i64 {
         // added +1 each, so add the aerospace difference.
         n += atk.firing_unit_targeting_crits as i64;
         n += a.kind.attack_mod() + a.target_mod() + a.misc_mod();
+        if let Some(c) = &a.capital {
+            n += c.to_hit_mod();
+            // Tailing a Large-Aerospace Squadron grants only −1, not the −2 in misc_mod (p.189) —
+            // add one back so an LA tailer nets −1.
+            if a.behind_target {
+                n += 1;
+            }
+        }
     }
     // Target movement + terrain — suppressed by air-to-air / ground-to-air / bombing (see
     // [`SbfAeroKind::suppresses_target_movement`]); strafe/strike keep them (Open Q 25).
@@ -1328,6 +1479,7 @@ mod tests {
             tmm: 2,
             armor: 5,
             damage: DamageVector { s: 3.0, m: 3.0, l: Some(2.0), e: Some(1.0) },
+            arcs: None,
             skill: 4,
             point_value: 20,
             suas: BTreeMap::new(),
@@ -1566,6 +1718,7 @@ mod tests {
             behind_target: false,
             grounded_dropship: false,
             sv_fire_control: SbfSvFireControl::Afc,
+            capital: None,
         }
     }
 
@@ -1625,6 +1778,129 @@ mod tests {
         // Cluster Bomb −1 rides on a bombing attack.
         assert_eq!(sbf_to_hit(&a2g(SbfA2G::AltitudeBombing { cluster: true })), 7);
         assert_eq!(sbf_to_hit(&a2g(SbfA2G::DiveBombing { cluster: true })), 6);
+    }
+
+    fn capital(weapon_class: WeaponClass) -> SbfCapital {
+        SbfCapital {
+            weapon_class,
+            target_is_large_craft: false,
+            high_speed: false,
+            atmospheric: false,
+            point_defense: 0,
+            screen: 0,
+            naval_c3: false,
+            teleoperated: false,
+            crippled: false,
+            grappled: false,
+            acm: SbfAcm::Off,
+        }
+    }
+
+    #[test]
+    fn small_craft_carries_no_capital_arcs_in_sbf() {
+        use crate::domain::{ArcCard, ArcDamage, FiringArc};
+        let card = ArcCard {
+            front: FiringArc {
+                std: ArcDamage { s: "5".into(), m: "5".into(), l: "3".into(), e: "0".into() },
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let mk = |tp: &str| {
+            let stats = AsStats {
+                tp: tp.into(),
+                size: 2,
+                movement: if tp == "WS" { "2".into() } else { "5p".into() },
+                armor: 10,
+                structure: 5,
+                arcs: Some(card.clone()),
+                ..Default::default()
+            };
+            as_element(&stats, tp, 4)
+        };
+        // A WarShip Flight (La) keeps its capital card...
+        assert!(convert_unit("WS", &[mk("WS")]).arcs.is_some());
+        // ...but a Small Craft is a standard `As` Squadron in SBF — no capital path (p.183), even
+        // though it is baked with an arc card for standard BattleForce.
+        assert!(convert_unit("SC", &[mk("SC")]).arcs.is_none());
+    }
+
+    #[test]
+    fn capital_range_reduction() {
+        use WeaponClass::*;
+        // Capital classes drop one bracket (min Short); standard weapons keep theirs (p.190).
+        assert_eq!(capital_range(SbfRange::Extreme, Cap), SbfRange::Long);
+        assert_eq!(capital_range(SbfRange::Long, ScAp), SbfRange::Medium);
+        assert_eq!(capital_range(SbfRange::Medium, Msl), SbfRange::Short);
+        assert_eq!(capital_range(SbfRange::Short, Cap), SbfRange::Short);
+        assert_eq!(capital_range(SbfRange::Long, Std), SbfRange::Long, "STD unaffected");
+    }
+
+    #[test]
+    fn capital_to_hit_rows() {
+        use WeaponClass::*;
+        let base = capital(Cap);
+        // Weapon class CAP +3 / SCAP +2 / MSL,STD +0 — waived vs a large-craft target (p.191).
+        assert_eq!(base.to_hit_mod(), 3);
+        assert_eq!(capital(ScAp).to_hit_mod(), 2);
+        assert_eq!(capital(Msl).to_hit_mod(), 0);
+        assert_eq!(
+            SbfCapital { target_is_large_craft: true, ..base }.to_hit_mod(),
+            0,
+            "weapon-class penalty waived vs a large-craft target"
+        );
+        // Additive rows.
+        assert_eq!(SbfCapital { atmospheric: true, ..base }.to_hit_mod(), 5);
+        assert_eq!(SbfCapital { crippled: true, ..base }.to_hit_mod(), 1);
+        assert_eq!(SbfCapital { grappled: true, ..base }.to_hit_mod(), -1);
+        assert_eq!(SbfCapital { acm: SbfAcm::AdjacentSector, ..base }.to_hit_mod(), 5);
+        assert_eq!(SbfCapital { screen: 7, ..base }.to_hit_mod(), 3 + 4, "SCR capped at +4");
+        assert_eq!(SbfCapital { naval_c3: true, teleoperated: true, ..base }.to_hit_mod(), 1);
+        // Point defense only bites a missile: 1 pt → +1; 2+ pts → auto-fail.
+        assert_eq!(SbfCapital { point_defense: 1, ..capital(Msl) }.to_hit_mod(), 1);
+        assert!(SbfCapital { point_defense: 2, ..capital(Msl) }.auto_fail());
+        assert!(!SbfCapital { point_defense: 1, ..capital(Msl) }.auto_fail());
+        assert!(
+            !SbfCapital { point_defense: 3, ..base }.auto_fail(),
+            "point defense only auto-fails missile attacks"
+        );
+        assert!(
+            !SbfCapital { point_defense: 2, high_speed: true, ..capital(Msl) }.auto_fail(),
+            "point defense has no effect on a high-speed attack (p.194)"
+        );
+        // High-Speed +8 keeps class + atmospheric but suppresses NC3 / teleoperated / PD / screen.
+        let hs = SbfCapital {
+            high_speed: true,
+            screen: 4,
+            naval_c3: true,
+            teleoperated: true,
+            atmospheric: true,
+            ..base
+        };
+        assert_eq!(hs.to_hit_mod(), 3 + 8 + 2);
+    }
+
+    #[test]
+    fn capital_shot_through_sbf_to_hit() {
+        // Air-to-air CAP at Long range vs a non-large target: skill 4 + (Long→Medium via capital
+        // −1 bracket = +1) + CAP +3 = 8. The +2 airborne row is gated off (attacker is aero).
+        let ctx = SbfToHitCtx {
+            range: SbfRange::Long,
+            aero: Some(SbfAeroShot { capital: Some(capital(WeaponClass::Cap)), ..aero(SbfAeroKind::AirToAir) }),
+            ..shot()
+        };
+        assert_eq!(sbf_to_hit(&ctx), 8);
+        // A Large-Aerospace tailer gets only −1 behind (not −2): 8 − 1 = 7.
+        let tail = SbfToHitCtx {
+            range: SbfRange::Long,
+            aero: Some(SbfAeroShot {
+                behind_target: true,
+                capital: Some(capital(WeaponClass::Cap)),
+                ..aero(SbfAeroKind::AirToAir)
+            }),
+            ..shot()
+        };
+        assert_eq!(sbf_to_hit(&tail), 7);
     }
 
     #[test]
