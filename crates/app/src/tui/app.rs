@@ -2635,8 +2635,11 @@ impl App {
     /// Export the current SBF session to a PDF record sheet (the `P` key; sibling of `--pdf`).
     /// Renders the live in-memory state, so it reflects exactly what's on screen.
     fn export_pdf(&mut self) {
-        if self.session.mode != GameMode::StrategicBattleForce {
-            self.status = "PDF export currently supports SBF sessions only".into();
+        if !matches!(
+            self.session.mode,
+            GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem
+        ) {
+            self.status = "PDF export supports BF, SBF, and ACS sessions only".into();
             return;
         }
         match crate::pdf::export_session(&self.session, &self.current_name, None) {
@@ -3373,6 +3376,7 @@ impl App {
             KeyCode::Char('M') => self.acs_cycle_formation_morale(),
             KeyCode::Char('f') => self.acs_accrue_fatigue(),
             KeyCode::Char('F') => self.acs_rest_fatigue(),
+            KeyCode::Char('P') => self.export_pdf(),
             KeyCode::Char('C') => {
                 if let Some((fi, ui)) = self.acs_active_unit() {
                     self.session.acs_set_commander(fi, ui);
@@ -3827,6 +3831,7 @@ impl App {
                 }
             }
             KeyCode::Char('?') => self.modal = Some(Modal::Help),
+            KeyCode::Char('P') => self.export_pdf(),
             // Skills on `s` (deviation note above); `b` sets the force PV limit.
             KeyCode::Char('s') => self.modal = Some(Modal::Skills { sel: 0 }),
             KeyCode::Char('b') => self.open_budget_input(),

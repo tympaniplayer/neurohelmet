@@ -103,7 +103,8 @@ fn main() -> color_eyre::Result<()> {
         return Ok(());
     }
 
-    // `--pdf <session> [outfile]`: render the SBF blank record sheets to one multi-page PDF.
+    // `--pdf <session> [outfile]`: render a BF/SBF/ACS session's blank record sheets to one
+    // multi-page PDF.
     if let Some(i) = args.iter().position(|a| a == "--pdf") {
         let Some(name) = args.get(i + 1).filter(|a| !a.starts_with("--")) else {
             eprintln!("usage: neurohelmet --pdf <session> [outfile]");

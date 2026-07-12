@@ -4381,6 +4381,7 @@ fn acs_help_modal_lines() -> Vec<Line<'static>> {
         row("↑↓ / kj", "previous / next Combat Unit"),
         header("General"),
         row("a / z", "add elements / undo"),
+        row("P", "export record-sheet PDF"),
         row("S / q", "sessions browser / quit"),
         Line::from(Span::styled("  press any key to close", Style::default().fg(theme().dim))),
     ]
@@ -5446,6 +5447,7 @@ fn bf_help_modal_lines() -> Vec<Line<'static>> {
         row("b", "set force point limit (PV)"),
         row("z", "undo"),
         row("a / D", "add / delete element"),
+        row("P", "export record-sheet PDF"),
         row("S", "sessions browser"),
         row("^t", "display picker (theme + layout)"),
         row("q", "quit"),

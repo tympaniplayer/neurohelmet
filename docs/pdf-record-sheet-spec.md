@@ -56,7 +56,14 @@ sheet field-maps.
 - **Roboto** is bundled for text (Apache-2.0) — the face Mekbay uses.
 - Per-element AS sub-rows are rendered (via `element_of`); a `maxWidth` approximation clamps long names
   and specials to their columns.
-- **Not yet built:** the BF and ACS sheets; their keybinds extend the same `P` action.
+- **BF and ACS are now shipped too (2026-07-12).** BF renders one page per Unit (+ an Unassigned page),
+  each element a card with its AS stat line, four-bracket damage row, blank Armor/Structure pip rows, a
+  `1 2 3 S` heat track, Specials, and a Destroyed box (`bf_sheets`/`bf_unit_svg`/`bf_element_card`). ACS
+  renders a Combat Unit sheet per `AcsCombatUnitState` (stat grid, 75/50/25% Morale-Check triggers,
+  Combat-Teams summary, blank Fatigue/Morale/COM/LEAD aids) plus one Formation Tracking sheet per force
+  (`acs_sheets`/`acs_combat_unit_svg`/`acs_formation_tracking_svg`). BF/ACS share a `begin_sheet`/
+  `end_sheet` scaffold with SBF. All three are on the `P` key and the `--pdf` verb. The ACS arm reads
+  Combat-Unit/Formation state straight off the `Session`, so no `export::render_turn` ACS arm was needed.
 
 ---
 

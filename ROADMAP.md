@@ -500,30 +500,41 @@ space-adaptive Alpha Strike card grid are in place. The following extensions rem
 
 Size: small-to-medium; render-layer only, with no data re-bake.
 
-### Print-to-PDF record-sheet export (BattleForce / ACS)
+### Print-to-PDF record-sheet export ✅ (2026-07-12 — all three modes)
 
-Neurohelmet renders print-ready record sheets to PDF for its abstract game modes. No direct PDF
-record-sheet export exists elsewhere in the MegaMek ecosystem for these systems — Strategic BattleForce
-and Alpha Strike cards are print-dialog "Save as PDF" only, and the Abstract Combat System (ACS) has no
-printable sheet at all — so this capability is net-new. The Strategic BattleForce (SBF) record sheet is
-implemented as a faithful port of MegaMek's `SBFRecordSheet.java`. Remaining:
+Neurohelmet renders print-ready record sheets to PDF for **all three** BattleForce-family modes. No
+direct PDF record-sheet export exists elsewhere in the MegaMek ecosystem for these systems — Strategic
+BattleForce and Alpha Strike cards are print-dialog "Save as PDF" only, and the Abstract Combat System
+(ACS) has no printable sheet at all — so this capability is net-new (strongest for ACS: nothing existed
+anywhere). Status:
 
-- **BattleForce (BF) formation record sheet.**
-- **Abstract Combat System (ACS) record sheet.**
+- **SBF** ✅ — a faithful port of MegaMek's `SBFRecordSheet.java` (one page per formation).
+- **BF** ✅ — one page per Unit (lance) + an "Unassigned" page for ungrouped pool elements; each
+  element prints its AS-card stat line, the four-bracket damage row, blank Armor/Structure pip rows,
+  a `1 2 3 S` heat track, Specials, and a Destroyed box. A Unit past six elements paginates onto a
+  `(cont.)` page. (`bf_sheets` / `bf_unit_svg` / `bf_element_card` in `pdf.rs`.)
+- **ACS** ✅ — a **Combat Unit** sheet per `AcsCombatUnitState` (header stat grid, 75/50/25%
+  Morale-Check triggers, the Combat-Teams summary, and blank Fatigue/Morale/COM/LEAD aids) plus one
+  **Formation Tracking** sheet per force (a box per non-empty Formation + force PV / Leadership).
+  (`acs_sheets` / `acs_combat_unit_svg` / `acs_formation_tracking_svg`.)
 
-**Approach.** Neurohelmet ships its own vector SVG record-sheet templates — modeled on the official CGL
-BattleForce Record Sheets as a layout reference only, never bundled — fills them with session data, and
-renders via `svg2pdf` + `usvg` (pure-Rust, offline). Templates ship under CC-BY-NC-SA-4.0 as original art
-carrying no BATTLETECH/Catalyst logos. The feature is exposed as a `--pdf <session> [outdir] [--blank]`
-CLI verb (a sibling of `--export`/`--publish`) plus an in-app key, offering a current-state default and a
-`--blank` pristine sheet, with one page per formation or unit. Full field inventories and the phase plan
-live in [docs/pdf-record-sheet-spec.md](docs/pdf-record-sheet-spec.md).
+**Approach (shipped).** Neurohelmet generates its own vector SVG sheets in code — modeled on the
+official CGL BattleForce Record Sheets as a layout reference only, never bundled — filled from the same
+derived stats the TUI shows and rendered via `svg2pdf` + `usvg` (pure-Rust, offline), assembled into one
+multi-page PDF with `pdf-writer`. BF/ACS share a `begin_sheet`/`end_sheet` scaffold (page, scaled
+1435×2000 sheet space, BT+CGL logos, titled banner, Topps/CGL notice) with the SBF sheet. The sheet is
+**always a pristine blank fill-in form** ([`make_blank`] strips all live state — the decided design, no
+`--blank` flag / no current-state variant). Exposed as the `--pdf <session> [outfile]` CLI verb and the
+in-app **`P`** key on all three screens. Full field inventories in
+[docs/pdf-record-sheet-spec.md](docs/pdf-record-sheet-spec.md).
 
-**ACS wiring.** The game-log export predates the ACS mode, so ACS PDF support additionally requires
-adding an ACS arm to `export::render_turn` and a `LogEntry.acs` field; BF needs neither and can ship
-first.
+**ACS wiring note (resolved).** The ACS sheets read Combat-Unit and Formation state from the `Session`
+directly (`acs_combat_unit` / `acs_formation`), so — unlike the game-log export — no `export::render_turn`
+ACS arm or `LogEntry.acs` field was needed for the PDF.
 
-Size: medium.
+**Deferred:** unit-type sheets for units neurohelmet doesn't field (DropShip/WarShip/JumpShip/Space
+Station/Squadron); byte-reproducible golden PDFs (tests assert structure — `%PDF`, MediaBox count, valid
+SVG — not exact bytes).
 
 ### Game log: additional export options
 

@@ -16,17 +16,18 @@
 
 //! Print-to-PDF record sheet export (ROADMAP §37; `docs/pdf-record-sheet-spec.md`).
 //!
-//! Phase 1 + Strategic BattleForce. We build **neurohelmet's own** vector record sheet as an SVG
-//! (no CGL/BattleTech artwork — the official sheets were a layout reference only) and convert it to
-//! a US-Letter PDF with `svg2pdf`. The SVG is generated programmatically because a formation holds a
-//! variable 1–4 Units; every value comes from the same derived stats the TUI shows
-//! (`Session::sbf_formation` / `sbf_unit` + the `SbfUnitState` live-state accessors), so the sheet
-//! matches the screen. Two variants: the live current-state sheet (default) and a pristine
-//! `--blank` fill-in form ([`make_blank`]).
+//! Covers all three BattleForce-family modes: **Strategic BattleForce** (a port of MegaMek's
+//! `SBFRecordSheet`), **Standard BattleForce** (one page per Unit), and the **Abstract Combat
+//! System** (a Combat-Unit sheet per Combat Unit + a Formation-Tracking sheet). We build
+//! **neurohelmet's own** vector record sheet as an SVG (no CGL/BattleTech artwork — the official
+//! sheets were a layout reference only) and convert it to a US-Letter PDF with `svg2pdf`. The SVG is
+//! generated programmatically; every value comes from the same derived stats the TUI shows, so the
+//! sheet matches the screen.
 //!
-//! One PDF per formation is written into the output dir (mirroring `--export`); combining them into a
-//! single multi-page "record-sheet book" is the follow-up (spec Open Q5), as are the BF and ACS
-//! sheets and per-element sub-rows.
+//! The sheet is always a **pristine blank fill-in form** — a printout exists to take a clean sheet to
+//! the table, so [`make_blank`] strips all live damage/heat/crits/morale before rendering. Pages are
+//! assembled into one multi-page PDF ([`svgs_to_pdf`]) — one page per formation (SBF/ACS) or per Unit
+//! (BF). Driven by the `--pdf <session>` CLI verb and the in-app `P` key.
 
 use neurohelmet_core::domain::GameMode;
 use neurohelmet_core::engine::as_element::{self, AsElement, DamageVector};
@@ -48,6 +49,13 @@ const CGL_LOGO: &[u8] = include_bytes!("../assets/logos/CGL_Logo.png");
 const PAGE_W: f32 = 612.0;
 const PAGE_H: f32 = 792.0;
 
+/// The internal sheet space every record sheet is drawn in (MegaMek's `SBFRecordSheet` canvas),
+/// scaled to fit a US-Letter page. BF/ACS reuse it so all three sheets share proportions.
+const SHEET_W: f32 = 1435.0;
+const SHEET_H: f32 = 2000.0;
+/// Underline grey shared across sheets (Java `Color.LIGHT_GRAY`).
+const LINE: &str = "rgb(192,192,192)";
+
 /// Export the Strategic BattleForce record sheets of session `name` to a single multi-page PDF
 /// (default `<sessions_dir>/<name>-sheets.pdf`, one page per formation). The sheet is always a
 /// **pristine fill-in form** — a printout exists to take a clean sheet to the table, so it never
@@ -58,8 +66,16 @@ pub fn run(name: &str, outfile: Option<PathBuf>) -> color_eyre::Result<()> {
         std::process::exit(2);
     };
     let path = export_session(&sess, name, outfile)?;
-    println!("Wrote SBF record sheet for '{}' → {}", name, path.display());
+    println!("Wrote record sheet for '{}' → {}", name, path.display());
     Ok(())
+}
+
+/// Whether `mode` has a PDF record sheet (the three BattleForce-family modes).
+fn mode_supported(mode: GameMode) -> bool {
+    matches!(
+        mode,
+        GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem
+    )
 }
 
 /// Render `sess`'s SBF formations to one multi-page PDF and write it to `out` (default
@@ -70,9 +86,9 @@ pub(crate) fn export_session(
     name: &str,
     out: Option<PathBuf>,
 ) -> color_eyre::Result<PathBuf> {
-    if sess.mode != GameMode::StrategicBattleForce {
+    if !mode_supported(sess.mode) {
         color_eyre::eyre::bail!(
-            "PDF export currently supports Strategic BattleForce sessions only (session is {:?}).",
+            "PDF export supports BattleForce, Strategic BattleForce, and ACS sessions only (session is {:?}).",
             sess.mode
         );
     }
@@ -94,10 +110,16 @@ pub(crate) fn export_session(
 pub(crate) fn render_session_pdf(sess: &Session) -> color_eyre::Result<Vec<u8>> {
     let mut sess = sess.clone();
     make_blank(&mut sess);
-    let svgs: Vec<String> =
-        sess.sbf.formations.iter().map(|fs| sbf_formation_svg(&sess, fs)).collect();
+    let svgs: Vec<String> = match sess.mode {
+        GameMode::StrategicBattleForce => {
+            sess.sbf.formations.iter().map(|fs| sbf_formation_svg(&sess, fs)).collect()
+        }
+        GameMode::BattleForce => bf_sheets(&sess),
+        GameMode::AbstractCombatSystem => acs_sheets(&sess),
+        other => color_eyre::eyre::bail!("PDF export does not support {other:?} sessions"),
+    };
     if svgs.is_empty() {
-        color_eyre::eyre::bail!("session has no SBF formations to export");
+        color_eyre::eyre::bail!("session has no formations/units to export");
     }
     svgs_to_pdf(&svgs, &svg_options())
 }
@@ -116,6 +138,7 @@ fn svg_options() -> svg2pdf::usvg::Options<'static> {
 /// crits, Normal morale, round 0. COM/LEAD designations are kept (they are pre-game roles, not
 /// battle damage).
 pub(crate) fn make_blank(sess: &mut Session) {
+    // SBF live state.
     sess.sbf.round = 0;
     for f in &mut sess.sbf.formations {
         f.morale = MoraleStatus::Normal;
@@ -127,6 +150,29 @@ pub(crate) fn make_blank(sess: &mut Session) {
             u.targeting_crits = 0;
             u.mp_crits = 0;
         }
+    }
+    // Standard BF live state: full armor/heat/crits on every pool element + Normal Unit morale.
+    sess.bf.round = 0;
+    for u in &mut sess.bf.units {
+        u.morale = session::BfMorale::Normal;
+    }
+    // ACS live state: full armor, no fatigue, Normal morale, round 0 (COM/LEAD roles preserved).
+    sess.acs.round = 0;
+    for f in &mut sess.acs.formations {
+        f.morale = neurohelmet_core::engine::acs::AcsMorale::Normal;
+        f.is_done = false;
+        for u in &mut f.units {
+            u.armor_hits = 0;
+            u.fatigue_points_x2 = 0;
+            u.morale = neurohelmet_core::engine::acs::AcsMorale::Normal;
+        }
+    }
+    // Per-element live state (armor/heat/crits) shared by BF (its cards read TrackedMech directly).
+    for tm in &mut sess.mechs {
+        tm.as_armor_hits = 0;
+        tm.as_struct_hits = 0;
+        tm.as_heat = 0;
+        tm.bf = session::BfLive::default();
     }
 }
 
@@ -185,6 +231,57 @@ fn svgs_to_pdf(svgs: &[String], opt: &svg2pdf::usvg::Options) -> color_eyre::Res
     }
 
     Ok(pdf.finish())
+}
+
+/// Open a record-sheet SVG: the 612×792 page, a white fill, and a group that scales the
+/// [`SHEET_W`]×[`SHEET_H`] sheet space to fit, with the BattleTech + Catalyst logos and the titled
+/// banner already drawn. Content is written into the returned buffer (still inside the scaled
+/// group); close with [`end_sheet`]. The banner takes one or two title lines. Shared by the BF and
+/// ACS sheets; the SBF sheet predates this and inlines the same scaffold.
+fn begin_sheet(title: &[&str]) -> String {
+    let m = 18.0_f32;
+    let scale = ((PAGE_W - 2.0 * m) / SHEET_W).min((PAGE_H - 2.0 * m) / SHEET_H);
+    let tx = (PAGE_W - SHEET_W * scale) / 2.0;
+    let ty = (PAGE_H - SHEET_H * scale) / 2.0;
+
+    let mut b = String::with_capacity(24576);
+    let _ = write!(
+        b,
+        r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{PAGE_W}" height="{PAGE_H}" viewBox="0 0 {PAGE_W} {PAGE_H}">"#
+    );
+    let _ = write!(b, r#"<rect x="0" y="0" width="{PAGE_W}" height="{PAGE_H}" fill="white"/>"#);
+    let _ = write!(b, r#"<g transform="translate({tx:.2} {ty:.2}) scale({scale:.4})">"#);
+
+    // Logos: BattleTech (top-left) + Catalyst (top-right), as MegaMek's SBFRecordSheet draws them.
+    image(&mut b, -23.0, 10.0, 722.0, 125.0, BT_LOGO);
+    image(&mut b, 1287.0, 45.0, 125.0, 72.0, CGL_LOGO);
+
+    // Title banner (same chamfered outline as the SBF sheet).
+    stroke_poly(
+        &mut b,
+        &[(732.0, 60.0), (732.0, 55.0), (756.0, 32.0), (1401.0, 32.0), (1424.0, 55.0), (1424.0, 107.0), (1401.0, 130.0), (756.0, 130.0), (732.0, 107.0), (732.0, 60.0)],
+        "black",
+        5.0,
+    );
+    match title {
+        [one] => txtw(&mut b, 1019.0, 81.0, 30.0, true, "middle", true, "black", 440.0, one),
+        [one, two] => {
+            txtw(&mut b, 1019.0, 63.0, 28.0, true, "middle", true, "black", 440.0, one);
+            txtw(&mut b, 1019.0, 100.0, 28.0, true, "middle", true, "black", 440.0, two);
+        }
+        _ => {}
+    }
+    b
+}
+
+/// Close a sheet opened with [`begin_sheet`]: draw the verbatim Topps/CGL record-sheet notice (as
+/// MegaMek prints it, so the sheet reads as the real thing) and close the group + SVG.
+fn end_sheet(b: &mut String) {
+    let _ = write!(b, r#"<g transform="translate(0 1960)">"#);
+    txt(b, 717.0, 0.0, 18.0, false, "middle", false, "black", "(C) 2024 The Topps Company, Inc. BattleTech, 'Mech and BattleMech are trademarks of the Topps Company, Inc. All rights reserved.");
+    txt(b, 717.0, 22.0, 18.0, false, "middle", false, "black", "Catalyst Game Labs and the Catalyst Game Labs logo are trademarks of InMediaRes Production, LLC. Permission to photocopy for personal use.");
+    b.push_str("</g>");
+    b.push_str("</g></svg>");
 }
 
 /// One formation's record sheet as an SVG document (612×792, US Letter).
@@ -369,6 +466,364 @@ fn sbf_formation_svg(sess: &Session, fs: &SbfFormationState) -> String {
     b.push_str("</g>");
 
     b.push_str("</g></svg>");
+    b
+}
+
+// ==== Standard BattleForce (BF) record sheet ===================================================
+
+/// Standard BattleForce record sheets — **one page per BF Unit** (its lance of elements), plus a
+/// page for any Unassigned pool elements (BF allows ungrouped single-element Units, p.51). A Unit
+/// with more elements than a page's slots paginates onto a `(cont.)` page. Always blank
+/// ([`make_blank`] has already reset live state), so each element prints its static AS-card stats
+/// with empty armor/structure pip rows and heat track to fill in at the table.
+fn bf_sheets(sess: &Session) -> Vec<String> {
+    use std::collections::BTreeSet;
+    const PER_PAGE: usize = 6;
+    let mut sheets = Vec::new();
+    let mut assigned: BTreeSet<usize> = BTreeSet::new();
+
+    for u in &sess.bf.units {
+        for &e in &u.elements {
+            assigned.insert(e);
+        }
+        let els: Vec<usize> =
+            u.elements.iter().copied().filter(|&i| i < sess.mechs.len()).collect();
+        if els.is_empty() {
+            continue; // an empty Unit (e.g. the default "Unit 1") has nothing to print
+        }
+        for (pi, chunk) in els.chunks(PER_PAGE).enumerate() {
+            sheets.push(bf_unit_svg(sess, &u.name, chunk, Some(u), pi > 0));
+        }
+    }
+    let unassigned: Vec<usize> =
+        (0..sess.mechs.len()).filter(|i| !assigned.contains(i)).collect();
+    for (pi, chunk) in unassigned.chunks(PER_PAGE).enumerate() {
+        sheets.push(bf_unit_svg(sess, "Unassigned", chunk, None, pi > 0));
+    }
+    sheets
+}
+
+/// One BF Unit page: a header block (Unit Name / Move / Size / PV / Morale / Notes) over up to six
+/// element cards. `unit` is `None` for the Unassigned page (no Unit-level aggregates).
+fn bf_unit_svg(
+    sess: &Session,
+    name: &str,
+    elements: &[usize],
+    unit: Option<&session::BfUnitState>,
+    cont: bool,
+) -> String {
+    use neurohelmet_core::engine::battleforce;
+    let mut b = begin_sheet(&["STANDARD BATTLEFORCE", "UNIT RECORD SHEET"]);
+
+    // ── Unit header block ──
+    stroke_poly(&mut b, &[(104.0, 167.0), (1401.0, 167.0), (1424.0, 193.0), (1424.0, 276.0), (1401.0, 302.0), (24.0, 302.0), (0.0, 276.0), (0.0, 193.0), (24.0, 167.0), (104.0, 167.0)], "black", 5.0);
+    fill_poly(&mut b, &[(11.0, 198.0), (30.0, 179.0), (174.0, 179.0), (193.0, 198.0), (174.0, 217.0), (30.0, 217.0), (11.0, 198.0)], "black");
+    txtw(&mut b, 102.0, 198.0, 30.0, true, "middle", true, "white", 140.0, "UNIT:");
+    for (x, lbl) in [(660.0, "Move"), (760.0, "Size"), (850.0, "PV"), (960.0, "Morale")] {
+        txt(&mut b, x, 210.0, 22.0, true, "middle", true, "black", lbl);
+    }
+    txt(&mut b, 1070.0, 210.0, 22.0, true, "start", true, "black", "Notes");
+    let title = if cont { format!("{name} (cont.)") } else { name.to_string() };
+    txtw(&mut b, 210.0, 260.0, 26.0, false, "start", true, "black", 420.0, &title);
+    if let Some(u) = unit {
+        let members = bf_member_stats(sess, &u.elements);
+        let (mv, jump) = battleforce::bf_unit_mv(&members);
+        let mv_str = match jump {
+            Some(j) => format!("{mv} (j{j})"),
+            None => mv.to_string(),
+        };
+        let pv: u64 = u
+            .elements
+            .iter()
+            .filter_map(|&i| sess.mechs.get(i))
+            .map(|tm| tm.point_cost(GameMode::BattleForce))
+            .sum();
+        txt(&mut b, 660.0, 260.0, 24.0, false, "middle", true, "black", &mv_str);
+        txt(&mut b, 760.0, 260.0, 24.0, false, "middle", true, "black", &u.size.to_string());
+        txt(&mut b, 850.0, 260.0, 24.0, false, "middle", true, "black", &pv.to_string());
+        txt(&mut b, 960.0, 260.0, 24.0, false, "middle", true, "black", u.morale.label());
+        txtw(&mut b, 1070.0, 260.0, 22.0, false, "start", true, "black", 330.0, &u.notes);
+    }
+
+    // ── Element cards ──
+    for (i, &idx) in elements.iter().enumerate() {
+        let Some(tm) = sess.mechs.get(idx) else { continue };
+        bf_element_card(&mut b, tm, 355.0 + 262.0 * i as f32);
+    }
+
+    end_sheet(&mut b);
+    b
+}
+
+/// One BF element card at vertical offset `yoff` (sheet space): the static AS-card stat line, the
+/// four-bracket damage row, blank Armor/Structure pip rows and Heat track, and the Specials line.
+fn bf_element_card(b: &mut String, tm: &TrackedMech, yoff: f32) {
+    use neurohelmet_core::engine::alpha_strike::movement_hexes;
+    use neurohelmet_core::engine::battleforce::bf_is_aero;
+    let a = &tm.spec.as_stats;
+    let el = element_of(tm);
+    let aero = bf_is_aero(&el);
+    let _ = write!(b, r#"<g transform="translate(0 {yoff:.1})">"#);
+
+    // Card outline.
+    stroke_poly(b, &[(0.0, 0.0), (1435.0, 0.0), (1435.0, 240.0), (0.0, 240.0), (0.0, 0.0)], "black", 3.0);
+
+    // Row 1: name + stat cells.
+    txtw(b, 18.0, 40.0, 27.0, true, "start", true, "black", 470.0, &tm.spec.display_name());
+    let tmm_lbl = if aero { "TH" } else { "TMM" };
+    let tmm_val = if aero { a.threshold.to_string() } else { a.tmm.to_string() };
+    let cells = [
+        (560.0, "Type", el.as_type.clone()),
+        (645.0, "Size", if a.size == 0 { "-".into() } else { a.size.to_string() }),
+        (740.0, "MV", movement_hexes(&a.movement)),
+        (880.0, tmm_lbl, tmm_val),
+        (965.0, "OV", a.overheat.to_string()),
+        (1045.0, "Skill", format!("{}+", tm.gunnery)),
+        (1130.0, "PV", a.pv.to_string()),
+    ];
+    for (x, lbl, val) in &cells {
+        txt(b, *x, 22.0, 18.0, true, "middle", true, "black", lbl);
+        txtw(b, *x, 52.0, 24.0, false, "middle", true, "black", 90.0, val);
+    }
+    // Destroyed checkbox (top-right corner).
+    let _ = write!(b, r#"<rect x="1240" y="18" width="26" height="26" fill="none" stroke="black" stroke-width="3"/>"#);
+    txt(b, 1278.0, 37.0, 20.0, true, "start", true, "black", "DESTROYED");
+
+    // Row 2: damage brackets S(+0) M(+2) L(+4) E(+6).
+    txt(b, 18.0, 100.0, 22.0, true, "start", true, "black", "Damage");
+    let dv = &el.std_damage;
+    let dmg_cells = [
+        (300.0, "S (+0)", num(dv.s)),
+        (470.0, "M (+2)", num(dv.m)),
+        (640.0, "L (+4)", opt_num(dv.l)),
+        (810.0, "E (+6)", opt_num(dv.e)),
+    ];
+    for (x, lbl, val) in &dmg_cells {
+        txt(b, *x, 92.0, 20.0, true, "middle", true, "black", lbl);
+        txt(b, *x, 122.0, 24.0, false, "middle", true, "black", val);
+    }
+
+    // Rows 3–4: Armor / Structure pip rows (blank circles to strike off).
+    txt(b, 18.0, 158.0, 22.0, true, "start", true, "black", "Armor");
+    pips(b, 200.0, 152.0, u16::from(a.armor), 40);
+    txt(b, 18.0, 195.0, 22.0, true, "start", true, "black", "Struct");
+    pips(b, 200.0, 189.0, u16::from(a.structure), 40);
+
+    // Row 5: heat track + specials.
+    txt(b, 18.0, 226.0, 20.0, true, "start", true, "black", "Heat");
+    for (j, lbl) in ["1", "2", "3", "S"].iter().enumerate() {
+        let x = 110.0 + 46.0 * j as f32;
+        let _ = write!(b, r#"<rect x="{x:.1}" y="212" width="30" height="24" fill="none" stroke="black" stroke-width="2"/>"#);
+        txt(b, x + 15.0, 226.0, 17.0, false, "middle", true, "black", lbl);
+    }
+    let specials = suas(&el.suas);
+    if !specials.is_empty() {
+        txt(b, 360.0, 226.0, 20.0, true, "start", true, "black", "Specials:");
+        txtw(b, 480.0, 226.0, 20.0, false, "start", true, "black", 930.0, &specials);
+    }
+
+    b.push_str("</g>");
+}
+
+/// The `(ground-hex, jump-hex, alive)` member tuples [`battleforce::bf_unit_mv`] needs, built from
+/// the pool for the always-blank sheet (every element alive, no heat/crit degradation).
+fn bf_member_stats(sess: &Session, elements: &[usize]) -> Vec<(u32, Option<u32>, bool)> {
+    use neurohelmet_core::engine::alpha_strike::inches_to_hexes;
+    use neurohelmet_core::engine::battleforce::bf_is_aero;
+    elements
+        .iter()
+        .filter_map(|&i| sess.mechs.get(i))
+        .map(|tm| {
+            let el = element_of(tm);
+            let ground = if bf_is_aero(&el) { el.primary_move } else { inches_to_hexes(el.primary_move) };
+            let jump = (el.jump_move > 0).then(|| inches_to_hexes(el.jump_move));
+            (ground, jump, true)
+        })
+        .collect()
+}
+
+/// Draw `n` blank pip circles from (x, y), wrapping every `per_row`. Used for BF armor/structure.
+fn pips(b: &mut String, x: f32, y: f32, n: u16, per_row: u16) {
+    const R: f32 = 8.0;
+    const GAP: f32 = 22.0;
+    for i in 0..n {
+        let col = (i % per_row) as f32;
+        let row = (i / per_row) as f32;
+        let cx = x + col * GAP + R;
+        let cy = y + row * GAP + R;
+        let _ = write!(
+            b,
+            r#"<circle cx="{cx:.1}" cy="{cy:.1}" r="{R}" fill="none" stroke="black" stroke-width="2"/>"#
+        );
+    }
+}
+
+// ==== Abstract Combat System (ACS) record sheets ===============================================
+
+/// ACS record sheets — one **Combat Unit** sheet per `AcsCombatUnitState` (p.18: the Armor pool +
+/// damage line + Morale-Check triggers + its Combat-Teams summary), followed by a single **Formation
+/// Tracking** sheet (p.19) for the whole force. Ground-only v1. Always blank.
+fn acs_sheets(sess: &Session) -> Vec<String> {
+    let mut sheets = Vec::new();
+    for f in &sess.acs.formations {
+        for cu in &f.units {
+            sheets.push(acs_combat_unit_svg(sess, &f.name, cu));
+        }
+    }
+    if sess.acs.formations.iter().any(|f| !f.units.is_empty()) {
+        sheets.push(acs_formation_tracking_svg(sess));
+    }
+    sheets
+}
+
+/// One ACS Combat Unit record sheet (p.18).
+fn acs_combat_unit_svg(sess: &Session, formation: &str, cu: &session::AcsCombatUnitState) -> String {
+    let d = sess.acs_combat_unit(cu);
+    let mut b = begin_sheet(&["ABSTRACT COMBAT SYSTEM", "COMBAT UNIT RECORD SHEET"]);
+
+    // ── Combat Unit header block ──
+    stroke_poly(&mut b, &[(104.0, 167.0), (1401.0, 167.0), (1424.0, 193.0), (1424.0, 355.0), (1401.0, 381.0), (24.0, 381.0), (0.0, 355.0), (0.0, 193.0), (24.0, 167.0), (104.0, 167.0)], "black", 5.0);
+    fill_poly(&mut b, &[(11.0, 198.0), (30.0, 179.0), (280.0, 179.0), (299.0, 198.0), (280.0, 217.0), (30.0, 217.0), (11.0, 198.0)], "black");
+    txtw(&mut b, 155.0, 198.0, 28.0, true, "middle", true, "white", 240.0, "COMBAT UNIT:");
+    txtw(&mut b, 320.0, 200.0, 26.0, false, "start", true, "black", 500.0, &cu.name);
+    txtw(&mut b, 900.0, 200.0, 20.0, false, "start", true, "black", 500.0, &format!("Formation: {formation}"));
+
+    // Stat grid (two rows of labelled cells).
+    let stat_cells = [
+        (60.0, "Type", type_label(&format!("{:?}", d.acs_type))),
+        (150.0, "Size", d.size.to_string()),
+        (250.0, "Move", format!("{}{}", d.movement, d.move_mode.code())),
+        (380.0, "TranspMP", format!("{}{}", d.trsp_movement, d.trsp_mode.code())),
+        (510.0, "TMM", d.tmm.to_string()),
+        (600.0, "ARM", d.armor.to_string()),
+        (710.0, "S/M/L/E", dmg_string(&d.damage)),
+        (860.0, "Tactics", d.tactics.to_string()),
+        (960.0, "Morale", d.morale_rating.to_string()),
+        (1060.0, "Skill", d.skill.to_string()),
+        (1150.0, "PV", d.point_value.to_string()),
+    ];
+    for (x, lbl, val) in &stat_cells {
+        txt(&mut b, *x, 250.0, 20.0, true, "middle", true, "black", lbl);
+        txtw(&mut b, *x, 282.0, 24.0, false, "middle", true, "black", 110.0, val);
+    }
+    // Specials + Morale-check triggers.
+    txt(&mut b, 24.0, 330.0, 20.0, true, "start", true, "black", "Specials:");
+    txtw(&mut b, 140.0, 330.0, 20.0, false, "start", true, "black", 620.0, &suas(&d.suas));
+    txt(&mut b, 800.0, 330.0, 20.0, true, "start", true, "black", "Morale Check Triggers (Armor):");
+    let [t75, t50, t25] = d.damage_thresholds;
+    txtw(&mut b, 1180.0, 330.0, 20.0, false, "start", true, "black", 230.0, &format!("75%: {t75}    50%: {t50}    25%: {t25}"));
+
+    // ── Combat Teams summary ──
+    let _ = write!(b, r#"<g transform="translate(0 420)">"#);
+    stroke_poly(&mut b, &[(104.0, 0.0), (1401.0, 0.0), (1424.0, 26.0), (1424.0, 470.0), (1401.0, 496.0), (24.0, 496.0), (0.0, 470.0), (0.0, 26.0), (24.0, 0.0), (104.0, 0.0)], "black", 5.0);
+    fill_poly(&mut b, &[(11.0, 31.0), (30.0, 12.0), (300.0, 12.0), (319.0, 31.0), (300.0, 50.0), (30.0, 50.0), (11.0, 31.0)], "black");
+    txtw(&mut b, 165.0, 31.0, 26.0, true, "middle", true, "white", 260.0, "COMBAT TEAMS:");
+    let hdrs = [
+        (360.0, "Type"), (430.0, "Size"), (510.0, "Move"), (600.0, "Jump"), (680.0, "Trsp"),
+        (760.0, "TMM"), (830.0, "Arm"), (930.0, "S/M/L/E"), (1050.0, "Skill"), (1130.0, "PV"),
+        (1190.0, "Specials"),
+    ];
+    for (x, lbl) in hdrs {
+        let anchor = if lbl == "Specials" { "start" } else { "middle" };
+        txt(&mut b, x, 90.0, 20.0, true, anchor, true, "black", lbl);
+    }
+    for (i, team) in d.teams.iter().take(8).enumerate() {
+        let y = 140.0 + 40.0 * i as f32;
+        txtw(&mut b, 30.0, y, 22.0, false, "start", true, "black", 320.0, &team.name);
+        txt(&mut b, 360.0, y, 22.0, false, "middle", true, "black", &type_label(&format!("{:?}", team.acs_type)));
+        txt(&mut b, 430.0, y, 22.0, false, "middle", true, "black", &team.size.to_string());
+        txt(&mut b, 510.0, y, 22.0, false, "middle", true, "black", &format!("{}{}", team.movement, team.move_mode.code()));
+        txt(&mut b, 600.0, y, 22.0, false, "middle", true, "black", &team.jump_move.to_string());
+        txt(&mut b, 680.0, y, 22.0, false, "middle", true, "black", &format!("{}{}", team.trsp_movement, team.trsp_mode.code()));
+        txt(&mut b, 760.0, y, 22.0, false, "middle", true, "black", &team.tmm.to_string());
+        txt(&mut b, 830.0, y, 22.0, false, "middle", true, "black", &team.armor.to_string());
+        txt(&mut b, 930.0, y, 22.0, false, "middle", true, "black", &dmg_string(&team.damage));
+        txt(&mut b, 1050.0, y, 22.0, false, "middle", true, "black", &team.skill.to_string());
+        txt(&mut b, 1130.0, y, 22.0, false, "middle", true, "black", &team.point_value.to_string());
+        txtw(&mut b, 1180.0, y, 22.0, false, "start", true, "black", 240.0, &suas(&team.suas));
+    }
+    b.push_str("</g>");
+
+    // ── Live-tracking aids (blank boxes): Fatigue, Morale rung, COM/LEAD ──
+    let _ = write!(b, r#"<g transform="translate(0 960)">"#);
+    txt(&mut b, 24.0, 30.0, 22.0, true, "start", true, "black", "Fatigue (FP):");
+    line(&mut b, 220.0, 34.0, 520.0, 34.0, LINE, 3.0);
+    txt(&mut b, 560.0, 30.0, 22.0, true, "start", true, "black", "Morale:");
+    for (j, lbl) in ["Normal", "Shaken", "Unsteady", "Broken", "Routed"].iter().enumerate() {
+        let x = 700.0 + 150.0 * j as f32;
+        let _ = write!(b, r#"<rect x="{x:.1}" y="14" width="20" height="20" fill="none" stroke="black" stroke-width="2"/>"#);
+        txt(&mut b, x + 28.0, 30.0, 18.0, false, "start", true, "black", lbl);
+    }
+    for (j, lbl) in ["Force Commander (COM)", "Formation Leader (LEAD)"].iter().enumerate() {
+        let y = 90.0 + 40.0 * j as f32;
+        let _ = write!(b, r#"<rect x="24" y="{:.1}" width="22" height="22" fill="none" stroke="black" stroke-width="2"/>"#, y - 16.0);
+        txt(&mut b, 60.0, y, 20.0, false, "start", true, "black", lbl);
+    }
+    b.push_str("</g>");
+
+    end_sheet(&mut b);
+    b
+}
+
+/// The ACS Formation Tracking sheet (p.19): a box per Formation with its ID / Name / Type / Move /
+/// Tactics / Morale / Skill and a list of its Combat Units, plus force-level Round / PV / Leadership.
+fn acs_formation_tracking_svg(sess: &Session) -> String {
+    let mut b = begin_sheet(&["ABSTRACT COMBAT SYSTEM", "FORMATION TRACKING SHEET"]);
+
+    // Force line.
+    txt(&mut b, 24.0, 200.0, 24.0, true, "start", true, "black", "FORCE:");
+    let force = format!(
+        "Round ___    Force PV {}    Leadership {}",
+        sess.acs_force_pv(),
+        sess.acs.leadership_rating
+    );
+    txt(&mut b, 160.0, 200.0, 22.0, false, "start", true, "black", &force);
+
+    // Two columns of formation boxes (empty formations — e.g. the default "Formation 1" — omitted).
+    const BOX_W: f32 = 690.0;
+    const BOX_H: f32 = 232.0;
+    let formations: Vec<&session::AcsFormationState> =
+        sess.acs.formations.iter().filter(|f| !f.units.is_empty()).collect();
+    for (i, f) in formations.into_iter().enumerate() {
+        let d = sess.acs_formation(f);
+        let col = (i % 2) as f32;
+        let row = (i / 2) as f32;
+        if row >= 7.0 {
+            break; // 2×7 grid; overflow would need another sheet (rare).
+        }
+        let x = 10.0 + col * (BOX_W + 25.0);
+        let y = 240.0 + row * (BOX_H + 12.0);
+        let _ = write!(b, r#"<g transform="translate({x:.1} {y:.1})">"#);
+        stroke_poly(&mut b, &[(0.0, 0.0), (BOX_W, 0.0), (BOX_W, BOX_H), (0.0, BOX_H), (0.0, 0.0)], "black", 3.0);
+        txt(&mut b, 16.0, 34.0, 20.0, true, "start", true, "black", &format!("#{}", i + 1));
+        txtw(&mut b, 70.0, 34.0, 24.0, true, "start", true, "black", BOX_W - 90.0, &f.name);
+        let meta = format!(
+            "Type {}   Move {}   Tactics {}   Skill {}   Morale {}",
+            type_label(&format!("{:?}", d.acs_type)),
+            d.movement,
+            d.tactics,
+            d.skill,
+            d.morale_rating,
+        );
+        txtw(&mut b, 16.0, 74.0, 20.0, false, "start", true, "black", BOX_W - 32.0, &meta);
+        txt(&mut b, 16.0, 108.0, 20.0, true, "start", true, "black", "Combat Units:");
+        for (j, cu) in f.units.iter().take(4).enumerate() {
+            let cd = sess.acs_combat_unit(cu);
+            let ly = 140.0 + 28.0 * j as f32;
+            let mut tags = Vec::new();
+            if cu.is_commander {
+                tags.push("COM");
+            }
+            if cu.is_leader {
+                tags.push("LEAD");
+            }
+            let tag = if tags.is_empty() { String::new() } else { format!("  [{}]", tags.join(" ")) };
+            txtw(&mut b, 30.0, ly, 19.0, false, "start", true, "black", BOX_W - 60.0, &format!("• {} (ARM {}, PV {}){tag}", cu.name, cd.armor, cd.point_value));
+        }
+        b.push_str("</g>");
+    }
+
+    end_sheet(&mut b);
     b
 }
 
@@ -640,5 +1095,94 @@ mod tests {
         if let Ok(dir) = std::env::var("PDF_PREVIEW_DIR") {
             std::fs::write(format!("{dir}/sbf-sheet.pdf"), &pdf).unwrap();
         }
+    }
+
+    /// Load N real 'Mechs of a given AS type into a session of `mode`.
+    fn seed(mode: GameMode, n: usize) -> Session {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/mechs.bin");
+        let bundle = neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
+        let mut sess = Session::new_with_mode(mode);
+        for m in bundle.mechs.iter().filter(|m| m.as_stats.tp == "BM").take(n).cloned() {
+            sess.add_mech(m);
+        }
+        sess
+    }
+
+    #[test]
+    fn bf_unit_sheet_renders() {
+        let mut sess = seed(GameMode::BattleForce, 4);
+        let ui = sess.bf_new_unit("Battle Lance", 0..4);
+        sess.bf.units[ui].notes = "hold the ridge".into();
+        let svgs = bf_sheets(&sess);
+        assert_eq!(svgs.len(), 1, "one Unit → one page");
+        assert!(svgs[0].contains("STANDARD BATTLEFORCE"));
+        assert!(svgs[0].contains("Battle Lance"));
+        assert!(svgs[0].contains("Armor") && svgs[0].contains("Heat"));
+        assert!(svg2pdf::usvg::Tree::from_str(&svgs[0], &svg_options()).is_ok(), "valid SVG");
+
+        let pdf = render_session_pdf(&sess).unwrap();
+        assert!(pdf.starts_with(b"%PDF") && pdf.len() > 1500);
+        if let Ok(dir) = std::env::var("PDF_PREVIEW_DIR") {
+            std::fs::write(format!("{dir}/bf-sheet.pdf"), &pdf).unwrap();
+        }
+    }
+
+    #[test]
+    fn bf_unassigned_elements_get_a_page() {
+        // Pool 'Mechs with no BF Unit fall onto the "Unassigned" page.
+        let sess = seed(GameMode::BattleForce, 2);
+        let svgs = bf_sheets(&sess);
+        assert_eq!(svgs.len(), 1);
+        assert!(svgs[0].contains("Unassigned"));
+    }
+
+    #[test]
+    fn bf_large_unit_paginates() {
+        // A Unit with more than a page's element slots continues onto a `(cont.)` page.
+        let mut sess = seed(GameMode::BattleForce, 8);
+        sess.bf_new_unit("Big Company", 0..8);
+        let svgs = bf_sheets(&sess);
+        assert_eq!(svgs.len(), 2, "8 elements over 6 slots → 2 pages");
+        assert!(svgs[1].contains("(cont.)"));
+    }
+
+    #[test]
+    fn acs_sheets_render() {
+        let mut sess = seed(GameMode::AbstractCombatSystem, 8);
+        // Build one Formation → one Combat Unit → one Combat Team → two SBF Units of 4 elements.
+        let fi = sess.acs_new_formation("Assault Formation", 0..8);
+        assert!(!sess.acs.formations[fi].units.is_empty(), "formation seeded a combat unit");
+        sess.acs.leadership_rating = 5;
+
+        let svgs = acs_sheets(&sess);
+        assert!(svgs.len() >= 2, "at least one Combat Unit sheet + a Formation Tracking sheet");
+        assert!(svgs[0].contains("COMBAT UNIT RECORD SHEET"));
+        assert!(svgs[0].contains("Morale Check Triggers"));
+        assert!(svgs.last().unwrap().contains("FORMATION TRACKING SHEET"));
+        assert!(svgs.last().unwrap().contains("Assault Formation"));
+        for s in &svgs {
+            assert!(svg2pdf::usvg::Tree::from_str(s, &svg_options()).is_ok(), "valid SVG");
+        }
+
+        let pdf = render_session_pdf(&sess).unwrap();
+        assert!(pdf.starts_with(b"%PDF") && pdf.len() > 1500);
+        if let Ok(dir) = std::env::var("PDF_PREVIEW_DIR") {
+            std::fs::write(format!("{dir}/acs-sheets.pdf"), &pdf).unwrap();
+        }
+    }
+
+    #[test]
+    fn make_blank_zeroes_bf_and_acs_state() {
+        let mut sess = seed(GameMode::AbstractCombatSystem, 4);
+        let fi = sess.acs_new_formation("F", 0..4);
+        sess.acs.round = 4;
+        sess.acs.formations[fi].units[0].armor_hits = 9;
+        sess.acs.formations[fi].units[0].fatigue_points_x2 = 6;
+        sess.mechs[0].as_armor_hits = 3;
+        make_blank(&mut sess);
+        assert_eq!(sess.acs.round, 0);
+        assert_eq!(sess.acs.formations[fi].units[0].armor_hits, 0);
+        assert_eq!(sess.acs.formations[fi].units[0].fatigue_points_x2, 0);
+        assert_eq!(sess.mechs[0].as_armor_hits, 0);
     }
 }

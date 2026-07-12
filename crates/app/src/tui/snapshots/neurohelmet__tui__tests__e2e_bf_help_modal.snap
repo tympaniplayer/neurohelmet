@@ -24,11 +24,11 @@ expression: screen
 │Heat      [0] 1  2 ║  b        set force point limit (PV)                     ║                   ║
 │Damage    S 5   M 5║  z        undo                                           ║ 1                 ║
 │To-Hit    S 4+  M 6║  a / D    add / delete element                           ║ 10+               ║
-│Crits     Eng0  FC0║  S        sessions browser                               ║n0                 ║
-│Specials  AC2/2/-  ║  ^t       display picker (theme + layout)                ║1/1                ║
-│Rng S 0-1  M 2-4  L║  q        quit                                           ║10*                ║
-└───────────────────║  press any key to close                                  ║═══════════════════╝
+│Crits     Eng0  FC0║  P        export record-sheet PDF                        ║n0                 ║
+│Specials  AC2/2/-  ║  S        sessions browser                               ║1/1                ║
+│Rng S 0-1  M 2-4  L║  ^t       display picker (theme + layout)                ║10*                ║
+└───────────────────║  q        quit                                           ║═══════════════════╝
+                    ║  press any key to close                                  ║
                     ╚══════════════════════════════════════════════════════════╝
-
 
  Spc:dmg  u:rep  o/i:heat  c:crit  t:to-hit  g:group  m:morale  n:round  r:rename  ,/.:unit  ?:help
