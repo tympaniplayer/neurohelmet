@@ -48,7 +48,11 @@ pub fn run(name: &str, dry_run: bool) -> Result<()> {
         let game_dir = root.join("games").join(&game);
         write_game(name, &entries, &game_dir)?;
         write_root_index(&root)?;
-        println!("Dry run: wrote {} turn(s) to {}", entries.len(), game_dir.display());
+        println!(
+            "Dry run: wrote {} turn(s) to {}",
+            entries.len(),
+            game_dir.display()
+        );
         return Ok(());
     }
 
@@ -75,7 +79,9 @@ pub fn run(name: &str, dry_run: bool) -> Result<()> {
             git_push(&root)?;
             println!("Published {n} turn(s) to {rd}");
         } else {
-            println!("Committed {n} turn(s) to {rd} — push when you're ready (log_auto_push is off).");
+            println!(
+                "Committed {n} turn(s) to {rd} — push when you're ready (log_auto_push is off)."
+            );
         }
         return Ok(());
     }
@@ -194,7 +200,9 @@ fn ensure_repo(owner: &str) -> Result<()> {
 /// Clone the repo on first use, otherwise pull the latest.
 fn ensure_clone(owner: &str, dir: &Path) -> Result<()> {
     if dir.join(".git").is_dir() {
-        let _ = Command::new("git").args(["-C", &dir.to_string_lossy(), "pull", "--ff-only"]).output();
+        let _ = Command::new("git")
+            .args(["-C", &dir.to_string_lossy(), "pull", "--ff-only"])
+            .output();
         return Ok(());
     }
     if let Some(parent) = dir.parent() {
@@ -230,9 +238,15 @@ fn ensure_pages(owner: &str) {
 /// root; an empty commit (nothing changed since last publish) is treated as success.
 fn git_commit(dir: &Path, msg: &str, paths: &[&str]) -> Result<()> {
     let d = dir.to_string_lossy().to_string();
-    run_ok(Command::new("git").args(["-C", &d, "add", "--"]).args(paths))?;
+    run_ok(
+        Command::new("git")
+            .args(["-C", &d, "add", "--"])
+            .args(paths),
+    )?;
     // `commit` exits non-zero when there's nothing new — that's fine; any other failure is real.
-    let committed = Command::new("git").args(["-C", &d, "commit", "-m", msg]).output()?;
+    let committed = Command::new("git")
+        .args(["-C", &d, "commit", "-m", msg])
+        .output()?;
     let stdout = String::from_utf8_lossy(&committed.stdout);
     if !committed.status.success() && !stdout.contains("nothing to commit") {
         bail!("git commit failed: {}", stdout.trim());
@@ -256,8 +270,24 @@ mod tests {
     fn readme_lists_turns_newest_first() {
         use neurohelmet_core::domain::GameMode;
         let entries = vec![
-            LogEntry { turn: 1, label: "Turn 1".into(), ts: None, mode: GameMode::Classic, mechs: vec![], sbf: Default::default(), bf: Default::default() },
-            LogEntry { turn: 2, label: "Turn 2".into(), ts: None, mode: GameMode::Classic, mechs: vec![], sbf: Default::default(), bf: Default::default() },
+            LogEntry {
+                turn: 1,
+                label: "Turn 1".into(),
+                ts: None,
+                mode: GameMode::Classic,
+                mechs: vec![],
+                sbf: Default::default(),
+                bf: Default::default(),
+            },
+            LogEntry {
+                turn: 2,
+                label: "Turn 2".into(),
+                ts: None,
+                mode: GameMode::Classic,
+                mechs: vec![],
+                sbf: Default::default(),
+                bf: Default::default(),
+            },
         ];
         let md = game_readme("my game", &entries);
         assert!(md.starts_with("# my game"));
@@ -275,22 +305,55 @@ mod tests {
         use std::collections::BTreeMap;
         // A minimal valid mech (armor on one location is enough to render).
         let mut armor = BTreeMap::new();
-        armor.insert(Location::CenterTorso, LocationArmor { armor_max: 10, rear_max: 3, internal_max: 5 });
+        armor.insert(
+            Location::CenterTorso,
+            LocationArmor {
+                armor_max: 10,
+                rear_max: 3,
+                internal_max: 5,
+            },
+        );
         let mech = Mech {
-            chassis: "Test".into(), model: "X".into(), tonnage: 20, tech_base: "IS".into(),
-            role: "Scout".into(), weight_class: "Light".into(), subtype: "BattleMek".into(),
-            year: 3000, bv: 0, cost: 0, armor_type: "Standard".into(),
-            structure_type: "Standard".into(), walk: 6, run: 9, jump: 0, heat_sinks: 10,
-            heat_sink_type: HeatSinkType::Single, dissipation: 10, equipment: vec![],
-            config: MechConfig::Biped, unit_type: UnitType::Mech, motive: None, internal: 0,
-            dpt: 0, transport: vec![], armor, weapons: vec![], ammo: vec![],
-            crit_slots: BTreeMap::new(), as_stats: AsStats::default(),
+            chassis: "Test".into(),
+            model: "X".into(),
+            tonnage: 20,
+            tech_base: "IS".into(),
+            role: "Scout".into(),
+            weight_class: "Light".into(),
+            subtype: "BattleMek".into(),
+            year: 3000,
+            bv: 0,
+            cost: 0,
+            armor_type: "Standard".into(),
+            structure_type: "Standard".into(),
+            walk: 6,
+            run: 9,
+            jump: 0,
+            heat_sinks: 10,
+            heat_sink_type: HeatSinkType::Single,
+            dissipation: 10,
+            equipment: vec![],
+            config: MechConfig::Biped,
+            unit_type: UnitType::Mech,
+            motive: None,
+            internal: 0,
+            dpt: 0,
+            transport: vec![],
+            armor,
+            weapons: vec![],
+            ammo: vec![],
+            crit_slots: BTreeMap::new(),
+            as_stats: AsStats::default(),
             availability: BTreeMap::new(),
         };
         let entries = vec![LogEntry {
-            turn: 1, label: "Turn 1".into(), ts: None,
-            mode: neurohelmet_core::domain::GameMode::Classic, mechs: vec![TrackedMech::new(mech)],
-            sbf: Default::default(), bf: Default::default(),
+            turn: 1,
+            label: "Turn 1".into(),
+            ts: None,
+            mode: neurohelmet_core::domain::GameMode::Classic,
+            mechs: vec![TrackedMech::new(mech)],
+            sbf: Default::default(),
+            bf: Default::default(),
         }];
         let dir = tempfile::tempdir().unwrap();
         let game_dir = dir.path().join("games").join("g");
@@ -309,18 +372,28 @@ mod tests {
         write_root_index(&root).unwrap();
         let readme = root.join("README.md");
         assert!(readme.exists());
-        assert!(std::fs::read_to_string(&readme).unwrap().starts_with("# neurohelmet game logs"));
+        assert!(std::fs::read_to_string(&readme)
+            .unwrap()
+            .starts_with("# neurohelmet game logs"));
         // A user edit must survive a second call (it only writes when absent).
         std::fs::write(&readme, "custom landing page").unwrap();
         write_root_index(&root).unwrap();
-        assert_eq!(std::fs::read_to_string(&readme).unwrap(), "custom landing page");
+        assert_eq!(
+            std::fs::read_to_string(&readme).unwrap(),
+            "custom landing page"
+        );
     }
 
     #[test]
     fn git_commit_stages_only_owned_paths() {
         // The whole point of a custom `log_repo`: publishing into a repo shared with other files
         // must never sweep those files into our commit. Skip gracefully where git is unavailable.
-        if Command::new("git").arg("--version").output().map(|o| !o.status.success()).unwrap_or(true) {
+        if Command::new("git")
+            .arg("--version")
+            .output()
+            .map(|o| !o.status.success())
+            .unwrap_or(true)
+        {
             return;
         }
         let dir = tempfile::tempdir().unwrap();
@@ -331,7 +404,11 @@ mod tests {
                 .args(args)
                 .output()
                 .unwrap();
-            assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+            assert!(
+                out.status.success(),
+                "git {args:?}: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
         };
         git(&["init", "-q"]);
         git(&["config", "user.email", "t@t"]); // local identity so the test is self-contained
@@ -346,10 +423,22 @@ mod tests {
 
         git_commit(root, "publish", OWNED_PATHS).unwrap();
 
-        let out = Command::new("git").args(["-C", &root.to_string_lossy(), "ls-files"]).output().unwrap();
+        let out = Command::new("git")
+            .args(["-C", &root.to_string_lossy(), "ls-files"])
+            .output()
+            .unwrap();
         let tracked = String::from_utf8_lossy(&out.stdout);
-        assert!(tracked.contains("games/g/turn-01.png"), "committed the frames: {tracked}");
-        assert!(tracked.contains("README.md"), "committed the index: {tracked}");
-        assert!(!tracked.contains("secret.txt"), "must not commit unrelated files: {tracked}");
+        assert!(
+            tracked.contains("games/g/turn-01.png"),
+            "committed the frames: {tracked}"
+        );
+        assert!(
+            tracked.contains("README.md"),
+            "committed the index: {tracked}"
+        );
+        assert!(
+            !tracked.contains("secret.txt"),
+            "must not commit unrelated files: {tracked}"
+        );
     }
 }

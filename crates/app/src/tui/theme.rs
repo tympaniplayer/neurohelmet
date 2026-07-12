@@ -215,21 +215,21 @@ impl Theme {
     /// into the terminal it runs in.
     pub const fn catppuccin_mocha() -> Theme {
         Theme {
-            fg: Color::Rgb(0xCD, 0xD6, 0xF4),        // Text
-            bg: Color::Rgb(0x1E, 0x1E, 0x2E),        // Base
-            dim: Color::Rgb(0x93, 0x99, 0xB2),       // Overlay2
-            accent: Color::Rgb(0x89, 0xDC, 0xEB),    // Sky
-            accent_alt: Color::Rgb(0x89, 0xB4, 0xFA), // Blue
-            on_accent: Color::Rgb(0x1E, 0x1E, 0x2E), // Base
-            fg_strong: Color::Rgb(0xCD, 0xD6, 0xF4), // Text
-            good: Color::Rgb(0xA6, 0xE3, 0xA1),      // Green
-            warning: Color::Rgb(0xF9, 0xE2, 0xAF),   // Yellow
-            danger: Color::Rgb(0xF3, 0x8B, 0xA8),    // Red
-            rarity_not_avail: Color::Rgb(0x58, 0x5B, 0x70), // Surface2
-            rarity_very_rare: Color::Rgb(0xF3, 0x8B, 0xA8), // Red
-            rarity_rare: Color::Rgb(0xFA, 0xB3, 0x87),      // Peach
-            rarity_uncommon: Color::Rgb(0xF9, 0xE2, 0xAF),  // Yellow
-            rarity_common: Color::Rgb(0xA6, 0xE3, 0xA1),    // Green
+            fg: Color::Rgb(0xCD, 0xD6, 0xF4),                 // Text
+            bg: Color::Rgb(0x1E, 0x1E, 0x2E),                 // Base
+            dim: Color::Rgb(0x93, 0x99, 0xB2),                // Overlay2
+            accent: Color::Rgb(0x89, 0xDC, 0xEB),             // Sky
+            accent_alt: Color::Rgb(0x89, 0xB4, 0xFA),         // Blue
+            on_accent: Color::Rgb(0x1E, 0x1E, 0x2E),          // Base
+            fg_strong: Color::Rgb(0xCD, 0xD6, 0xF4),          // Text
+            good: Color::Rgb(0xA6, 0xE3, 0xA1),               // Green
+            warning: Color::Rgb(0xF9, 0xE2, 0xAF),            // Yellow
+            danger: Color::Rgb(0xF3, 0x8B, 0xA8),             // Red
+            rarity_not_avail: Color::Rgb(0x58, 0x5B, 0x70),   // Surface2
+            rarity_very_rare: Color::Rgb(0xF3, 0x8B, 0xA8),   // Red
+            rarity_rare: Color::Rgb(0xFA, 0xB3, 0x87),        // Peach
+            rarity_uncommon: Color::Rgb(0xF9, 0xE2, 0xAF),    // Yellow
+            rarity_common: Color::Rgb(0xA6, 0xE3, 0xA1),      // Green
             rarity_very_common: Color::Rgb(0x94, 0xE2, 0xD5), // Teal
         }
     }
@@ -239,13 +239,7 @@ impl Theme {
     /// availability tiers stay legible regardless of house colors (a purple Marik card still shows
     /// green = healthy, red = destroyed). `on_accent` = the dark background, since every faction
     /// accent here is a bright livery color used as a selection fill.
-    const fn faction(
-        bg: Color,
-        fg: Color,
-        dim: Color,
-        accent: Color,
-        accent_alt: Color,
-    ) -> Theme {
+    const fn faction(bg: Color, fg: Color, dim: Color, accent: Color, accent_alt: Color) -> Theme {
         Theme {
             fg,
             bg,
@@ -422,7 +416,6 @@ impl Theme {
             _ => Theme::pi(),
         }
     }
-
 }
 
 /// The selectable presets, in picker order: `(config name, display label, theme)`. Drives the
@@ -440,7 +433,11 @@ pub const THEMES: [(&str, &str, Theme); 15] = [
     ("kurita", "House Kurita", Theme::kurita()),
     ("wolf", "Clan Wolf", Theme::clan_wolf()),
     ("jade-falcon", "Clan Jade Falcon", Theme::clan_jade_falcon()),
-    ("smoke-jaguar", "Clan Smoke Jaguar", Theme::clan_smoke_jaguar()),
+    (
+        "smoke-jaguar",
+        "Clan Smoke Jaguar",
+        Theme::clan_smoke_jaguar(),
+    ),
     ("ghost-bear", "Clan Ghost Bear", Theme::clan_ghost_bear()),
     ("sea-fox", "Clan Sea Fox", Theme::clan_sea_fox()),
 ];
@@ -502,7 +499,11 @@ mod tests {
     #[test]
     fn self_contained_themes_paint_a_background() {
         // cockpit/tokyo/mocha carry a real fg+bg so they own the whole screen on any terminal.
-        for t in [Theme::cockpit(), Theme::tokyo_night(), Theme::catppuccin_mocha()] {
+        for t in [
+            Theme::cockpit(),
+            Theme::tokyo_night(),
+            Theme::catppuccin_mocha(),
+        ] {
             assert_ne!(t.fg, Color::Reset);
             assert_ne!(t.bg, Color::Reset);
         }

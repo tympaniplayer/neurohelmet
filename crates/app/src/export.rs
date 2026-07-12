@@ -69,7 +69,11 @@ pub(crate) fn render_turn(entry: &LogEntry) -> Vec<(String, String, Buffer)> {
             s.mechs = entry.mechs.clone();
             s.bf = entry.bf.clone(); // replaces the seeded starter Unit
             s.active = 0;
-            return vec![("01-Unassigned".into(), "Unassigned".into(), tui::render_to_buffer(s))];
+            return vec![(
+                "01-Unassigned".into(),
+                "Unassigned".into(),
+                tui::render_to_buffer(s),
+            )];
         }
         return entry
             .bf
@@ -112,8 +116,7 @@ pub(crate) fn render_turn(entry: &LogEntry) -> Vec<(String, String, Buffer)> {
 /// Stack per-mech frames vertically (black gaps between) into one montage image.
 pub(crate) fn montage(frames: &[Image]) -> Image {
     let w = frames.iter().map(|f| f.w).max().unwrap_or(1);
-    let h: usize =
-        frames.iter().map(|f| f.h).sum::<usize>() + GAP * frames.len().saturating_sub(1);
+    let h: usize = frames.iter().map(|f| f.h).sum::<usize>() + GAP * frames.len().saturating_sub(1);
     let mut out = Image::new(w.max(1), h.max(1));
     let mut y = 0;
     for f in frames {
@@ -165,6 +168,11 @@ pub fn run(name: &str, outdir: Option<PathBuf>) -> Result<PathBuf> {
     }
 
     std::fs::write(out.join("transcript.txt"), transcript)?;
-    println!("Exported {} turn(s) for '{}' to {}", entries.len(), name, out.display());
+    println!(
+        "Exported {} turn(s) for '{}' to {}",
+        entries.len(),
+        name,
+        out.display()
+    );
     Ok(out)
 }

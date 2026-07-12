@@ -111,11 +111,11 @@ pub fn unit_type(ut: UnitType) -> &'static str {
     match icons() {
         IconSet::Ascii => "",
         IconSet::Nerd => match ut {
-            UnitType::Mech => "\u{f06a9}",        // nf-md-robot
-            UnitType::Vehicle => "\u{f0d1}",      // nf-fa-truck
-            UnitType::Infantry => "\u{f007}",     // nf-fa-user
-            UnitType::BattleArmor => "\u{f132}",  // nf-fa-shield
-            UnitType::Aerospace => "\u{f072}",    // nf-fa-plane
+            UnitType::Mech => "\u{f06a9}",       // nf-md-robot
+            UnitType::Vehicle => "\u{f0d1}",     // nf-fa-truck
+            UnitType::Infantry => "\u{f007}",    // nf-fa-user
+            UnitType::BattleArmor => "\u{f132}", // nf-fa-shield
+            UnitType::Aerospace => "\u{f072}",   // nf-fa-plane
         },
     }
 }

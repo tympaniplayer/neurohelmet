@@ -102,8 +102,8 @@ pub fn load_extra_units(path: &Path) -> Vec<Mech> {
     let Ok(text) = std::fs::read_to_string(path) else {
         return Vec::new();
     };
-    let extras: Vec<ExtraUnit> = serde_json::from_str(&text)
-        .unwrap_or_else(|e| panic!("parse {}: {e}", path.display()));
+    let extras: Vec<ExtraUnit> =
+        serde_json::from_str(&text).unwrap_or_else(|e| panic!("parse {}: {e}", path.display()));
     extras.into_iter().map(build_extra).collect()
 }
 

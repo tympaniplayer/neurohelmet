@@ -128,7 +128,8 @@ fn is_missile_rack(t: &str) -> bool {
         || t.starts_with("NLRM")
         || matches!(
             t,
-            "MRM" | "ATM"
+            "MRM"
+                | "ATM"
                 | "IATM"
                 | "MML"
                 | "EXLRM"
@@ -265,19 +266,40 @@ mod tests {
 
     #[test]
     fn profile_classification() {
-        assert_eq!(cluster_profile("LRM", 20, "Standard"), ClusterProfile::Table(20));
-        assert_eq!(cluster_profile("SRM", 6, "Inferno"), ClusterProfile::Table(6));
+        assert_eq!(
+            cluster_profile("LRM", 20, "Standard"),
+            ClusterProfile::Table(20)
+        );
+        assert_eq!(
+            cluster_profile("SRM", 6, "Inferno"),
+            ClusterProfile::Table(6)
+        );
         assert_eq!(cluster_profile("MRM", 40, ""), ClusterProfile::Table(40));
         assert_eq!(cluster_profile("ATM", 12, ""), ClusterProfile::Table(12));
         // Streak: all-or-nothing, checked before the LRM/SRM prefix rule.
-        assert_eq!(cluster_profile("SRM_STREAK", 6, ""), ClusterProfile::AllHit(6));
-        assert_eq!(cluster_profile("LRM_STREAK", 20, ""), ClusterProfile::AllHit(20));
+        assert_eq!(
+            cluster_profile("SRM_STREAK", 6, ""),
+            ClusterProfile::AllHit(6)
+        );
+        assert_eq!(
+            cluster_profile("LRM_STREAK", 20, ""),
+            ClusterProfile::AllHit(20)
+        );
         // LB-X depends on the loaded munition.
-        assert_eq!(cluster_profile("AC_LBX", 10, "Cluster"), ClusterProfile::Table(10));
-        assert_eq!(cluster_profile("AC_LBX", 10, "Standard"), ClusterProfile::Single);
+        assert_eq!(
+            cluster_profile("AC_LBX", 10, "Cluster"),
+            ClusterProfile::Table(10)
+        );
+        assert_eq!(
+            cluster_profile("AC_LBX", 10, "Standard"),
+            ClusterProfile::Single
+        );
         // Ultra / Rotary roll for shots.
         assert_eq!(cluster_profile("AC_ULTRA", 5, ""), ClusterProfile::Table(2));
-        assert_eq!(cluster_profile("AC_ROTARY", 5, ""), ClusterProfile::Table(6));
+        assert_eq!(
+            cluster_profile("AC_ROTARY", 5, ""),
+            ClusterProfile::Table(6)
+        );
         // Single-projectile weapons.
         assert_eq!(cluster_profile("AC", 20, ""), ClusterProfile::Single);
         assert_eq!(cluster_profile("GAUSS", 1, ""), ClusterProfile::Single);

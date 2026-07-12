@@ -117,11 +117,15 @@ impl WeaponStats {
     }
     /// Whether a `specials` tag is present (case-insensitive, comma-separated list).
     pub fn has_special(&self, tag: &str) -> bool {
-        self.specials.split(',').any(|t| t.trim().eq_ignore_ascii_case(tag))
+        self.specials
+            .split(',')
+            .any(|t| t.trim().eq_ignore_ascii_case(tag))
     }
     /// Whether this fire-control tag is supported (`aiv`/`av`/`apollo`).
     pub fn supports_fcs(&self, fcs: &str) -> bool {
-        self.use_fcs.split(',').any(|t| t.trim().eq_ignore_ascii_case(fcs))
+        self.use_fcs
+            .split(',')
+            .any(|t| t.trim().eq_ignore_ascii_case(fcs))
     }
     /// `true` for rapid-fire weapons (Ultra/Rotary ACs).
     pub fn is_rapid(&self) -> bool {
@@ -269,7 +273,8 @@ pub fn group_data(weapons: &[WeaponInst]) -> TicRow {
     let (mut damage, mut damage_m, mut damage_max, mut damage_c) = (0, 0, 0, 0);
     let (mut use_c, mut use_h, mut use_m, mut heat) = (0, 0, 0, 0);
     let (mut var_pbs, mut var_m, mut var_lx, mut use_var_c, mut hag_base) = (0, 0, 0, 0, 0);
-    let (mut r_pb, mut r_s, mut r_m, mut r_l, mut r_x) = (i32::MIN, i32::MIN, i32::MIN, i32::MIN, i32::MIN);
+    let (mut r_pb, mut r_s, mut r_m, mut r_l, mut r_x) =
+        (i32::MIN, i32::MIN, i32::MIN, i32::MIN, i32::MIN);
     let mut locs: Vec<String> = Vec::new();
 
     for w in weapons {
@@ -330,7 +335,11 @@ pub fn group_data(weapons: &[WeaponInst]) -> TicRow {
     // Name: "x2 Foo, Bar" + effective fire-control / special tags.
     let mut name = String::new();
     for (n, c) in &names {
-        let part = if *c > 1 { format!("x{c} {n}") } else { n.clone() };
+        let part = if *c > 1 {
+            format!("x{c} {n}")
+        } else {
+            n.clone()
+        };
         if name.is_empty() {
             name = part;
         } else {
@@ -469,7 +478,11 @@ fn sort_v5(a: &WeaponInst, b: &WeaponInst) -> std::cmp::Ordering {
     // Empty bracket string sorts as the `9` "no shot" sentinel.
     let by = |w: &WeaponInst, sel: fn(&WeaponStats) -> &String| {
         let s = sel(w.stats);
-        if s.is_empty() { 9 } else { WeaponStats::num(s) }
+        if s.is_empty() {
+            9
+        } else {
+            WeaponStats::num(s)
+        }
     };
     for sel in [
         (|s: &WeaponStats| &s.range_x) as fn(&WeaponStats) -> &String,
@@ -499,7 +512,12 @@ fn sort_v5(a: &WeaponInst, b: &WeaponInst) -> std::cmp::Ordering {
         Ordering::Equal => {}
         o => return o,
     }
-    match a.stats.name.to_lowercase().cmp(&b.stats.name.to_lowercase()) {
+    match a
+        .stats
+        .name
+        .to_lowercase()
+        .cmp(&b.stats.name.to_lowercase())
+    {
         Ordering::Equal => {}
         o => return o,
     }
@@ -546,7 +564,9 @@ fn score_weapon_for_tic(ctx: &UnitCtx, w: &WeaponInst, tic: &[WeaponInst], slot:
     if ctx.has_aes && w.use_aes != tic.iter().all(|t| t.use_aes) {
         return 0.0;
     }
-    for fam in ["ssrm", "slrm", "srm", "lrm", "mrm", "atm", "rl", "srt", "lrt", "hag", "sbg"] {
+    for fam in [
+        "ssrm", "slrm", "srm", "lrm", "mrm", "atm", "rl", "srt", "lrt", "hag", "sbg",
+    ] {
         if w.stats.has_special(fam) != tic.iter().all(|t| t.stats.has_special(fam)) {
             return 0.0;
         }
@@ -589,7 +609,11 @@ fn score_weapon_for_tic(ctx: &UnitCtx, w: &WeaponInst, tic: &[WeaponInst], slot:
     let rng_eq = |sel: fn(&WeaponStats) -> &String, hit: f64, miss: f64| {
         let a = WeaponStats::num(sel(w.stats));
         let b = WeaponStats::num(sel(tic[0].stats));
-        if a == b { hit } else { miss }
+        if a == b {
+            hit
+        } else {
+            miss
+        }
     };
     n *= rng_eq(|s| &s.range_x, 1.0, 0.1);
     n *= rng_eq(|s| &s.range_l, 1.0, 0.2);
@@ -635,8 +659,16 @@ pub fn pack(ctx: &UnitCtx, mut weapons: Vec<WeaponInst>) -> Vec<Vec<WeaponInst>>
     tics
 }
 
-fn place(ctx: &UnitCtx, tics: &mut [Vec<WeaponInst>], mut w: WeaponInst, depth: u32, exclude: usize) {
-    let scores: Vec<f64> = (0..9).map(|t| score_weapon_for_tic(ctx, &w, &tics[t], t)).collect();
+fn place(
+    ctx: &UnitCtx,
+    tics: &mut [Vec<WeaponInst>],
+    mut w: WeaponInst,
+    depth: u32,
+    exclude: usize,
+) {
+    let scores: Vec<f64> = (0..9)
+        .map(|t| score_weapon_for_tic(ctx, &w, &tics[t], t))
+        .collect();
     let best = (0..9).fold(0, |b, t| if scores[t] > scores[b] { t } else { b });
 
     // Displacement: try pulling a weapon out of a populated TIC to fit `w` better there.
@@ -709,7 +741,11 @@ fn is_airborne(mech: &Mech) -> bool {
 /// The Override TMM for a single movement value: the TW target-movement bracket (jump adds its own
 /// +1) plus +1 when airborne.
 fn tmm_value(mp: u8, jumped: bool, airborne: bool) -> i32 {
-    let mode = if jumped { MoveMode::Jumped } else { MoveMode::Stationary };
+    let mode = if jumped {
+        MoveMode::Jumped
+    } else {
+        MoveMode::Stationary
+    };
     target_movement_modifier(mp, mode) + i32::from(airborne)
 }
 
@@ -754,8 +790,12 @@ fn sinks(dissipation: u16) -> u16 {
 /// armor (`get damageThreshold`).
 pub fn aero_dthr(mech: &Mech) -> i32 {
     let a = |loc: Location| i32::from(mech.armor.get(&loc).map_or(0, |x| x.armor_max));
-    let (n, lw, rw, aft) =
-        (a(Location::Nose), a(Location::LeftWing), a(Location::RightWing), a(Location::Aft));
+    let (n, lw, rw, aft) = (
+        a(Location::Nose),
+        a(Location::LeftWing),
+        a(Location::RightWing),
+        a(Location::Aft),
+    );
     let e = f64::from(lw + rw) / 2.0 + f64::from(n + aft);
     ((e / 30.0).round() as i32).max(1)
 }
@@ -796,7 +836,11 @@ pub fn unit_data(mech: &Mech) -> UnitData {
     }
     let vehicle = mech.is_vehicle();
     let airborne = is_airborne(mech);
-    let suffix = if vehicle { mech.motive.map(motive_suffix).unwrap_or("") } else { "" };
+    let suffix = if vehicle {
+        mech.motive.map(motive_suffix).unwrap_or("")
+    } else {
+        ""
+    };
     let mut move_line = format!("{} / {}{}", mech.walk, mech.run, suffix);
     let mut tmm_line = format!(
         "{} / {}",
@@ -812,7 +856,11 @@ pub fn unit_data(mech: &Mech) -> UnitData {
         mass: mech.tonnage,
         move_line,
         tmm_line,
-        sinks: if vehicle { None } else { Some(sinks(mech.dissipation)) },
+        sinks: if vehicle {
+            None
+        } else {
+            Some(sinks(mech.dissipation))
+        },
         d_thr: None,
         heat_scale: !vehicle,
         aero: false,
@@ -838,17 +886,21 @@ pub fn override_armor(mech: &Mech) -> Vec<ArmorRegion> {
     let at = |loc: Location| mech.armor.get(&loc).copied().unwrap_or_default();
 
     if mech.is_aerospace() {
-        let mut out: Vec<ArmorRegion> =
-            [Location::Nose, Location::LeftWing, Location::RightWing, Location::Aft]
-                .into_iter()
-                .map(|loc| ArmorRegion {
-                    loc,
-                    label: loc.label().into(),
-                    armor: pip(i32::from(at(loc).armor_max), 4),
-                    structure: 0,
-                    rear: None,
-                })
-                .collect();
+        let mut out: Vec<ArmorRegion> = [
+            Location::Nose,
+            Location::LeftWing,
+            Location::RightWing,
+            Location::Aft,
+        ]
+        .into_iter()
+        .map(|loc| ArmorRegion {
+            loc,
+            label: loc.label().into(),
+            armor: pip(i32::from(at(loc).armor_max), 4),
+            structure: 0,
+            rear: None,
+        })
+        .collect();
         // Shared structural integrity: FU = max(thrust, floor(0.1·tonnage)), then round(FU/3).
         let fu = mech.walk.max((0.1 * f64::from(mech.tonnage)).floor() as u8);
         out.push(ArmorRegion {
@@ -894,8 +946,11 @@ pub fn override_armor(mech: &Mech) -> Vec<ArmorRegion> {
         rear: None,
     });
 
-    let (ct, lt, rt) =
-        (at(Location::CenterTorso), at(Location::LeftTorso), at(Location::RightTorso));
+    let (ct, lt, rt) = (
+        at(Location::CenterTorso),
+        at(Location::LeftTorso),
+        at(Location::RightTorso),
+    );
     out.push(ArmorRegion {
         loc: Location::CenterTorso,
         label: "Torso".into(),
@@ -912,10 +967,7 @@ pub fn override_armor(mech: &Mech) -> Vec<ArmorRegion> {
     for loc in mech.config.locations() {
         if matches!(
             loc,
-            Location::Head
-                | Location::CenterTorso
-                | Location::LeftTorso
-                | Location::RightTorso
+            Location::Head | Location::CenterTorso | Location::LeftTorso | Location::RightTorso
         ) {
             continue;
         }
@@ -950,7 +1002,10 @@ fn weapon_alias() -> &'static HashMap<String, String> {
 
 /// Normalize a weapon name to DFA's id form: ASCII alphanumerics only, lowercased.
 fn normalize_name(s: &str) -> String {
-    s.chars().filter(char::is_ascii_alphanumeric).map(|c| c.to_ascii_lowercase()).collect()
+    s.chars()
+        .filter(char::is_ascii_alphanumeric)
+        .map(|c| c.to_ascii_lowercase())
+        .collect()
 }
 
 /// Resolve a neurohelmet weapon (display name + Clan flag) to a DB key via the alias map. Tries the
@@ -1049,10 +1104,16 @@ pub fn weapon_insts(mech: &Mech) -> Vec<WeaponInst> {
     let ctx = unit_ctx(mech);
     let mut out = Vec::new();
     for w in &mech.weapons {
-        let Some(key) = resolve_key(&w.name, clan) else { continue };
+        let Some(key) = resolve_key(&w.name, clan) else {
+            continue;
+        };
         let Some(stats) = weapon(key) else { continue };
         let code = loc_code(w.location);
-        let location = if w.rear { format!("(R) {code}") } else { code.to_string() };
+        let location = if w.rear {
+            format!("(R) {code}")
+        } else {
+            code.to_string()
+        };
         let arc = arc_for(w.location, w.rear, mech.unit_type);
         for _ in 0..w.count.max(1) {
             out.push(WeaponInst {
@@ -1104,7 +1165,10 @@ pub struct OverrideCard {
 /// Convert a baked unit into its complete Override card.
 pub fn override_card(mech: &Mech) -> OverrideCard {
     let ctx = unit_ctx(mech);
-    let tics = pack(&ctx, weapon_insts(mech)).iter().map(|t| group_data(t)).collect();
+    let tics = pack(&ctx, weapon_insts(mech))
+        .iter()
+        .map(|t| group_data(t))
+        .collect();
     OverrideCard {
         unit: unit_data(mech),
         tics,
@@ -1202,18 +1266,24 @@ const CRIT_MECH_TORSO: &[OvCritRow] = &[
     row("3-4", "Gyro (+2 PSR, then fall / speed 1)", Gyro),
     row("5-6", "Engine (+1 heat or destroyed)", Engine),
 ];
-const CRIT_MECH_ARM: &[OvCritRow] =
-    &[row("1", "Ammo (or weapon)", Ammo), row("2-6", "Weapon (attacker's choice)", Weapon)];
-const CRIT_MECH_LEG: &[OvCritRow] =
-    &[row("1", "Ammo (or weapon)", Ammo), row("2-6", "Actuator (-2 move / -1 TMM)", Actuator)];
+const CRIT_MECH_ARM: &[OvCritRow] = &[
+    row("1", "Ammo (or weapon)", Ammo),
+    row("2-6", "Weapon (attacker's choice)", Weapon),
+];
+const CRIT_MECH_LEG: &[OvCritRow] = &[
+    row("1", "Ammo (or weapon)", Ammo),
+    row("2-6", "Actuator (-2 move / -1 TMM)", Actuator),
+];
 const CRIT_VEH_FRONT: &[OvCritRow] = &[
     row("1", "Crew Hit (pilot damage)", CrewHit),
     row("2", "Stunned (-2 skill rolls next turn)", Stunned),
     row("3-6", "Weapon (attacker's choice)", Weapon),
 ];
 const CRIT_VEH_SIDE: &[OvCritRow] = &[row("1-6", "Motive (-2 move / -1 TMM)", Motive)];
-const CRIT_VEH_REAR: &[OvCritRow] =
-    &[row("1-2", "Ammo (or motive hit)", Ammo), row("3-6", "Motive (-2 move / -1 TMM)", Motive)];
+const CRIT_VEH_REAR: &[OvCritRow] = &[
+    row("1-2", "Ammo (or motive hit)", Ammo),
+    row("3-6", "Motive (-2 move / -1 TMM)", Motive),
+];
 const CRIT_AERO: &[OvCritRow] = &[
     row("2", "Nose Weapon", Weapon),
     row("3", "Avionics (+2 PSR)", Avionics),
@@ -1239,9 +1309,8 @@ pub fn crit_table(mech: &Mech, loc: Location) -> Option<&'static [OvCritRow]> {
     if mech.is_vehicle() {
         return match loc {
             Front | Turret | FrontTurret => Some(CRIT_VEH_FRONT),
-            LeftSide | RightSide | FrontLeftSide | FrontRightSide | RearLeftSide | RearRightSide => {
-                Some(CRIT_VEH_SIDE)
-            }
+            LeftSide | RightSide | FrontLeftSide | FrontRightSide | RearLeftSide
+            | RearRightSide => Some(CRIT_VEH_SIDE),
             Rear => Some(CRIT_VEH_REAR),
             _ => None,
         };
@@ -1306,7 +1375,10 @@ mod tests {
         let row = group_data(&group("ac20", "T", 1));
         assert_eq!(row.damage, "7");
         assert_eq!(row.heat, 1);
-        assert_eq!((row.pb.as_str(), row.s.as_str(), row.m.as_str()), ("+0", "+0", "+2"));
+        assert_eq!(
+            (row.pb.as_str(), row.s.as_str(), row.m.as_str()),
+            ("+0", "+0", "+2")
+        );
     }
 
     #[test]
@@ -1430,7 +1502,11 @@ mod tests {
 
     /// `LocationArmor { armor, rear, internal }` shorthand.
     fn la(armor: u16, rear: u16, internal: u16) -> LocationArmor {
-        LocationArmor { armor_max: armor, rear_max: rear, internal_max: internal }
+        LocationArmor {
+            armor_max: armor,
+            rear_max: rear,
+            internal_max: internal,
+        }
     }
     fn armor_map(entries: &[(Location, LocationArmor)]) -> BTreeMap<Location, LocationArmor> {
         entries.iter().copied().collect()
@@ -1460,14 +1536,24 @@ mod tests {
     #[test]
     fn omnimech_type_label() {
         // Mad Cat Prime: subtype carries "Omni" → card "Type: OmniMech".
-        let m = Mech { subtype: "BattleMek Omni".into(), ..Mech::default() };
+        let m = Mech {
+            subtype: "BattleMek Omni".into(),
+            ..Mech::default()
+        };
         assert_eq!(unit_data(&m).type_label, "OmniMech");
     }
 
     #[test]
     fn rifleman_jump_tmm() {
         // Card: Move 4 / 6 / 4j, TMM 1 / 2 / 2 — jumping a 4 brackets to 1 then +1 for the jump.
-        let m = Mech { tonnage: 60, walk: 4, run: 6, jump: 4, dissipation: 20, ..Mech::default() };
+        let m = Mech {
+            tonnage: 60,
+            walk: 4,
+            run: 6,
+            jump: 4,
+            dissipation: 20,
+            ..Mech::default()
+        };
         let d = unit_data(&m);
         assert_eq!(d.move_line, "4 / 6 / 4j");
         assert_eq!(d.tmm_line, "1 / 2 / 2");
@@ -1559,14 +1645,29 @@ mod tests {
         let regions = override_armor(&m);
         let get = |loc: Location| regions.iter().find(|r| r.loc == loc).unwrap();
         // Head: 9 → 4 armor (+ structure round(3/3)=1).
-        assert_eq!((get(Location::Head).armor, get(Location::Head).structure), (4, 1));
+        assert_eq!(
+            (get(Location::Head).armor, get(Location::Head).structure),
+            (4, 1)
+        );
         // Torso: round((26+20+20)/6)=11 armor; round((16+12+12)/7)=6 structure; rear round(13/6)=2.
         let t = get(Location::CenterTorso);
         assert_eq!((t.armor, t.structure, t.rear), (11, 6, Some(2)));
         // Arm: round(16/3)=5 armor, round(8/3)=3 structure.
-        assert_eq!((get(Location::LeftArm).armor, get(Location::LeftArm).structure), (5, 3));
+        assert_eq!(
+            (
+                get(Location::LeftArm).armor,
+                get(Location::LeftArm).structure
+            ),
+            (5, 3)
+        );
         // Leg: round(20/3)=7 armor, round(12/3)=4 structure.
-        assert_eq!((get(Location::LeftLeg).armor, get(Location::LeftLeg).structure), (7, 4));
+        assert_eq!(
+            (
+                get(Location::LeftLeg).armor,
+                get(Location::LeftLeg).structure
+            ),
+            (7, 4)
+        );
     }
 
     #[test]
@@ -1618,7 +1719,10 @@ mod tests {
 
     #[test]
     fn alias_map_loads() {
-        assert!(weapon_alias().len() > 500, "expected the full WeaponAlias map");
+        assert!(
+            weapon_alias().len() > 500,
+            "expected the full WeaponAlias map"
+        );
     }
 
     #[test]
@@ -1640,7 +1744,10 @@ mod tests {
 
     #[test]
     fn adapter_sets_arc_and_loc() {
-        let mut m = Mech { tech_base: "Inner Sphere".into(), ..Mech::default() };
+        let mut m = Mech {
+            tech_base: "Inner Sphere".into(),
+            ..Mech::default()
+        };
         m.weapons.push(WeaponMount {
             id: 0,
             name: "Medium Laser".into(),
@@ -1668,8 +1775,7 @@ mod tests {
     #[test]
     fn golden_cards_end_to_end() {
         use crate::data::bundle::Bundle;
-        let path =
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
         let Ok(bundle) = Bundle::load(std::path::Path::new(path)) else {
             eprintln!("skipping golden_cards_end_to_end: {path} not found");
             return;
@@ -1691,7 +1797,10 @@ mod tests {
         };
         // (unit, [(name, damage); per TIC]) — transcribed from data/override-goldens/outputs/*.png.
         let cases: &[(&str, &[(&str, &str)])] = &[
-            ("Hunchback HBK-4G", &[("AC/20", "7"), ("x2 MLas", "4"), ("SLas", "1")]),
+            (
+                "Hunchback HBK-4G",
+                &[("AC/20", "7"), ("x2 MLas", "4"), ("SLas", "1")],
+            ),
             (
                 "Mad Cat (Timber Wolf) Prime",
                 &[
@@ -1710,7 +1819,12 @@ mod tests {
             ),
             (
                 "Rifleman RFL-8D",
-                &[("RAC/5 (RF)", "3"), ("RAC/5 (RF)", "3"), ("erMLas", "2"), ("erMLas", "2")],
+                &[
+                    ("RAC/5 (RF)", "3"),
+                    ("RAC/5 (RF)", "3"),
+                    ("erMLas", "2"),
+                    ("erMLas", "2"),
+                ],
             ),
             (
                 "Vulture (Mad Dog) F",
@@ -1735,11 +1849,20 @@ mod tests {
             ),
             (
                 "Bushwacker BSW-S2",
-                &[("erLLas", "3"), ("LB 10-X", "1+C3"), ("x2 SRM-4", "2+M2 (6)")],
+                &[
+                    ("erLLas", "3"),
+                    ("LB 10-X", "1+C3"),
+                    ("x2 SRM-4", "2+M2 (6)"),
+                ],
             ),
             (
                 "Manticore Heavy Tank",
-                &[("LRM-10", "1+M1 (4)"), ("PPC", "4"), ("SRM-6", "1+M2 (4)"), ("MLas", "2")],
+                &[
+                    ("LRM-10", "1+M1 (4)"),
+                    ("PPC", "4"),
+                    ("SRM-6", "1+M2 (4)"),
+                    ("MLas", "2"),
+                ],
             ),
             (
                 "Warrior Attack Helicopter H-7C",
@@ -1761,10 +1884,15 @@ mod tests {
         ];
         for (unit, expected) in cases {
             let card = override_card(&find(unit));
-            let mut got: Vec<(String, String)> =
-                card.tics.iter().map(|t| (t.name.clone(), t.damage.clone())).collect();
-            let mut want: Vec<(String, String)> =
-                expected.iter().map(|(n, d)| (n.to_string(), d.to_string())).collect();
+            let mut got: Vec<(String, String)> = card
+                .tics
+                .iter()
+                .map(|t| (t.name.clone(), t.damage.clone()))
+                .collect();
+            let mut want: Vec<(String, String)> = expected
+                .iter()
+                .map(|(n, d)| (n.to_string(), d.to_string()))
+                .collect();
             got.sort();
             want.sort();
             assert_eq!(got, want, "TIC rows mismatch for {unit}");

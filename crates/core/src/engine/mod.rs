@@ -39,8 +39,12 @@ pub use alpha_strike::{
     movement_hexes, range_brackets_hexes,
 };
 pub use damage::{apply_damage, transfer_to, DamageOutcome, LocState};
-pub use dice::{cluster_hits, cluster_profile, mech_hit_location, AttackDir, ClusterProfile, HitRow};
-pub use gator::{parse_ranges, range_bracket, target_modifier, to_hit as gator_to_hit, RangeBracket};
+pub use dice::{
+    cluster_hits, cluster_profile, mech_hit_location, AttackDir, ClusterProfile, HitRow,
+};
+pub use gator::{
+    parse_ranges, range_bracket, target_modifier, to_hit as gator_to_hit, RangeBracket,
+};
 pub use heat::{aero_heat_effects, dissipation, heat_effects, AeroHeatEffects, HeatEffects};
 pub use infantry::{infantry_max_range, infantry_range_mod};
 pub use internal::internal_structure;

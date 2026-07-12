@@ -29,9 +29,9 @@ use super::icons::{icons, IconSet};
 use super::profile::{profile, DisplayProfile};
 use super::theme::{theme, Theme};
 use neurohelmet_core::session::neurohelmet_dir;
-use std::sync::atomic::{AtomicU64, Ordering};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 /// The persisted config. Both fields are optional so a partial or older file still loads; a `None`
 /// means "no saved preference — fall through to env/default".
@@ -192,29 +192,55 @@ mod tests {
 
     #[test]
     fn auto_push_defaults_true_and_honors_override() {
-        assert!(Config::default().resolved_auto_push(), "unset = push by default");
-        assert!(Config { log_auto_push: Some(true), ..Default::default() }.resolved_auto_push());
-        assert!(!Config { log_auto_push: Some(false), ..Default::default() }.resolved_auto_push());
+        assert!(
+            Config::default().resolved_auto_push(),
+            "unset = push by default"
+        );
+        assert!(Config {
+            log_auto_push: Some(true),
+            ..Default::default()
+        }
+        .resolved_auto_push());
+        assert!(!Config {
+            log_auto_push: Some(false),
+            ..Default::default()
+        }
+        .resolved_auto_push());
     }
 
     #[test]
     fn log_repo_resolves_and_expands_tilde() {
-        assert_eq!(Config::default().resolved_log_repo(), None, "unset = gh flow");
+        assert_eq!(
+            Config::default().resolved_log_repo(),
+            None,
+            "unset = gh flow"
+        );
         // An empty string is treated as unset, not as the current directory.
         assert_eq!(
-            Config { log_repo: Some(String::new()), ..Default::default() }.resolved_log_repo(),
+            Config {
+                log_repo: Some(String::new()),
+                ..Default::default()
+            }
+            .resolved_log_repo(),
             None
         );
         // An absolute path passes through untouched.
         assert_eq!(
-            Config { log_repo: Some("/srv/logs".into()), ..Default::default() }.resolved_log_repo(),
+            Config {
+                log_repo: Some("/srv/logs".into()),
+                ..Default::default()
+            }
+            .resolved_log_repo(),
             Some(PathBuf::from("/srv/logs"))
         );
         // A leading `~/` expands to the home dir (only assert when we can resolve one).
         if let Some(home) = dirs::home_dir() {
             assert_eq!(
-                Config { log_repo: Some("~/neurohelmet-logs".into()), ..Default::default() }
-                    .resolved_log_repo(),
+                Config {
+                    log_repo: Some("~/neurohelmet-logs".into()),
+                    ..Default::default()
+                }
+                .resolved_log_repo(),
                 Some(home.join("neurohelmet-logs"))
             );
         }

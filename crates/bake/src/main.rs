@@ -93,9 +93,14 @@ fn main() {
 
     let fetcher = Fetcher::new(args.cache.clone()).expect("create cache dir");
 
-    eprintln!("downloading catalogs (cached at {}) ...", args.cache.display());
+    eprintln!(
+        "downloading catalogs (cached at {}) ...",
+        args.cache.display()
+    );
     let units_text = fetcher.get_text("units.json").expect("fetch units.json");
-    let eq_text = fetcher.get_text("equipment2.json").expect("fetch equipment2.json");
+    let eq_text = fetcher
+        .get_text("equipment2.json")
+        .expect("fetch equipment2.json");
 
     let eq_index = join::build_equipment_index(&eq_text).expect("build equipment index");
     eprintln!(
@@ -247,13 +252,19 @@ fn main() {
     // Support AS cards — see `extras.rs`). Appended before the sort so they file in alphabetically.
     let extra = extras::load_extra_units(std::path::Path::new("data/extra_units.json"));
     if !extra.is_empty() {
-        eprintln!("merging {} hand-entered extra unit(s) from data/extra_units.json", extra.len());
+        eprintln!(
+            "merging {} hand-entered extra unit(s) from data/extra_units.json",
+            extra.len()
+        );
         mechs.extend(extra);
     }
 
     // Sort by chassis/model, ignoring leading punctuation so quoted nicknames (e.g. `'Wing'
     // Wraith`, `'Gestalt'`) file under their first letter instead of clumping at the top.
-    let sort_key = |s: &str| s.trim_start_matches(|c: char| !c.is_alphanumeric()).to_string();
+    let sort_key = |s: &str| {
+        s.trim_start_matches(|c: char| !c.is_alphanumeric())
+            .to_string()
+    };
     mechs.sort_by(|a, b| {
         (sort_key(&a.chassis), sort_key(&a.model)).cmp(&(sort_key(&b.chassis), sort_key(&b.model)))
     });
@@ -291,7 +302,11 @@ fn main() {
             }
             for w in &m.weapons {
                 let to_hit = m.weapon_to_hit(w);
-                let th = if to_hit != 0 { format!(" to-hit {to_hit:+}") } else { String::new() };
+                let th = if to_hit != 0 {
+                    format!(" to-hit {to_hit:+}")
+                } else {
+                    String::new()
+                };
                 println!(
                     "  WPN {:<18} {} heat {} dmg {} rng {}{}{}",
                     w.name,
@@ -341,7 +356,10 @@ fn main() {
     }
 
     let with_avail = mechs.iter().filter(|m| !m.availability.is_empty()).count();
-    eprintln!("availability joined onto {with_avail}/{} units", mechs.len());
+    eprintln!(
+        "availability joined onto {with_avail}/{} units",
+        mechs.len()
+    );
 
     let mut bundle = Bundle::new(mechs);
     bundle.munitions = eq_index.munition_catalog;

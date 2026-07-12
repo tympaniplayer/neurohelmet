@@ -34,7 +34,11 @@ pub struct Image {
 
 impl Image {
     pub fn new(w: usize, h: usize) -> Self {
-        Image { w, h, px: vec![[0, 0, 0]; w * h] }
+        Image {
+            w,
+            h,
+            px: vec![[0, 0, 0]; w * h],
+        }
     }
 
     fn put(&mut self, x: usize, y: usize, rgb: [u8; 3]) {
@@ -185,10 +189,22 @@ fn indexed(i: u8) -> [u8; 3] {
     match i {
         0..=15 => {
             const SYS: [Color; 16] = [
-                Color::Black, Color::Red, Color::Green, Color::Yellow, Color::Blue,
-                Color::Magenta, Color::Cyan, Color::Gray, Color::DarkGray, Color::LightRed,
-                Color::LightGreen, Color::LightYellow, Color::LightBlue, Color::LightMagenta,
-                Color::LightCyan, Color::White,
+                Color::Black,
+                Color::Red,
+                Color::Green,
+                Color::Yellow,
+                Color::Blue,
+                Color::Magenta,
+                Color::Cyan,
+                Color::Gray,
+                Color::DarkGray,
+                Color::LightRed,
+                Color::LightGreen,
+                Color::LightYellow,
+                Color::LightBlue,
+                Color::LightMagenta,
+                Color::LightCyan,
+                Color::White,
             ];
             rgb(SYS[i as usize], [0, 0, 0])
         }
@@ -223,12 +239,19 @@ mod tests {
     fn rasterizes_cell_colors_and_ppm_header() {
         // One green 'A' on black + one reversed cell.
         let mut buf = Buffer::empty(Rect::new(0, 0, 2, 1));
-        buf[(0, 0)].set_symbol("A").set_style(Style::default().fg(Color::Green));
-        buf[(1, 0)].set_symbol(" ").set_style(Style::default().bg(Color::Red));
+        buf[(0, 0)]
+            .set_symbol("A")
+            .set_style(Style::default().fg(Color::Green));
+        buf[(1, 0)]
+            .set_symbol(" ")
+            .set_style(Style::default().bg(Color::Red));
         let img = rasterize(&buf, 1); // 2 cells × 8px = 16×8
         assert_eq!((img.w, img.h), (16, 8));
         // 'A' top row in font8x8 has set pixels somewhere in cell 0 → at least one green pixel.
-        assert!(img.px.contains(&[13, 188, 121]), "the green A should produce green pixels");
+        assert!(
+            img.px.contains(&[13, 188, 121]),
+            "the green A should produce green pixels"
+        );
 
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("t.ppm");

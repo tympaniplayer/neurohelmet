@@ -131,7 +131,10 @@ fn munition_info(key: &str, a: &Value) -> MunitionInfo {
         .filter(|m| !m.is_empty())
         .unwrap_or(STANDARD)
         .to_string();
-    MunitionInfo { base_ammo, munition }
+    MunitionInfo {
+        base_ammo,
+        munition,
+    }
 }
 
 /// Build weapon (heat + ammo key) and ammo (compatibility key) lookups from `equipment2.json`.
@@ -175,7 +178,12 @@ pub fn build_equipment_index(eq_text: &str) -> Result<EqIndex, String> {
                 };
                 let tc_eligible =
                     has_flag("F_DIRECT_FIRE") && !has_flag("F_CWS") && !has_flag("F_TASER");
-                let info = WeaponInfo { heat, ammo_key, to_hit, tc_eligible };
+                let info = WeaponInfo {
+                    heat,
+                    ammo_key,
+                    to_hit,
+                    tc_eligible,
+                };
                 for k in entry_keys(key, entry) {
                     weapons.insert(k, info.clone());
                 }
@@ -205,14 +213,17 @@ pub fn build_equipment_index(eq_text: &str) -> Result<EqIndex, String> {
         .into_iter()
         .filter(|(_, names)| names.len() > 1)
         .map(|(base, mut names)| {
-            names.sort_by(|a, b| {
-                (a != STANDARD, a.as_str()).cmp(&(b != STANDARD, b.as_str()))
-            });
+            names.sort_by(|a, b| (a != STANDARD, a.as_str()).cmp(&(b != STANDARD, b.as_str())));
             (base, names)
         })
         .collect();
 
-    Ok(EqIndex { weapons, ammo, munitions, munition_catalog })
+    Ok(EqIndex {
+        weapons,
+        ammo,
+        munitions,
+        munition_catalog,
+    })
 }
 
 fn s(v: &Value, key: &str) -> String {
@@ -262,7 +273,12 @@ fn parse_as_stats(unit: &Value) -> AsStats {
     let specials: Vec<String> = a
         .get("specials")
         .and_then(Value::as_array)
-        .map(|arr| arr.iter().filter_map(Value::as_str).map(str::to_string).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
         .unwrap_or_default();
     AsStats {
         pv: num_u16(a, "PV"),
@@ -329,14 +345,30 @@ fn parse_firing_arc(arc: &Value) -> FiringArc {
                 .unwrap_or("0")
                 .to_string()
         };
-        ArcDamage { s: band("dmgS"), m: band("dmgM"), l: band("dmgL"), e: band("dmgE") }
+        ArcDamage {
+            s: band("dmgS"),
+            m: band("dmgM"),
+            l: band("dmgL"),
+            e: band("dmgE"),
+        }
     };
     let specials = arc
         .get("specials")
         .and_then(Value::as_array)
-        .map(|arr| arr.iter().filter_map(Value::as_str).map(str::to_string).collect())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(Value::as_str)
+                .map(str::to_string)
+                .collect()
+        })
         .unwrap_or_default();
-    FiringArc { std: dmg("STD"), cap: dmg("CAP"), scap: dmg("SCAP"), msl: dmg("MSL"), specials }
+    FiringArc {
+        std: dmg("STD"),
+        cap: dmg("CAP"),
+        scap: dmg("SCAP"),
+        msl: dmg("MSL"),
+        specials,
+    }
 }
 
 /// Result of building one mech, including any non-fatal warnings (e.g. weapons whose heat
@@ -589,7 +621,11 @@ pub fn build_infantry(
     if unit_type == UnitType::Infantry {
         armor = BTreeMap::from([(
             Location::Platoon,
-            LocationArmor { armor_max: 0, rear_max: 0, internal_max: num_u16(unit, "internal") },
+            LocationArmor {
+                armor_max: 0,
+                rear_max: 0,
+                internal_max: num_u16(unit, "internal"),
+            },
         )]);
     }
     let mech = Mech {
@@ -625,7 +661,10 @@ pub fn build_infantry(
         as_stats: parse_as_stats(unit),
         availability: BTreeMap::new(),
     };
-    Ok(BuildOutcome { mech, unresolved_heat })
+    Ok(BuildOutcome {
+        mech,
+        unresolved_heat,
+    })
 }
 
 /// Build an aerospace / conventional fighter (§21). `armor` is parsed from the record sheet — four
@@ -688,7 +727,10 @@ pub fn build_aero(
         as_stats: parse_as_stats(unit),
         availability: BTreeMap::new(),
     };
-    Ok(BuildOutcome { mech, unresolved_heat })
+    Ok(BuildOutcome {
+        mech,
+        unresolved_heat,
+    })
 }
 
 /// Build a large craft (DropShip / Small Craft; Phase 2 adds JumpShip / WarShip / Space Station).
@@ -735,7 +777,10 @@ pub fn build_large_craft(unit: &Value) -> Result<BuildOutcome, String> {
         as_stats: parse_as_stats(unit), // includes the multi-arc card (`usesArcs`)
         availability: BTreeMap::new(),
     };
-    Ok(BuildOutcome { mech, unresolved_heat: Vec::new() })
+    Ok(BuildOutcome {
+        mech,
+        unresolved_heat: Vec::new(),
+    })
 }
 
 /// Build a combat vehicle. Reuses the shared loadout parse and the mech armor model: vehicle record
@@ -791,7 +836,10 @@ pub fn build_vehicle(
         as_stats: parse_as_stats(unit),
         availability: BTreeMap::new(),
     };
-    Ok(BuildOutcome { mech, unresolved_heat })
+    Ok(BuildOutcome {
+        mech,
+        unresolved_heat,
+    })
 }
 
 /// Build a [`Mech`] from a unit value, its parsed armor table, and the equipment index.
@@ -859,7 +907,11 @@ pub fn build_mech(
         HeatSinkType::Single
     };
     let per_sink = heat_sink_type.per_sink();
-    let heat_sinks = if per_sink > 0 { dissipation / per_sink } else { 0 };
+    let heat_sinks = if per_sink > 0 {
+        dissipation / per_sink
+    } else {
+        0
+    };
 
     let (weapons, ammo, equipment, unresolved_heat) = parse_loadout(&comp, idx, None);
 
@@ -921,11 +973,28 @@ mod tests {
         crit_slots.insert(
             Location::RightTorso,
             vec![
-                CritSlot { slot: 2, name: "CLSRM6".into(), system: false, hittable: true, ..Default::default() },
-                CritSlot { slot: 0, name: "Fusion Engine".into(), system: true, hittable: true, ..Default::default() },
+                CritSlot {
+                    slot: 2,
+                    name: "CLSRM6".into(),
+                    system: false,
+                    hittable: true,
+                    ..Default::default()
+                },
+                CritSlot {
+                    slot: 0,
+                    name: "Fusion Engine".into(),
+                    system: true,
+                    hittable: true,
+                    ..Default::default()
+                },
             ],
         );
-        let idx = EqIndex { weapons: HashMap::new(), ammo: HashMap::new(), munitions: HashMap::new(), munition_catalog: BTreeMap::new() };
+        let idx = EqIndex {
+            weapons: HashMap::new(),
+            ammo: HashMap::new(),
+            munitions: HashMap::new(),
+            munition_catalog: BTreeMap::new(),
+        };
         let out = build_mech(&unit, BTreeMap::new(), crit_slots, &idx).unwrap();
         let rt = &out.mech.crit_slots[&Location::RightTorso];
 
@@ -934,7 +1003,10 @@ mod tests {
         // ...so it now equals the weapon name (which is how disable-on-crit links them).
         assert_eq!(out.mech.weapons[0].name, "SRM 6");
         // System slots are left untouched (not in comp).
-        assert_eq!(rt.iter().find(|c| c.slot == 0).unwrap().name, "Fusion Engine");
+        assert_eq!(
+            rt.iter().find(|c| c.slot == 0).unwrap().name,
+            "Fusion Engine"
+        );
     }
 
     #[test]
@@ -952,14 +1024,27 @@ mod tests {
                 {"t": "S", "n": "Clan Armor Kit (All)", "l": "TPRS", "q": 1},
             ],
         });
-        let idx = EqIndex { weapons: HashMap::new(), ammo: HashMap::new(), munitions: HashMap::new(), munition_catalog: BTreeMap::new() };
+        let idx = EqIndex {
+            weapons: HashMap::new(),
+            ammo: HashMap::new(),
+            munitions: HashMap::new(),
+            munition_catalog: BTreeMap::new(),
+        };
         let out = build_infantry(&unit, BTreeMap::new(), &idx).unwrap();
         // Both weapons survive, once each (q is troopers, not mounts); the armor-kit `S` row is skipped.
-        assert_eq!(out.mech.weapons.len(), 2, "both infantry weapons baked, not expanded");
+        assert_eq!(
+            out.mech.weapons.len(),
+            2,
+            "both infantry weapons baked, not expanded"
+        );
         assert_eq!(out.mech.weapons[0].name, "Auto-Rifle (Modern, Generic)");
         assert_eq!(out.mech.weapons[1].name, "AA Weapon (Mk. 2, Man-Portable)");
         // Squad-wide labels fall back to the platoon track; heatless arms aren't "unresolved".
-        assert!(out.mech.weapons.iter().all(|w| w.location == Location::Platoon));
+        assert!(out
+            .mech
+            .weapons
+            .iter()
+            .all(|w| w.location == Location::Platoon));
         assert!(out.unresolved_heat.is_empty());
     }
 
@@ -977,7 +1062,12 @@ mod tests {
                 {"t": "B", "n": "Support Laser", "l": "Trooper 3", "d": "1", "r": "1/2/3", "q": 1},
             ],
         });
-        let idx = EqIndex { weapons: HashMap::new(), ammo: HashMap::new(), munitions: HashMap::new(), munition_catalog: BTreeMap::new() };
+        let idx = EqIndex {
+            weapons: HashMap::new(),
+            ammo: HashMap::new(),
+            munitions: HashMap::new(),
+            munition_catalog: BTreeMap::new(),
+        };
         let out = build_infantry(&unit, BTreeMap::new(), &idx).unwrap();
         assert_eq!(out.mech.unit_type, UnitType::BattleArmor);
         assert_eq!(out.mech.weapons[0].location, Location::Trooper1); // squad-wide fallback
@@ -996,7 +1086,12 @@ mod tests {
                 "specials": ["AC2/2/-", "IF1"]
             }
         });
-        let idx = EqIndex { weapons: HashMap::new(), ammo: HashMap::new(), munitions: HashMap::new(), munition_catalog: BTreeMap::new() };
+        let idx = EqIndex {
+            weapons: HashMap::new(),
+            ammo: HashMap::new(),
+            munitions: HashMap::new(),
+            munition_catalog: BTreeMap::new(),
+        };
         let out = build_mech(&unit, BTreeMap::new(), BTreeMap::new(), &idx).unwrap();
         let a = &out.mech.as_stats;
         assert_eq!(a.pv, 52);
@@ -1004,7 +1099,10 @@ mod tests {
         assert_eq!(a.tp, "BM");
         assert_eq!(a.armor, 10);
         assert_eq!(a.structure, 8);
-        assert_eq!((a.dmg_s.as_str(), a.dmg_m.as_str(), a.dmg_l.as_str()), ("5", "5", "2"));
+        assert_eq!(
+            (a.dmg_s.as_str(), a.dmg_m.as_str(), a.dmg_l.as_str()),
+            ("5", "5", "2")
+        );
         assert_eq!(a.specials, vec!["AC2/2/-", "IF1"]);
     }
 
@@ -1035,19 +1133,62 @@ mod tests {
         assert!(is_aero_fighter(&unit));
         // Armor as the record sheet would parse it: 4 arcs + the shared SI pool.
         let armor = BTreeMap::from([
-            (Location::Nose, LocationArmor { armor_max: 12, rear_max: 0, internal_max: 0 }),
-            (Location::LeftWing, LocationArmor { armor_max: 9, rear_max: 0, internal_max: 0 }),
-            (Location::RightWing, LocationArmor { armor_max: 9, rear_max: 0, internal_max: 0 }),
-            (Location::Aft, LocationArmor { armor_max: 7, rear_max: 0, internal_max: 0 }),
-            (Location::AeroSI, LocationArmor { armor_max: 0, rear_max: 0, internal_max: 5 }),
+            (
+                Location::Nose,
+                LocationArmor {
+                    armor_max: 12,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::LeftWing,
+                LocationArmor {
+                    armor_max: 9,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::RightWing,
+                LocationArmor {
+                    armor_max: 9,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::Aft,
+                LocationArmor {
+                    armor_max: 7,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::AeroSI,
+                LocationArmor {
+                    armor_max: 0,
+                    rear_max: 0,
+                    internal_max: 5,
+                },
+            ),
         ]);
-        let idx = EqIndex { weapons: HashMap::new(), ammo: HashMap::new(), munitions: HashMap::new(), munition_catalog: BTreeMap::new() };
+        let idx = EqIndex {
+            weapons: HashMap::new(),
+            ammo: HashMap::new(),
+            munitions: HashMap::new(),
+            munition_catalog: BTreeMap::new(),
+        };
         let out = build_aero(&unit, armor, 16, 32, &idx).unwrap();
         let m = out.mech;
         assert_eq!(m.unit_type, UnitType::Aerospace);
         assert_eq!(m.subtype, "Aerospace Fighter Omni");
         assert_eq!((m.as_stats.tp.as_str(), m.as_stats.pv), ("AF", 50));
-        assert_eq!(m.as_stats.threshold, 3, "aerospace Threshold baked from the `Th` field");
+        assert_eq!(
+            m.as_stats.threshold, 3,
+            "aerospace Threshold baked from the `Th` field"
+        );
         assert_eq!((m.walk, m.run), (5, 8), "safe/max thrust");
         // Doubles: 16 sinks dissipating 32.
         assert_eq!((m.heat_sinks, m.dissipation), (16, 32));
@@ -1094,17 +1235,30 @@ mod tests {
         assert_eq!(m.unit_type, UnitType::Aerospace);
         assert_eq!(m.subtype, "Spheroid DropShip");
         // Single Arm/Str/Th pool + PV on the AS card; JSON-only (no doll, no loadout).
-        assert_eq!((m.as_stats.armor, m.as_stats.structure, m.as_stats.threshold), (10, 5, 1));
+        assert_eq!(
+            (m.as_stats.armor, m.as_stats.structure, m.as_stats.threshold),
+            (10, 5, 1)
+        );
         assert_eq!(m.as_stats.pv, 200);
         assert!(m.armor.is_empty() && m.weapons.is_empty());
         assert_eq!((m.walk, m.run), (3, 5), "safe/max thrust");
 
-        let arcs = m.as_stats.arcs.expect("large craft carries the multi-arc card");
+        let arcs = m
+            .as_stats
+            .arcs
+            .expect("large craft carries the multi-arc card");
         assert_eq!(
-            (arcs.front.std.s.as_str(), arcs.front.std.m.as_str(), arcs.front.std.l.as_str()),
+            (
+                arcs.front.std.s.as_str(),
+                arcs.front.std.m.as_str(),
+                arcs.front.std.l.as_str()
+            ),
             ("4", "3", "2")
         );
-        assert_eq!(arcs.front.std.e, "0*", "minimal-damage token preserved, not collapsed to 0");
+        assert_eq!(
+            arcs.front.std.e, "0*",
+            "minimal-damage token preserved, not collapsed to 0"
+        );
         assert_eq!(arcs.front.msl.l, "1");
         assert_eq!(arcs.front.specials, vec!["PNT1"]);
         assert_eq!(arcs.rear.std.s, "1");
@@ -1129,7 +1283,12 @@ mod tests {
             "subtype": "BattleMek Omni",
             "tons": 75,
         });
-        let idx = EqIndex { weapons: HashMap::new(), ammo: HashMap::new(), munitions: HashMap::new(), munition_catalog: BTreeMap::new() };
+        let idx = EqIndex {
+            weapons: HashMap::new(),
+            ammo: HashMap::new(),
+            munitions: HashMap::new(),
+            munition_catalog: BTreeMap::new(),
+        };
         let out = build_mech(&unit, BTreeMap::new(), BTreeMap::new(), &idx).unwrap();
         assert_eq!(out.mech.weight_class, "Heavy");
         assert_eq!(out.mech.subtype, "BattleMek Omni");

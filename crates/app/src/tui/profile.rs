@@ -51,7 +51,6 @@ impl DisplayProfile {
             DisplayProfile::Modern => "modern",
         }
     }
-
 }
 
 thread_local! {
@@ -81,8 +80,14 @@ mod tests {
 
     #[test]
     fn from_name_maps_known_and_rejects_unknown() {
-        assert_eq!(DisplayProfile::from_name("modern"), Some(DisplayProfile::Modern));
-        assert_eq!(DisplayProfile::from_name("Laptop"), Some(DisplayProfile::Modern));
+        assert_eq!(
+            DisplayProfile::from_name("modern"),
+            Some(DisplayProfile::Modern)
+        );
+        assert_eq!(
+            DisplayProfile::from_name("Laptop"),
+            Some(DisplayProfile::Modern)
+        );
         assert_eq!(DisplayProfile::from_name("pi"), Some(DisplayProfile::Pi));
         assert_eq!(DisplayProfile::from_name("nonsense"), None);
     }

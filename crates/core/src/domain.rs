@@ -600,9 +600,16 @@ impl MechConfig {
     pub fn locations(self) -> &'static [Location] {
         use Location::*;
         match self {
-            MechConfig::Biped => {
-                &[Head, CenterTorso, LeftTorso, RightTorso, LeftArm, RightArm, LeftLeg, RightLeg]
-            }
+            MechConfig::Biped => &[
+                Head,
+                CenterTorso,
+                LeftTorso,
+                RightTorso,
+                LeftArm,
+                RightArm,
+                LeftLeg,
+                RightLeg,
+            ],
             MechConfig::Quad => &[
                 Head,
                 CenterTorso,
@@ -951,13 +958,25 @@ impl Mech {
     /// 'Mech config's set. Aerospace has none (AS-only — no Classic doll).
     pub fn locations(&self) -> Vec<Location> {
         if self.is_vehicle() {
-            Location::VEHICLE.iter().copied().filter(|l| self.armor.contains_key(l)).collect()
+            Location::VEHICLE
+                .iter()
+                .copied()
+                .filter(|l| self.armor.contains_key(l))
+                .collect()
         } else if self.unit_type == UnitType::Infantry {
             vec![Location::Platoon]
         } else if self.unit_type == UnitType::BattleArmor {
-            Location::TROOPERS.iter().copied().filter(|l| self.armor.contains_key(l)).collect()
+            Location::TROOPERS
+                .iter()
+                .copied()
+                .filter(|l| self.armor.contains_key(l))
+                .collect()
         } else if self.is_aerospace() {
-            Location::AEROSPACE.iter().copied().filter(|l| self.armor.contains_key(l)).collect()
+            Location::AEROSPACE
+                .iter()
+                .copied()
+                .filter(|l| self.armor.contains_key(l))
+                .collect()
         } else {
             self.config.locations().to_vec()
         }
@@ -965,14 +984,20 @@ impl Mech {
 
     /// Whether the 'Mech mounts a Targeting Computer (from the baked equipment list).
     pub fn has_targeting_computer(&self) -> bool {
-        self.equipment.iter().any(|e| e.name.contains("Targeting Computer"))
+        self.equipment
+            .iter()
+            .any(|e| e.name.contains("Targeting Computer"))
     }
 
     /// A weapon's total to-hit modifier: its inherent [`WeaponMount::to_hit`] plus the −1 from a
     /// Targeting Computer when the weapon is eligible (see [`WeaponMount::tc_eligible`]). This is
     /// the *equipment-derived* part only — range, movement, heat, and terrain are the player's.
     pub fn weapon_to_hit(&self, w: &WeaponMount) -> i32 {
-        let tc = if self.has_targeting_computer() && w.tc_eligible { -1 } else { 0 };
+        let tc = if self.has_targeting_computer() && w.tc_eligible {
+            -1
+        } else {
+            0
+        };
         w.to_hit as i32 + tc
     }
 }
@@ -996,7 +1021,10 @@ mod tests {
         let mut av: BTreeMap<u16, BTreeMap<u16, u8>> = BTreeMap::new();
         av.insert(13, BTreeMap::from([(27, 50u8), (30, 5u8)]));
         av.insert(10, BTreeMap::from([(27, 90u8)]));
-        let m = Mech { availability: av, ..Default::default() };
+        let m = Mech {
+            availability: av,
+            ..Default::default()
+        };
 
         // Specific era+faction.
         assert_eq!(m.avail_score(Some(13), Some(27)), Some(50));
@@ -1046,9 +1074,15 @@ mod tests {
 
     #[test]
     fn aerospace_has_no_doll_locations() {
-        let mech = Mech { unit_type: UnitType::Aerospace, ..Default::default() };
+        let mech = Mech {
+            unit_type: UnitType::Aerospace,
+            ..Default::default()
+        };
         assert!(mech.is_aerospace());
-        assert!(mech.locations().is_empty(), "aerospace is AS-only — no Classic doll");
+        assert!(
+            mech.locations().is_empty(),
+            "aerospace is AS-only — no Classic doll"
+        );
     }
 
     #[test]
@@ -1134,7 +1168,8 @@ mod tests {
                     slot: 0,
                     name: "Autocannon/20".into(),
                     system: false,
-                    hittable: true, ..Default::default()
+                    hittable: true,
+                    ..Default::default()
                 }],
             )]),
             as_stats: AsStats::default(),
@@ -1145,6 +1180,9 @@ mod tests {
         assert_eq!(mech, back);
         assert_eq!(back.ammo[0].shots_max(), 10);
         assert_eq!(back.display_name(), "Atlas AS7-D");
-        assert_eq!(back.crit_slots[&Location::RightTorso][0].name, "Autocannon/20");
+        assert_eq!(
+            back.crit_slots[&Location::RightTorso][0].name,
+            "Autocannon/20"
+        );
     }
 }

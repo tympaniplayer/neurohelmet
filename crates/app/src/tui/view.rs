@@ -28,19 +28,6 @@ use super::theme::{theme, THEMES};
 use neurohelmet_core::domain::{
     Facing, GameMode, Location, Mech, Rarity, UnitType, WeaponMount, STANDARD_MUNITION,
 };
-use neurohelmet_core::engine::override_conv::{self, ArmorRegion, OverrideCard};
-use neurohelmet_core::engine::large_craft;
-use neurohelmet_core::engine::battleforce::{
-    self, BfA2G, BfAeroAngle, BfAttackKind, BfMotive, BfMove, BfPhysical, BfRange, BfTargetKind,
-    BfTargetMove,
-};
-use neurohelmet_core::engine::{
-    as_to_hit_full, cluster_hits, gator_to_hit, inches_to_hexes, infantry_max_range,
-    infantry_range_mod, mech_hit_location, movement_hexes, parse_ranges, range_bracket,
-    range_brackets_hexes, skill_adjusted_bv, skill_adjusted_pv, target_modifier, AttackDir,
-    ClusterProfile, MoveMode, RangeBracket, PILOT_MAX,
-};
-use neurohelmet_core::engine::as_element::SbfElementType;
 use neurohelmet_core::engine::acs::{
     acs_aero_range, acs_aero_to_hit, acs_bomb_clusters, acs_combat_drop_result, acs_damage,
     acs_damage_band, acs_fatigue_band, acs_ground_strike_damage, acs_morale_tn,
@@ -48,7 +35,22 @@ use neurohelmet_core::engine::acs::{
     AcsDamageBand, AcsDamageCtx, AcsExperience, AcsFatigueBand, AcsMorale, AcsMoraleCtx, AcsRange,
     ACS_AERIAL_RECON_MOD, ACS_CAP_ENGAGEMENT_MOD, ACS_GROUND_STRIKE_TOHIT,
 };
-use neurohelmet_core::engine::sbf::{self as sbf_engine, SbfA2G, SbfAeroKind, SbfAeroTarget, SbfRange};
+use neurohelmet_core::engine::as_element::SbfElementType;
+use neurohelmet_core::engine::battleforce::{
+    self, BfA2G, BfAeroAngle, BfAttackKind, BfMotive, BfMove, BfPhysical, BfRange, BfTargetKind,
+    BfTargetMove,
+};
+use neurohelmet_core::engine::large_craft;
+use neurohelmet_core::engine::override_conv::{self, ArmorRegion, OverrideCard};
+use neurohelmet_core::engine::sbf::{
+    self as sbf_engine, SbfA2G, SbfAeroKind, SbfAeroTarget, SbfRange,
+};
+use neurohelmet_core::engine::{
+    as_to_hit_full, cluster_hits, gator_to_hit, inches_to_hexes, infantry_max_range,
+    infantry_range_mod, mech_hit_location, movement_hexes, parse_ranges, range_bracket,
+    range_brackets_hexes, skill_adjusted_bv, skill_adjusted_pv, target_modifier, AttackDir,
+    ClusterProfile, MoveMode, RangeBracket, PILOT_MAX,
+};
 use neurohelmet_core::session::{
     AsCritKind, BfLive, BfMorale, CritRow, MoraleStatus, MotiveLevel, TrackedMech, CREW_MAX,
     OV_HEAT_MAX, VEHICLE_CRITS,
@@ -135,7 +137,10 @@ fn play_content(f: &mut Frame, app: &App) -> (Rect, bool) {
     {
         let parts = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Length(SIDEBAR_W), Constraint::Min(SIDEBAR_MIN_MAIN)])
+            .constraints([
+                Constraint::Length(SIDEBAR_W),
+                Constraint::Min(SIDEBAR_MIN_MAIN),
+            ])
             .split(area);
         draw_sidebar(f, parts[0], app);
         (parts[1], true)
@@ -192,49 +197,77 @@ fn draw_modal(f: &mut Frame, app: &App) {
             " Load munition ".into(),
             munition_modal_lines(app, *bin, *sel),
         ),
-        Modal::AsCrit { sel } => (" Alpha Strike crits ".into(), as_crit_modal_lines(app, *sel)),
+        Modal::AsCrit { sel } => (
+            " Alpha Strike crits ".into(),
+            as_crit_modal_lines(app, *sel),
+        ),
         Modal::Skills { sel } => (" Pilot skills ".into(), skills_modal_lines(app, *sel)),
-        Modal::AddUnit { idx, gunnery, piloting, sel } => {
+        Modal::AddUnit {
+            idx,
+            gunnery,
+            piloting,
+            sel,
+        } => {
             let title = match app.bundle.get(*idx) {
                 Some(m) => format!(" Add {} ", m.display_name()),
                 None => " Add unit ".into(),
             };
-            (title, add_unit_modal_lines(app, *idx, *gunnery, *piloting, *sel))
+            (
+                title,
+                add_unit_modal_lines(app, *idx, *gunnery, *piloting, *sel),
+            )
         }
         Modal::Move { sel } => (" Movement this turn ".into(), move_modal_lines(app, *sel)),
         Modal::Shot { sel } => (" To-hit target ".into(), shot_modal_lines(app, *sel)),
-        Modal::Gator { sel } => (" To-hit target (GATOR) ".into(), gator_modal_lines(app, *sel)),
+        Modal::Gator { sel } => (
+            " To-hit target (GATOR) ".into(),
+            gator_modal_lines(app, *sel),
+        ),
         Modal::VehicleCrit { sel } => {
-            let title = if app.session.active_mech().is_some_and(|tm| tm.spec.is_aerospace()) {
+            let title = if app
+                .session
+                .active_mech()
+                .is_some_and(|tm| tm.spec.is_aerospace())
+            {
                 " Aerospace criticals "
             } else {
                 " Vehicle criticals "
             };
             (title.into(), vehicle_crit_modal_lines(app, *sel))
         }
-        Modal::OvCrit { loc, sel } => (" Override criticals ".into(), ov_crit_modal_lines(app, *loc, *sel)),
+        Modal::OvCrit { loc, sel } => (
+            " Override criticals ".into(),
+            ov_crit_modal_lines(app, *loc, *sel),
+        ),
         Modal::OvShot { sel } => (" To-hit shot ".into(), ov_shot_modal_lines(app, *sel)),
         Modal::SbfGroup { sel } => (" Group force ".into(), sbf_group_modal_lines(app, *sel)),
         Modal::AcsGroup { sel } => (" Group force ".into(), acs_group_modal_lines(app, *sel)),
-        Modal::SbfDoctrine { sel } => {
-            (" Auto-group (doctrine) ".into(), sbf_doctrine_modal_lines(*sel))
-        }
+        Modal::SbfDoctrine { sel } => (
+            " Auto-group (doctrine) ".into(),
+            sbf_doctrine_modal_lines(*sel),
+        ),
         Modal::SbfCrit { sel } => (" SBF criticals ".into(), sbf_crit_modal_lines(app, *sel)),
         Modal::SbfShot { sel } => (" SBF to-hit ".into(), sbf_shot_modal_lines(app, *sel)),
-        Modal::BfCrit { sel } => {
-            (" BattleForce criticals ".into(), bf_crit_modal_lines(app, *sel))
-        }
+        Modal::BfCrit { sel } => (
+            " BattleForce criticals ".into(),
+            bf_crit_modal_lines(app, *sel),
+        ),
         Modal::BfShot { sel } => (" BF to-hit ".into(), bf_shot_modal_lines(app, *sel)),
         Modal::BfGroup { sel } => (" Group force ".into(), bf_group_modal_lines(app, *sel)),
-        Modal::BfDoctrine { sel } => {
-            (" Auto-group (doctrine) ".into(), bf_doctrine_modal_lines(*sel))
-        }
-        Modal::Motive { sel } => (" Motive system damage ".into(), motive_modal_lines(app, *sel)),
+        Modal::BfDoctrine { sel } => (
+            " Auto-group (doctrine) ".into(),
+            bf_doctrine_modal_lines(*sel),
+        ),
+        Modal::Motive { sel } => (
+            " Motive system damage ".into(),
+            motive_modal_lines(app, *sel),
+        ),
         Modal::Dice { tab } => (" Dice reference ".into(), dice_modal_lines(app, *tab)),
         Modal::Filters { sel } => (" Filters ".into(), filters_modal_lines(app, *sel)),
-        Modal::FactionPick { query, sel } => {
-            (" Pick faction ".into(), faction_pick_lines(app, query, *sel))
-        }
+        Modal::FactionPick { query, sel } => (
+            " Pick faction ".into(),
+            faction_pick_lines(app, query, *sel),
+        ),
         Modal::GenerateForce(fg) => (" Generate force ".into(), force_gen_modal_lines(app, fg)),
         Modal::ThemePicker { sel, .. } => (" Display (Ctrl-T) ".into(), theme_picker_lines(*sel)),
         Modal::Help => (
@@ -251,7 +284,11 @@ fn draw_modal(f: &mut Frame, app: &App) {
     };
     // Width fits the widest line (for wide tables like the Cluster Hits reference), min 60.
     let content_w = lines.iter().map(Line::width).max().unwrap_or(0) as u16;
-    let area = centered_rect(content_w.saturating_add(4).max(60), lines.len() as u16 + 2, f.area());
+    let area = centered_rect(
+        content_w.saturating_add(4).max(60),
+        lines.len() as u16 + 2,
+        f.area(),
+    );
     f.render_widget(Clear, area);
     f.render_widget(
         Paragraph::new(lines).block(
@@ -275,7 +312,10 @@ fn theme_picker_lines(sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             // A little swatch: render the unselected label in that theme's accent color.
             Style::default().fg(t.accent)
@@ -293,7 +333,10 @@ fn theme_picker_lines(sel: usize) -> Vec<Line<'static>> {
         DisplayProfile::Modern => ("modern", "Modern (roomy)"),
     };
     let prof_style = if prof_selected {
-        Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().on_accent)
+            .bg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme().accent)
     };
@@ -308,14 +351,20 @@ fn theme_picker_lines(sel: usize) -> Vec<Line<'static>> {
     let marker = if icon_selected { "▶ " } else { "  " };
     let cur = icons::icons();
     let icon_style = if icon_selected {
-        Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().on_accent)
+            .bg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme().accent)
     };
     lines.push(Line::from(vec![
         Span::styled(format!("{marker}{:<10}", "Icons:"), icon_style),
         Span::styled(format!("‹ {} ›", cur.label()), icon_style),
-        Span::styled(format!("  ({})", cur.config_name()), Style::default().fg(theme().dim)),
+        Span::styled(
+            format!("  ({})", cur.config_name()),
+            Style::default().fg(theme().dim),
+        ),
     ]));
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
@@ -385,14 +434,18 @@ fn crit_modal_lines(app: &App, loc: Location, sel: usize) -> Vec<Line<'static>> 
                     if tm.is_active_bin(bin) {
                         spans.push(Span::styled(
                             "  ◀ active",
-                            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(theme().accent)
+                                .add_modifier(Modifier::BOLD),
                         ));
                     }
                 }
                 if hit {
                     spans.push(Span::styled(
                         "  ×",
-                        Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme().danger)
+                            .add_modifier(Modifier::BOLD),
                     ));
                 }
                 lines.push(Line::from(spans));
@@ -428,10 +481,15 @@ fn munition_modal_lines(app: &App, bin: u32, sel: usize) -> Vec<Line<'static>> {
         None => (Vec::new(), String::new(), String::new()),
     };
 
-    lines.push(Line::from(Span::styled(header, Style::default().fg(theme().dim))));
+    lines.push(Line::from(Span::styled(
+        header,
+        Style::default().fg(theme().dim),
+    )));
 
     // Window the list so a long group (e.g. 40 LRM munitions) stays on screen around the cursor.
-    let start = sel.saturating_sub(WINDOW / 2).min(list.len().saturating_sub(WINDOW));
+    let start = sel
+        .saturating_sub(WINDOW / 2)
+        .min(list.len().saturating_sub(WINDOW));
     let end = (start + WINDOW).min(list.len());
     if start > 0 {
         lines.push(Line::from(Span::styled(
@@ -482,17 +540,29 @@ fn dice_modal_lines(app: &App, tab: DiceTab) -> Vec<Line<'static>> {
         Line::from(vec![
             Span::styled(
                 " Cluster ",
-                if tab == DiceTab::Cluster { active } else { inactive },
+                if tab == DiceTab::Cluster {
+                    active
+                } else {
+                    inactive
+                },
             ),
             Span::raw("  "),
             Span::styled(
                 " Full Table ",
-                if tab == DiceTab::Table { active } else { inactive },
+                if tab == DiceTab::Table {
+                    active
+                } else {
+                    inactive
+                },
             ),
             Span::raw("  "),
             Span::styled(
                 " Hit Location ",
-                if tab == DiceTab::HitLoc { active } else { inactive },
+                if tab == DiceTab::HitLoc {
+                    active
+                } else {
+                    inactive
+                },
             ),
         ]),
         Line::from(""),
@@ -520,7 +590,10 @@ fn filters_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if is_any {
             Style::default().fg(theme().dim)
         } else {
@@ -543,7 +616,10 @@ fn filters_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     } else {
         "[↑↓] facet   [←→] cycle   [c] clear   [Esc] apply"
     };
-    lines.push(Line::from(Span::styled(hint, Style::default().fg(theme().dim))));
+    lines.push(Line::from(Span::styled(
+        hint,
+        Style::default().fg(theme().dim),
+    )));
     lines
 }
 
@@ -560,13 +636,21 @@ fn faction_pick_lines(app: &App, query: &str, sel: usize) -> Vec<Line<'static>> 
         Line::from(""),
     ];
     if list.is_empty() {
-        lines.push(Line::from(Span::styled("  (no faction matches)", Style::default().fg(theme().dim))));
+        lines.push(Line::from(Span::styled(
+            "  (no faction matches)",
+            Style::default().fg(theme().dim),
+        )));
     } else {
         // Window the list so the selection stays on screen.
-        let start = sel.saturating_sub(MAX - 1).min(list.len().saturating_sub(MAX));
+        let start = sel
+            .saturating_sub(MAX - 1)
+            .min(list.len().saturating_sub(MAX));
         let end = (start + MAX).min(list.len());
         if start > 0 {
-            lines.push(Line::from(Span::styled(format!("  ▲ {start} more"), Style::default().fg(theme().dim))));
+            lines.push(Line::from(Span::styled(
+                format!("  ▲ {start} more"),
+                Style::default().fg(theme().dim),
+            )));
         }
         for (i, choice) in list.iter().enumerate().take(end).skip(start) {
             let label = match choice {
@@ -576,7 +660,10 @@ fn faction_pick_lines(app: &App, query: &str, sel: usize) -> Vec<Line<'static>> 
             let selected = i == sel;
             let marker = if selected { "▶ " } else { "  " };
             let style = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else if choice.is_none() {
                 Style::default().fg(theme().dim)
             } else {
@@ -603,7 +690,10 @@ fn faction_pick_lines(app: &App, query: &str, sel: usize) -> Vec<Line<'static>> 
 fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     let pt = match app.session.mode {
-        GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => "PV",
+        GameMode::AlphaStrike
+        | GameMode::StrategicBattleForce
+        | GameMode::BattleForce
+        | GameMode::AbstractCombatSystem => "PV",
         GameMode::Classic | GameMode::Override => "BV",
     };
     let era_id = fg.era.as_ref().map(|(id, _)| *id);
@@ -611,7 +701,8 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
 
     if !fg.rolled {
         let any = |o: &Option<(u16, String)>| {
-            o.as_ref().map_or_else(|| "(any)".to_string(), |(_, n)| n.clone())
+            o.as_ref()
+                .map_or_else(|| "(any)".to_string(), |(_, n)| n.clone())
         };
         let size = match forcegen::formation_name(fg.count) {
             Some(name) => format!("{} ({name})", fg.count),
@@ -627,7 +718,11 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
             any(&fg.era),
             size,
             budget,
-            if fg.allow_rare { "yes".into() } else { "no".into() },
+            if fg.allow_rare {
+                "yes".into()
+            } else {
+                "no".into()
+            },
             fg.class_bias.clone().unwrap_or_else(|| "(any)".into()),
         ];
         for (i, label) in ForceGen::ROWS.iter().enumerate() {
@@ -635,7 +730,10 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
             let marker = if selected { "▶ " } else { "  " };
             let dim = matches!(values[i].as_str(), "(any)" | "no" | "off");
             let style = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else if dim {
                 Style::default().fg(theme().dim)
             } else {
@@ -652,7 +750,10 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
             Style::default().fg(theme().dim),
         )));
     } else if fg.preview.is_empty() {
-        lines.push(Line::from(Span::styled(fg.note.clone(), Style::default().fg(theme().warning))));
+        lines.push(Line::from(Span::styled(
+            fg.note.clone(),
+            Style::default().fg(theme().warning),
+        )));
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
             "[⌫] back to config   [Esc] cancel",
@@ -661,7 +762,9 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
     } else {
         let mut total = 0u64;
         for &idx in &fg.preview {
-            let Some(m) = app.bundle.get(idx) else { continue };
+            let Some(m) = app.bundle.get(idx) else {
+                continue;
+            };
             let cost = forcegen::unit_cost(m, app.session.mode);
             total += cost;
             lines.push(Line::from(vec![
@@ -669,7 +772,10 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
                     format!("  {:<24}", m.display_name()),
                     Style::default().fg(rarity_color(m.rarity(era_id, fac_id))),
                 ),
-                Span::styled(format!("{:>3}t  ", m.tonnage), Style::default().fg(theme().dim)),
+                Span::styled(
+                    format!("{:>3}t  ", m.tonnage),
+                    Style::default().fg(theme().dim),
+                ),
                 Span::styled(format!("{cost} {pt}"), Style::default().fg(theme().dim)),
             ]));
         }
@@ -687,7 +793,10 @@ fn force_gen_modal_lines(app: &App, fg: &ForceGen) -> Vec<Line<'static>> {
         )));
         // A budget-capped roll explains why it came up short of the requested size.
         if !fg.note.is_empty() {
-            lines.push(Line::from(Span::styled(fg.note.clone(), Style::default().fg(theme().warning))));
+            lines.push(Line::from(Span::styled(
+                fg.note.clone(),
+                Style::default().fg(theme().warning),
+            )));
         }
         lines.push(Line::from(Span::styled(
             "[Enter] accept (append)   [r] reroll   [⌫] back   [Esc] cancel",
@@ -711,7 +820,9 @@ fn dice_cluster_lines(app: &App, lines: &mut Vec<Line<'static>>) {
     };
     let weapon = tm.spec.weapons.iter().find(|w| w.id == id);
     let name = weapon.map_or("", |w| w.name.as_str());
-    let munition = tm.weapon_bin(id).map_or(STANDARD_MUNITION, |b| tm.bin_munition(b));
+    let munition = tm
+        .weapon_bin(id)
+        .map_or(STANDARD_MUNITION, |b| tm.bin_munition(b));
     match tm.weapon_cluster_profile(id) {
         Some(ClusterProfile::Table(size)) => {
             let suffix = if munition.is_empty() || munition == STANDARD_MUNITION {
@@ -721,7 +832,9 @@ fn dice_cluster_lines(app: &App, lines: &mut Vec<Line<'static>>) {
             };
             lines.push(Line::from(Span::styled(
                 format!("{name}  (rack {size}{suffix})"),
-                Style::default().fg(theme().fg_strong).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().fg_strong)
+                    .add_modifier(Modifier::BOLD),
             )));
             lines.push(dim("  2d6    hits".into()));
             for roll in 2..=12u8 {
@@ -739,7 +852,9 @@ fn dice_cluster_lines(app: &App, lines: &mut Vec<Line<'static>>) {
         }
         Some(ClusterProfile::AllHit(n)) => {
             lines.push(Line::from(name.to_string()));
-            lines.push(dim(format!("Streak: all {n} hit if locked — no cluster roll.")));
+            lines.push(dim(format!(
+                "Streak: all {n} hit if locked — no cluster roll."
+            )));
         }
         Some(ClusterProfile::Single) | None => {
             lines.push(Line::from(name.to_string()));
@@ -754,23 +869,32 @@ fn dice_cluster_lines(app: &App, lines: &mut Vec<Line<'static>>) {
 fn dice_cluster_table_lines(app: &App, lines: &mut Vec<Line<'static>>) {
     // Highlight the active weapon's rack size, if it rolls on the table.
     let active = app.session.active_mech().and_then(|tm| {
-        app.selected_weapon_id().and_then(|id| match tm.weapon_cluster_profile(id) {
-            Some(ClusterProfile::Table(size)) => Some(size),
-            _ => None,
-        })
+        app.selected_weapon_id()
+            .and_then(|id| match tm.weapon_cluster_profile(id) {
+                Some(ClusterProfile::Table(size)) => Some(size),
+                _ => None,
+            })
     });
     const ROLLS: [u8; 11] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
     // One half-row of spans: the size label then its 11 hit counts (or the roll header).
     let half = |size: u16, header: bool| -> Vec<Span<'static>> {
         let hot = !header && active == Some(size);
         let label_style = if header {
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if hot {
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(theme().dim)
         };
-        let label = if header { "sz".to_string() } else { size.to_string() };
+        let label = if header {
+            "sz".to_string()
+        } else {
+            size.to_string()
+        };
         let mut spans = vec![Span::styled(format!("{label:>3}"), label_style)];
         for r in ROLLS {
             let cell = if header {
@@ -851,7 +975,9 @@ fn two_column_help(left: &[HelpItem], right: &[HelpItem]) -> Vec<Line<'static>> 
         match item {
             HelpItem::Header(s) => Line::from(Span::styled(
                 (*s).to_string(),
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             )),
             HelpItem::Row(keys, desc) => Line::from(vec![
                 Span::styled(format!("  {keys:<9}"), Style::default().fg(theme().accent)),
@@ -935,7 +1061,10 @@ fn as_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             let selected = i == sel;
             let marker = if selected { "▶ " } else { "  " };
             let style = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else if n > 0 {
                 Style::default().fg(theme().danger)
             } else {
@@ -973,11 +1102,17 @@ fn skills_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             let selected = i == sel;
             let marker = if selected { "▶ " } else { "  " };
             let style = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
-            lines.push(Line::from(Span::styled(format!("{marker}{name:<10} {val}+"), style)));
+            lines.push(Line::from(Span::styled(
+                format!("{marker}{name:<10} {val}+"),
+                style,
+            )));
         }
     }
     lines.push(Line::from(Span::styled(
@@ -1004,38 +1139,62 @@ fn add_unit_modal_lines(
     // SBF and Standard BF elements are AS elements: same single Skill row and PV cost.
     let is_as = matches!(
         app.session.mode,
-        GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem
+        GameMode::AlphaStrike
+            | GameMode::StrategicBattleForce
+            | GameMode::BattleForce
+            | GameMode::AbstractCombatSystem
     );
     let unit = if is_as { "PV" } else { "BV" };
 
     // Skill rows. Alpha Strike has a single Skill; Classic has the unit-type's two skills.
     let (g_label, p_label) = m.unit_type.skill_labels();
-    let rows: Vec<(&str, u8)> =
-        if is_as { vec![("Skill", gunnery)] } else { vec![(g_label, gunnery), (p_label, piloting)] };
+    let rows: Vec<(&str, u8)> = if is_as {
+        vec![("Skill", gunnery)]
+    } else {
+        vec![(g_label, gunnery), (p_label, piloting)]
+    };
     for (i, (name, val)) in rows.into_iter().enumerate() {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
-        lines.push(Line::from(Span::styled(format!("{marker}{name:<10} {val}+"), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{name:<10} {val}+"),
+            style,
+        )));
     }
 
     // This unit's skill-adjusted cost (and the baked base, when skill moved it).
-    let base = if is_as { u32::from(m.as_stats.pv) } else { m.bv };
-    let cost =
-        if is_as { skill_adjusted_pv(base, gunnery) } else { skill_adjusted_bv(base, gunnery, piloting) };
+    let base = if is_as {
+        u32::from(m.as_stats.pv)
+    } else {
+        m.bv
+    };
+    let cost = if is_as {
+        skill_adjusted_pv(base, gunnery)
+    } else {
+        skill_adjusted_bv(base, gunnery, piloting)
+    };
     let mut cost_spans = vec![
         Span::styled("Cost      ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{unit} {cost}"),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
     ];
     if u64::from(base) != cost {
-        cost_spans.push(Span::styled(format!("   (base {base})"), Style::default().fg(theme().dim)));
+        cost_spans.push(Span::styled(
+            format!("   (base {base})"),
+            Style::default().fg(theme().dim),
+        ));
     }
     lines.push(Line::from(cost_spans));
 
@@ -1055,7 +1214,9 @@ fn add_unit_modal_lines(
             if over {
                 spans.push(Span::styled(
                     format!("   OVER by {}", new_total - limit),
-                    Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme().danger)
+                        .add_modifier(Modifier::BOLD),
                 ));
             } else {
                 spans.push(Span::styled(
@@ -1067,7 +1228,10 @@ fn add_unit_modal_lines(
         }
         None => lines.push(Line::from(vec![
             Span::styled("Force     ", Style::default().fg(theme().dim)),
-            Span::styled(format!("{unit} {new_total}"), Style::default().fg(theme().accent)),
+            Span::styled(
+                format!("{unit} {new_total}"),
+                Style::default().fg(theme().accent),
+            ),
         ])),
     }
 
@@ -1102,7 +1266,12 @@ fn move_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             ]
         } else {
             [
-                ("Moved", tm.move_mode.label(tm.spec.is_vehicle(), tm.spec.is_infantry()).to_string()),
+                (
+                    "Moved",
+                    tm.move_mode
+                        .label(tm.spec.is_vehicle(), tm.spec.is_infantry())
+                        .to_string(),
+                ),
                 ("Hexes", format!("{} / {}", tm.hexes_moved, tm.max_hexes())),
             ]
         };
@@ -1110,17 +1279,27 @@ fn move_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             let selected = i == sel;
             let marker = if selected { "▶ " } else { "  " };
             let style = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default()
             };
-            lines.push(Line::from(Span::styled(format!("{marker}{name:<10} {val}"), style)));
+            lines.push(Line::from(Span::styled(
+                format!("{marker}{name:<10} {val}"),
+                style,
+            )));
         }
         // Ground units derive their attack/TMM modifiers from the move; an aero's to-hit modifier
         // (airborne / velocity) isn't sourced from Mekbay, so it stays the player's to apply.
         if !aero {
             lines.push(Line::from(Span::styled(
-                format!("own attacks {:+}   TMM {:+}", tm.attack_move_modifier(), tm.tmm()),
+                format!(
+                    "own attacks {:+}   TMM {:+}",
+                    tm.attack_move_modifier(),
+                    tm.tmm()
+                ),
                 Style::default().fg(theme().accent),
             )));
         }
@@ -1130,7 +1309,10 @@ fn move_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     } else {
         "cleared on end turn   [↑↓] select   [←→] adjust   [Esc] close"
     };
-    lines.push(Line::from(Span::styled(footer, Style::default().fg(theme().dim))));
+    lines.push(Line::from(Span::styled(
+        footer,
+        Style::default().fg(theme().dim),
+    )));
     lines
 }
 
@@ -1138,10 +1320,16 @@ fn move_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
 /// target jumped, target immobile — plus a live preview of the resulting per-range to-hit numbers.
 fn shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    let Some(tm) = app.session.active_mech() else { return lines };
+    let Some(tm) = app.session.active_mech() else {
+        return lines;
+    };
     let yn = |b: bool| if b { "[x]" } else { "[ ]" };
     let (tmm, tgt_jumped, tgt_immobile) = match tm.as_target {
-        Some(t) => (t.tmm.to_string(), yn(t.jumped).to_string(), yn(t.immobile).to_string()),
+        Some(t) => (
+            t.tmm.to_string(),
+            yn(t.jumped).to_string(),
+            yn(t.immobile).to_string(),
+        ),
         None => ("—".to_string(), "—".to_string(), "—".to_string()),
     };
     let rows = [
@@ -1156,24 +1344,45 @@ fn shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         // Rows 2–3 only matter once a target exists; dim them when there's no target.
         let inactive = i >= 2 && tm.as_target.is_none();
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if inactive {
             Style::default().fg(theme().dim)
         } else {
             Style::default()
         };
-        lines.push(Line::from(Span::styled(format!("{marker}{name:<16} {val}"), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{name:<16} {val}"),
+            style,
+        )));
     }
     // Live preview of the resulting target numbers (mirrors the card's To-Hit row).
     let fc = tm.as_crit(AsCritKind::FireControl);
     let is_veh = tm.spec.is_vehicle();
     let tgt = tm.as_target.map(|t| (t.tmm, t.jumped, t.immobile));
     let n = |idx: usize| {
-        as_to_hit_full(tm.gunnery, idx, tm.as_heat, fc, tm.crew_hits, is_veh, tm.as_attacker_jumped, tgt)
+        as_to_hit_full(
+            tm.gunnery,
+            idx,
+            tm.as_heat,
+            fc,
+            tm.crew_hits,
+            is_veh,
+            tm.as_attacker_jumped,
+            tgt,
+        )
     };
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
-        format!("To-Hit   S {}+  M {}+  L {}+  E {}+", n(0), n(1), n(2), n(3)),
+        format!(
+            "To-Hit   S {}+  M {}+  L {}+  E {}+",
+            n(0),
+            n(1),
+            n(2),
+            n(3)
+        ),
         Style::default().fg(theme().warning),
     )));
     lines.push(Line::from(Span::styled(
@@ -1189,7 +1398,9 @@ fn shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
 /// per-weapon and shown on the Equipment panel rows).
 fn gator_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    let Some(tm) = app.session.active_mech() else { return lines };
+    let Some(tm) = app.session.active_mech() else {
+        return lines;
+    };
     let yn = |b: bool| if b { "[x]" } else { "[ ]" };
     let (distance, moved, jumped, immobile) = match tm.ct_target {
         Some(t) => {
@@ -1205,7 +1416,12 @@ fn gator_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
                 yn(t.immobile).to_string(),
             )
         }
-        None => ("—".to_string(), "—".to_string(), "—".to_string(), "—".to_string()),
+        None => (
+            "—".to_string(),
+            "—".to_string(),
+            "—".to_string(),
+            "—".to_string(),
+        ),
     };
     let rows = [
         ("Distance", distance),
@@ -1219,22 +1435,32 @@ fn gator_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         // Rows 1–3 only matter once a target exists; dim them when there's no target.
         let inactive = i >= 1 && tm.ct_target.is_none();
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if inactive {
             Style::default().fg(theme().dim)
         } else {
             Style::default()
         };
-        lines.push(Line::from(Span::styled(format!("{marker}{name:<16} {val}"), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{name:<16} {val}"),
+            style,
+        )));
     }
     lines.push(Line::from(""));
     // Preview the shot-level modifiers shared by every weapon: gunnery + attacker move + target +
     // heat. The per-weapon range bracket and equipment (TC/pulse) modifiers ride on the Equipment
     // rows, which switch to showing the assembled target number once a target is set.
     let mv = tm.attack_move_modifier();
-    let mv_label = tm.move_mode.label(tm.spec.is_vehicle(), tm.spec.is_infantry());
+    let mv_label = tm
+        .move_mode
+        .label(tm.spec.is_vehicle(), tm.spec.is_infantry());
     let heat = tm.heat_effects().to_hit_penalty;
-    let tgt = tm.ct_target.map_or(0, |t| target_modifier(t.hexes_moved, t.jumped, t.immobile));
+    let tgt = tm
+        .ct_target
+        .map_or(0, |t| target_modifier(t.hexes_moved, t.jumped, t.immobile));
     let mut parts = vec![format!("G{}", tm.gunnery)];
     if mv != 0 {
         parts.push(format!("{mv_label} {mv:+}"));
@@ -1276,29 +1502,49 @@ fn vehicle_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             let hit = row.marked();
             let selected = i == sel;
             let marker = if selected { "▶ " } else { "  " };
-            let mut style = if hit { Style::default().fg(theme().danger) } else { Style::default() };
+            let mut style = if hit {
+                Style::default().fg(theme().danger)
+            } else {
+                Style::default()
+            };
             if selected {
-                style = Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD);
+                style = Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD);
             }
             // Graded aero systems show a "×N" tally; one-shot rows just an "×". A short effect hint
             // spells out what the marked hits do (the panels reflect it, this names it at a glance).
             let (tally, effect) = match row {
-                CritRow::System { label, hits, max, .. } if *hits > 0 => {
-                    let tally = if *max > 1 { format!("  ×{hits}") } else { "  ×".to_string() };
+                CritRow::System {
+                    label, hits, max, ..
+                } if *hits > 0 => {
+                    let tally = if *max > 1 {
+                        format!("  ×{hits}")
+                    } else {
+                        "  ×".to_string()
+                    };
                     (tally, aero_crit_effect(label, *hits, *max))
                 }
-                CritRow::Weapon { destroyed: true, .. } => ("  ×".to_string(), String::new()),
+                CritRow::Weapon {
+                    destroyed: true, ..
+                } => ("  ×".to_string(), String::new()),
                 _ => (String::new(), String::new()),
             };
             let mut spans = vec![Span::styled(format!("{marker}{}", row.label()), style)];
             if !tally.is_empty() {
                 spans.push(Span::styled(
                     tally,
-                    Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme().danger)
+                        .add_modifier(Modifier::BOLD),
                 ));
             }
             if !effect.is_empty() {
-                spans.push(Span::styled(format!("  {effect}"), Style::default().fg(theme().dim)));
+                spans.push(Span::styled(
+                    format!("  {effect}"),
+                    Style::default().fg(theme().dim),
+                ));
             }
             lines.push(Line::from(spans));
         }
@@ -1341,13 +1587,19 @@ fn motive_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
         lines.push(Line::from(vec![
             Span::styled(format!("{marker}{:<12}", lvl.label()), style),
-            Span::styled(format!("  {}", effect(*lvl)), Style::default().fg(theme().dim)),
+            Span::styled(
+                format!("  {}", effect(*lvl)),
+                Style::default().fg(theme().dim),
+            ),
         ]));
     }
     // Running tally: current MP loss + steering + the results in roll order.
@@ -1355,7 +1607,10 @@ fn motive_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let dmg = &tm.motive_damage;
         lines.push(Line::from(Span::raw("")));
         if dmg.is_empty() {
-            lines.push(Line::from(Span::styled("  no motive damage", Style::default().fg(theme().good))));
+            lines.push(Line::from(Span::styled(
+                "  no motive damage",
+                Style::default().fg(theme().good),
+            )));
         } else {
             let cruise = tm.motive_cruise();
             let names: Vec<&str> = dmg.iter().map(|l| l.label()).collect();
@@ -1366,7 +1621,9 @@ fn motive_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             };
             lines.push(Line::from(Span::styled(
                 format!("  {}{tail}", names.join(" · ")),
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD),
             )));
         }
     }
@@ -1382,7 +1639,9 @@ fn as_help_modal_lines() -> Vec<Line<'static>> {
     let header = |s: &'static str| {
         Line::from(Span::styled(
             s,
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ))
     };
     let row = |keys: &'static str, desc: &'static str| {
@@ -1410,7 +1669,10 @@ fn as_help_modal_lines() -> Vec<Line<'static>> {
         row("z", "undo"),
         row("^t", "display picker (theme + layout)"),
         row("q", "quit"),
-        Line::from(Span::styled("  press any key to close", Style::default().fg(theme().dim))),
+        Line::from(Span::styled(
+            "  press any key to close",
+            Style::default().fg(theme().dim),
+        )),
     ]
 }
 
@@ -1419,7 +1681,12 @@ fn as_help_modal_lines() -> Vec<Line<'static>> {
 /// apply here).
 fn ov_help_modal_lines() -> Vec<Line<'static>> {
     let header = |s: &'static str| {
-        Line::from(Span::styled(s, Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)))
+        Line::from(Span::styled(
+            s,
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
+        ))
     };
     let row = |keys: &'static str, desc: &'static str| {
         Line::from(vec![
@@ -1461,7 +1728,10 @@ fn ov_help_modal_lines() -> Vec<Line<'static>> {
             "  Learn more about Override & DFA at https://dfawargaming.com",
             Style::default().fg(theme().dim),
         )),
-        Line::from(Span::styled("  press any key to close", Style::default().fg(theme().dim))),
+        Line::from(Span::styled(
+            "  press any key to close",
+            Style::default().fg(theme().dim),
+        )),
     ]
 }
 
@@ -1513,19 +1783,27 @@ fn draw_sessions(f: &mut Frame, app: &App) {
                 GameMode::Override => ("OV", theme().accent),
             };
             let base = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else if is_current {
                 Style::default().fg(theme().accent)
             } else {
                 Style::default()
             };
-            let tag_style = if selected { base } else { Style::default().fg(tag_color) };
+            let tag_style = if selected {
+                base
+            } else {
+                Style::default().fg(tag_color)
+            };
             // Force point total in the session's own system (BV for Classic, PV for AS), with the
             // budget when one is set (`· BV 5420/6000`).
             let label = match m.mode {
-                GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => {
-                    "PV"
-                }
+                GameMode::AlphaStrike
+                | GameMode::StrategicBattleForce
+                | GameMode::BattleForce
+                | GameMode::AbstractCombatSystem => "PV",
                 GameMode::Classic | GameMode::Override => "BV",
             };
             let total = match (m.force_total, m.limit) {
@@ -1608,16 +1886,12 @@ fn draw_picker(f: &mut Frame, app: &mut App) {
             Style::default().fg(theme().accent),
         ),
     ]))
-    .block(
-        Block::default()
-            .borders(Borders::ALL)
-            .title(format!(
-                " Pick a unit ({}){}{} ",
-                picker_count(app),
-                budget_summary(app),
-                filter_summary(app)
-            )),
-    );
+    .block(Block::default().borders(Borders::ALL).title(format!(
+        " Pick a unit ({}){}{} ",
+        picker_count(app),
+        budget_summary(app),
+        filter_summary(app)
+    )));
     f.render_widget(query, chunks[0]);
 
     let area = chunks[1];
@@ -1638,7 +1912,9 @@ fn draw_picker(f: &mut Frame, app: &mut App) {
     {
         let selected = vis == sel;
         let marker = if selected { "▶ " } else { "  " };
-        let Some(m) = app.bundle.get(idx) else { continue };
+        let Some(m) = app.bundle.get(idx) else {
+            continue;
+        };
         let model = if m.model.is_empty() {
             String::new()
         } else {
@@ -1675,16 +1951,27 @@ fn draw_picker(f: &mut Frame, app: &mut App) {
         };
         // Nerd-Font mode prefixes a per-unit-type glyph; Ascii mode returns "" (rows unchanged).
         let ut = icons::unit_type(m.unit_type);
-        let ut = if ut.is_empty() { String::new() } else { format!("{ut} ") };
+        let ut = if ut.is_empty() {
+            String::new()
+        } else {
+            format!("{ut} ")
+        };
         let mut spans = vec![
-            Span::styled(format!("{marker}{ut}{}{}  {}  ", m.chassis, model, size), base),
+            Span::styled(
+                format!("{marker}{ut}{}{}  {}  ", m.chassis, model, size),
+                base,
+            ),
             Span::styled(m.role.clone(), role_style),
         ];
         if m.year > 0 {
             spans.push(Span::styled(format!("  {}", m.year), year_style));
         }
         if m.bv > 0 {
-            let bv_style = if selected { base } else { Style::default().fg(theme().dim) };
+            let bv_style = if selected {
+                base
+            } else {
+                Style::default().fg(theme().dim)
+            };
             spans.push(Span::styled(format!("  BV {}", m.bv), bv_style));
         }
         lines.push(Line::from(spans));
@@ -1719,7 +2006,10 @@ fn picker_count(app: &App) -> String {
 /// when there's no limit, empty when the force is empty and unlimited).
 fn budget_summary(app: &App) -> String {
     let unit = match app.session.mode {
-        GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => "PV",
+        GameMode::AlphaStrike
+        | GameMode::StrategicBattleForce
+        | GameMode::BattleForce
+        | GameMode::AbstractCombatSystem => "PV",
         GameMode::Classic | GameMode::Override => "BV",
     };
     let total = app.session.force_total();
@@ -1765,7 +2055,10 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
         label,
     )];
     if m.year > 0 {
-        head.push(Span::styled(format!("   intro {}", m.year), Style::default().fg(theme().dim)));
+        head.push(Span::styled(
+            format!("   intro {}", m.year),
+            Style::default().fg(theme().dim),
+        ));
     }
     lines.push(Line::from(head));
     lines.push(Line::from(""));
@@ -1775,7 +2068,10 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
     let row = |name: &str, value: String, extra: &str| {
         let mut spans = vec![Span::styled(format!("{name:<11}{value}"), label)];
         if !extra.is_empty() {
-            spans.push(Span::styled(format!("  ({extra})"), Style::default().fg(theme().dim)));
+            spans.push(Span::styled(
+                format!("  ({extra})"),
+                Style::default().fg(theme().dim),
+            ));
         }
         Line::from(spans)
     };
@@ -1805,7 +2101,11 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
         // Aerospace flies on thrust — the AS movement string (e.g. "7a"), no Classic walk/run/jump.
         lines.push(row("Move", m.as_stats.movement.clone(), "thrust"));
     } else {
-        lines.push(row("Move", format!("Walk {}  Run {}  Jump {}", m.walk, m.run, m.jump), ""));
+        lines.push(row(
+            "Move",
+            format!("Walk {}  Run {}  Jump {}", m.walk, m.run, m.jump),
+            "",
+        ));
     }
     // Point costs: BV (Classic) + PV (Alpha Strike), and the C-bill price tag.
     let mut points = Vec::new();
@@ -1851,7 +2151,9 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
         "Weapons",
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD),
     )));
 
     // Group identical weapons by name (record sheets expand qty into separate mounts). Infantry
@@ -1884,7 +2186,10 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
         }
     }
     if groups.is_empty() {
-        lines.push(Line::from(Span::styled("  (none)", Style::default().fg(theme().dim))));
+        lines.push(Line::from(Span::styled(
+            "  (none)",
+            Style::default().fg(theme().dim),
+        )));
     }
     const MAX_ROWS: usize = 12;
     // Only 'Mechs track weapon heat; vehicles and infantry drop the column.
@@ -1896,11 +2201,21 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
         )];
         // Combat vehicles don't track heat — drop the column instead of leaving a gap.
         if show_heat {
-            let heat = if heat == 0 { "—".to_string() } else { format!("H{heat}") };
-            spans.push(Span::styled(format!("{heat:<3}    "), Style::default().fg(theme().danger)));
+            let heat = if heat == 0 {
+                "—".to_string()
+            } else {
+                format!("H{heat}")
+            };
+            spans.push(Span::styled(
+                format!("{heat:<3}    "),
+                Style::default().fg(theme().danger),
+            ));
         }
         spans.push(Span::styled(format!("{dmg:<6}"), label));
-        spans.push(Span::styled(format!("  {range}"), Style::default().fg(theme().dim)));
+        spans.push(Span::styled(
+            format!("  {range}"),
+            Style::default().fg(theme().dim),
+        ));
         lines.push(Line::from(spans));
     }
     if groups.len() > MAX_ROWS {
@@ -1915,7 +2230,9 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
         "Equipment",
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD),
     )));
     let mut eq: Vec<(&str, usize, Vec<&str>)> = Vec::new();
     for e in &m.equipment {
@@ -1930,7 +2247,10 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
         }
     }
     if eq.is_empty() {
-        lines.push(Line::from(Span::styled("  (none)", Style::default().fg(theme().dim))));
+        lines.push(Line::from(Span::styled(
+            "  (none)",
+            Style::default().fg(theme().dim),
+        )));
     }
     for (name, count, locs) in eq.iter().take(MAX_ROWS) {
         lines.push(Line::from(vec![
@@ -1985,8 +2305,7 @@ fn draw_tracker(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
 
     let Some(tm) = app.session.active_mech() else {
         f.render_widget(
-            Paragraph::new("No mech loaded. Press [a] to add one.")
-                .alignment(Alignment::Center),
+            Paragraph::new("No mech loaded. Press [a] to add one.").alignment(Alignment::Center),
             chunks[1],
         );
         draw_status(f, chunks[2], app);
@@ -2032,7 +2351,11 @@ fn draw_tracker(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
 fn draw_alpha_strike(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(u16::from(!sidebar)), Constraint::Min(1), Constraint::Length(1)])
+        .constraints([
+            Constraint::Length(u16::from(!sidebar)),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ])
         .split(area);
     draw_roster(f, chunks[0], app);
 
@@ -2043,7 +2366,10 @@ fn draw_alpha_strike(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
             chunks[1],
         );
         f.render_widget(
-            Paragraph::new(Line::from(Span::styled(as_help, Style::default().fg(theme().dim)))),
+            Paragraph::new(Line::from(Span::styled(
+                as_help,
+                Style::default().fg(theme().dim),
+            ))),
             chunks[2],
         );
         return;
@@ -2083,7 +2409,10 @@ fn draw_alpha_strike(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
 
     // In 1:1 ground scale, show the scale + hex range brackets; the per-card MV is in hexes too.
     let base = if ground_scale {
-        format!(" 1:1 hex scale — Rng {}  [1] inches  [?] keys ", range_brackets_hexes())
+        format!(
+            " 1:1 hex scale — Rng {}  [1] inches  [?] keys ",
+            range_brackets_hexes()
+        )
     } else {
         String::from(as_help)
     };
@@ -2099,7 +2428,10 @@ fn draw_alpha_strike(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
         help = format!(" {} | {}", app.status, help.trim_start());
     }
     f.render_widget(
-        Paragraph::new(Line::from(Span::styled(help, Style::default().fg(theme().dim)))),
+        Paragraph::new(Line::from(Span::styled(
+            help,
+            Style::default().fg(theme().dim),
+        ))),
         chunks[2],
     );
 }
@@ -2107,18 +2439,29 @@ fn draw_alpha_strike(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
 /// One Alpha Strike card in the 2×2 grid. The active unit gets a bold cyan double border.
 fn draw_as_card(f: &mut Frame, area: Rect, tm: &TrackedMech, active: bool, ground_scale: bool) {
     let border_style = if tm.as_destroyed() {
-        Style::default().fg(theme().danger).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().danger)
+            .add_modifier(Modifier::BOLD)
     } else if active {
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme().dim)
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(if active { BorderType::Double } else { BorderType::Plain })
+        .border_type(if active {
+            BorderType::Double
+        } else {
+            BorderType::Plain
+        })
         .border_style(border_style)
         .title(format!(" {} ", tm.spec.display_name()));
-    f.render_widget(Paragraph::new(as_card_lines(tm, ground_scale)).block(block), area);
+    f.render_widget(
+        Paragraph::new(as_card_lines(tm, ground_scale)).block(block),
+        area,
+    );
 }
 
 /// The compact card content (unit name is in the border title). At 1:1 `ground_scale`, movement
@@ -2128,13 +2471,28 @@ fn as_card_lines(tm: &TrackedMech, ground_scale: bool) -> Vec<Line<'static>> {
     let gray = Style::default().fg(theme().dim);
     let mut lines: Vec<Line> = Vec::new();
 
-    let mv = if ground_scale { movement_hexes(&a.movement) } else { a.movement.clone() };
+    let mv = if ground_scale {
+        movement_hexes(&a.movement)
+    } else {
+        a.movement.clone()
+    };
     // Size 0 isn't a real AS size (e.g. gun emplacements) — print it as "-" like the card.
-    let sz = if a.size == 0 { "-".to_string() } else { a.size.to_string() };
+    let sz = if a.size == 0 {
+        "-".to_string()
+    } else {
+        a.size.to_string()
+    };
     // Aerospace carry an armor Threshold (TH) instead of relying on TMM alone; show it when present.
-    let th = if a.threshold > 0 { format!("   TH {}", a.threshold) } else { String::new() };
+    let th = if a.threshold > 0 {
+        format!("   TH {}", a.threshold)
+    } else {
+        String::new()
+    };
     lines.push(Line::from(Span::styled(
-        format!("PV {}   SZ {}   {}   MV {}   TMM {}{}", a.pv, sz, a.tp, mv, a.tmm, th),
+        format!(
+            "PV {}   SZ {}   {}   MV {}   TMM {}{}",
+            a.pv, sz, a.tp, mv, a.tmm, th
+        ),
         Style::default().fg(theme().dim),
     )));
     // Skill + skill-adjusted PV (the single Alpha Strike Skill is the gunnery field; edit with `g`).
@@ -2143,23 +2501,31 @@ fn as_card_lines(tm: &TrackedMech, ground_scale: bool) -> Vec<Line<'static>> {
         Span::styled("Skill ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{}+", tm.gunnery),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled("   PV ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{adj_pv}"),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
     if tm.as_destroyed() {
         lines.push(Line::from(Span::styled(
             "*** DESTROYED ***",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     } else if tm.as_shutdown() {
         lines.push(Line::from(Span::styled(
             "*** SHUTDOWN (heat) ***",
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     }
     lines.push(Line::from(""));
@@ -2167,8 +2533,14 @@ fn as_card_lines(tm: &TrackedMech, ground_scale: bool) -> Vec<Line<'static>> {
     let pip_row = |label: &str, rem: u8, max: u8| {
         Line::from(vec![
             Span::styled(format!("{label:<10}"), gray),
-            Span::styled("█".repeat(rem as usize), Style::default().fg(frac_color(rem as u16, max as u16))),
-            Span::styled("░".repeat(max.saturating_sub(rem) as usize), Style::default().fg(theme().dim)),
+            Span::styled(
+                "█".repeat(rem as usize),
+                Style::default().fg(frac_color(rem as u16, max as u16)),
+            ),
+            Span::styled(
+                "░".repeat(max.saturating_sub(rem) as usize),
+                Style::default().fg(theme().dim),
+            ),
             Span::styled(format!("  {rem}/{max}"), Style::default().fg(theme().dim)),
         ])
     };
@@ -2179,23 +2551,39 @@ fn as_card_lines(tm: &TrackedMech, ground_scale: bool) -> Vec<Line<'static>> {
     let mut heat = vec![Span::styled(format!("{:<10}", "Heat"), gray)];
     // The Alpha Strike heat scale is 1 2 3 S — the 4th box (heat 4) is Shutdown.
     for h in 0..=4u8 {
-        let label = if h == 4 { "S".to_string() } else { h.to_string() };
+        let label = if h == 4 {
+            "S".to_string()
+        } else {
+            h.to_string()
+        };
         if h == tm.as_heat {
             heat.push(Span::styled(
                 format!("[{label}]"),
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD | Modifier::REVERSED),
             ));
         } else {
-            heat.push(Span::styled(format!(" {label} "), Style::default().fg(theme().dim)));
+            heat.push(Span::styled(
+                format!(" {label} "),
+                Style::default().fg(theme().dim),
+            ));
         }
     }
     if a.overheat > 0 {
-        heat.push(Span::styled(format!("  OV {}", a.overheat), Style::default().fg(theme().warning)));
+        heat.push(Span::styled(
+            format!("  OV {}", a.overheat),
+            Style::default().fg(theme().warning),
+        ));
     }
     lines.push(Line::from(heat));
 
     let dmg = |label: &str, v: &str| {
-        let style = if v == "0" { Style::default().fg(theme().dim) } else { gray };
+        let style = if v == "0" {
+            Style::default().fg(theme().dim)
+        } else {
+            gray
+        };
         Span::styled(format!("{label}{v:<4}"), style)
     };
     lines.push(Line::from(vec![
@@ -2218,10 +2606,21 @@ fn as_card_lines(tm: &TrackedMech, ground_scale: bool) -> Vec<Line<'static>> {
         let tgt = tm.as_target.map(|t| (t.tmm, t.jumped, t.immobile));
         let to_hit = |label: &str, idx: usize, dv: &str| {
             if dv == "0" {
-                return Span::styled(format!("{label}{:<4}", "—"), Style::default().fg(theme().dim));
+                return Span::styled(
+                    format!("{label}{:<4}", "—"),
+                    Style::default().fg(theme().dim),
+                );
             }
-            let n =
-                as_to_hit_full(tm.gunnery, idx, tm.as_heat, fc, tm.crew_hits, is_veh, tm.as_attacker_jumped, tgt);
+            let n = as_to_hit_full(
+                tm.gunnery,
+                idx,
+                tm.as_heat,
+                fc,
+                tm.crew_hits,
+                is_veh,
+                tm.as_attacker_jumped,
+                tgt,
+            );
             Span::styled(format!("{label}{:<4}", format!("{n}+")), gray)
         };
         lines.push(Line::from(vec![
@@ -2243,7 +2642,11 @@ fn as_card_lines(tm: &TrackedMech, ground_scale: bool) -> Vec<Line<'static>> {
             AsCritKind::Weapon => "Wpn",
             AsCritKind::Motive => "Mot",
         };
-        let style = if n > 0 { Style::default().fg(theme().danger) } else { Style::default().fg(theme().dim) };
+        let style = if n > 0 {
+            Style::default().fg(theme().danger)
+        } else {
+            Style::default().fg(theme().dim)
+        };
         crits.push(Span::styled(format!("{abbr}{n}  "), style));
     }
     lines.push(Line::from(crits));
@@ -2294,7 +2697,11 @@ const OV_CONDITION: [&str; 6] = ["3+", "5+", "7+", "9+", "11+", "KIA"];
 fn draw_override(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(u16::from(!sidebar)), Constraint::Min(1), Constraint::Length(1)])
+        .constraints([
+            Constraint::Length(u16::from(!sidebar)),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ])
         .split(area);
     draw_roster(f, chunks[0], app);
 
@@ -2304,7 +2711,10 @@ fn draw_override(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
             chunks[1],
         );
         f.render_widget(
-            Paragraph::new(Line::from(Span::styled(OVERRIDE_HELP, Style::default().fg(theme().dim)))),
+            Paragraph::new(Line::from(Span::styled(
+                OVERRIDE_HELP,
+                Style::default().fg(theme().dim),
+            ))),
             chunks[2],
         );
         return;
@@ -2328,11 +2738,16 @@ fn draw_override(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
     if !app.status.is_empty() {
         spans.push(Span::styled(
             format!("{} ", app.status),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::styled("| ", Style::default().fg(theme().dim)));
     }
-    spans.push(Span::styled(OVERRIDE_HELP.trim_start(), Style::default().fg(theme().dim)));
+    spans.push(Span::styled(
+        OVERRIDE_HELP.trim_start(),
+        Style::default().fg(theme().dim),
+    ));
     f.render_widget(Paragraph::new(Line::from(spans)), chunks[2]);
 }
 
@@ -2344,9 +2759,16 @@ fn draw_override_doll(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech, ca
     let row_c: &[Constraint] = if vehicle {
         &[Constraint::Ratio(1, 4); 4]
     } else {
-        &[Constraint::Percentage(30), Constraint::Percentage(40), Constraint::Percentage(30)]
+        &[
+            Constraint::Percentage(30),
+            Constraint::Percentage(40),
+            Constraint::Percentage(30),
+        ]
     };
-    let rows = Layout::default().direction(Direction::Vertical).constraints(row_c).split(area);
+    let rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(row_c)
+        .split(area);
     let cols = |r: Rect| {
         Layout::default()
             .direction(Direction::Horizontal)
@@ -2393,22 +2815,39 @@ fn draw_override_box(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech, r: 
     let has_crit = tm.ov_crits.get(&r.loc).is_some_and(|v| !v.is_empty());
 
     let border_style = if focused {
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else if destroyed {
         Style::default().fg(theme().dim)
     } else {
-        Style::default().fg(frac_color(a_rem + s_rem + rr_rem, r.armor + r.structure + rr_max))
+        Style::default().fg(frac_color(
+            a_rem + s_rem + rr_rem,
+            r.armor + r.structure + rr_max,
+        ))
     };
     let code = r.loc.code();
-    let mut title = if has_crit { format!("*{code}") } else { code.to_string() };
+    let mut title = if has_crit {
+        format!("*{code}")
+    } else {
+        code.to_string()
+    };
     if focused && r.rear.is_some() {
-        title.push_str(if app.facing == Facing::Rear { " ▸R" } else { " ▸F" });
+        title.push_str(if app.facing == Facing::Rear {
+            " ▸R"
+        } else {
+            " ▸F"
+        });
     } else if let Some(n) = hit_location(r.loc) {
         title.push_str(&format!(" {n}"));
     }
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(if focused { BorderType::Double } else { BorderType::Plain })
+        .border_type(if focused {
+            BorderType::Double
+        } else {
+            BorderType::Plain
+        })
         .border_style(border_style)
         .title(title);
 
@@ -2421,7 +2860,10 @@ fn draw_override_box(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech, r: 
             s = s.add_modifier(Modifier::BOLD | Modifier::REVERSED);
         }
         lines.push(Line::from(Span::styled(format!("{label} {rem}/{max}"), s)));
-        lines.push(Line::from(Span::styled(bar(rem, max, inner_w), Style::default().fg(col))));
+        lines.push(Line::from(Span::styled(
+            bar(rem, max, inner_w),
+            Style::default().fg(col),
+        )));
     };
     let front_hi = focused && app.facing == Facing::Front;
     if r.armor > 0 {
@@ -2454,7 +2896,10 @@ fn draw_override_panel(
             .constraints([Constraint::Min(1), Constraint::Length(8)])
             .split(area)
     } else {
-        Layout::default().direction(Direction::Vertical).constraints([Constraint::Min(1)]).split(area)
+        Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Min(1)])
+            .split(area)
     };
 
     let u = &card.unit;
@@ -2484,14 +2929,19 @@ fn draw_override_panel(
             Span::styled("Heat ", dim),
             Span::styled(
                 format!("{}/{}", tm.ov_heat, OV_HEAT_MAX),
-                Style::default().fg(ov_heat_color(tm.ov_heat)).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(ov_heat_color(tm.ov_heat))
+                    .add_modifier(Modifier::BOLD),
             ),
         ];
         if let Some(s) = u.sinks {
             heat.push(Span::styled(format!("  Sinks {s}"), dim));
         }
         if tm.ov_shutdown() {
-            heat.push(Span::styled("  SHUTDOWN", Style::default().fg(theme().warning)));
+            heat.push(Span::styled(
+                "  SHUTDOWN",
+                Style::default().fg(theme().warning),
+            ));
         }
         lines.push(Line::from(heat));
     }
@@ -2509,14 +2959,21 @@ fn draw_override_panel(
     ];
     let (mp, tp) = tm.ov_move_penalty();
     if mp != 0 {
-        move_spans.push(Span::styled(format!("  -{mp} move/-{tp} TMM"), Style::default().fg(theme().danger)));
+        move_spans.push(Span::styled(
+            format!("  -{mp} move/-{tp} TMM"),
+            Style::default().fg(theme().danger),
+        ));
     }
     lines.push(Line::from(move_spans));
     lines.push(Line::from(""));
 
     // Weapons (TIC) list — compact (name / Dmg / Ht); per-bracket range + to-hit is shown below for
     // the selected weapon.
-    let ht_hdr = if vehicle { String::new() } else { "Ht".to_string() };
+    let ht_hdr = if vehicle {
+        String::new()
+    } else {
+        "Ht".to_string()
+    };
     lines.push(Line::from(Span::styled(
         format!("  {:<15}{:<5}{ht_hdr}", "Weapons", "Dmg"),
         Style::default().fg(theme().accent),
@@ -2529,11 +2986,22 @@ fn draw_override_panel(
         let selected = app.focus == Focus::Equipment && i == app.ov_tic;
         let cur = if i == app.ov_tic { "▶" } else { " " };
         let mark = if fired { "✓" } else { " " };
-        let ht = if vehicle { String::new() } else { t.heat.to_string() };
-        let body = format!("{cur}{mark}{:<15}{:<5}{ht}", trunc(&t.name, 14), trunc(&t.damage, 5));
+        let ht = if vehicle {
+            String::new()
+        } else {
+            t.heat.to_string()
+        };
+        let body = format!(
+            "{cur}{mark}{:<15}{:<5}{ht}",
+            trunc(&t.name, 14),
+            trunc(&t.damage, 5)
+        );
         let mut style = if fired { dim } else { gray };
         if selected {
-            style = Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD);
+            style = Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD);
         }
         lines.push(Line::from(Span::styled(body, style)));
     }
@@ -2541,7 +3009,10 @@ fn draw_override_panel(
 
     // Selected-weapon detail: the printed range-bracket modifiers + the live per-bracket To-Hit.
     if let Some(t) = card.tics.get(app.ov_tic) {
-        lines.push(Line::from(Span::styled(format!("▶ {} ({})", trunc(&t.name, 24), t.location), gray)));
+        lines.push(Line::from(Span::styled(
+            format!("▶ {} ({})", trunc(&t.name, 24), t.location),
+            gray,
+        )));
         lines.push(Line::from(Span::styled(
             format!("  Rng  {:<4}{:<4}{:<4}{:<4}{:<4}", "PB", "S", "M", "L", "X"),
             dim,
@@ -2595,9 +3066,14 @@ fn draw_override_panel(
         ]));
     }
     // PSR / morale prompts (end-of-phase reminders) when owed.
-    let warn = Style::default().fg(theme().danger).add_modifier(Modifier::BOLD);
+    let warn = Style::default()
+        .fg(theme().danger)
+        .add_modifier(Modifier::BOLD);
     if let Some(reason) = tm.ov_psr_auto_fail() {
-        lines.push(Line::from(Span::styled(format!("⚠ PSR auto-fail: {reason}"), warn)));
+        lines.push(Line::from(Span::styled(
+            format!("⚠ PSR auto-fail: {reason}"),
+            warn,
+        )));
     } else {
         let sits = tm.ov_psr_situations();
         if !sits.is_empty() {
@@ -2610,19 +3086,27 @@ fn draw_override_panel(
     if tm.ov_crippled() {
         lines.push(Line::from(Span::styled(
             format!("⚠ Morale {}+ (crippled)", tm.ov_morale_target()),
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD),
         )));
     }
 
     let panel_focused = app.focus == Focus::Equipment;
     let border = if panel_focused {
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme().dim)
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(if panel_focused { BorderType::Double } else { BorderType::Plain })
+        .border_type(if panel_focused {
+            BorderType::Double
+        } else {
+            BorderType::Plain
+        })
         .border_style(border)
         .title(format!(" {} ", tm.spec.display_name()));
     f.render_widget(Paragraph::new(lines).block(block), split[0]);
@@ -2634,16 +3118,29 @@ fn draw_override_panel(
 
 /// The condition-monitor line: the fixed consciousness track with the taken hits marked off.
 fn ov_condition_line(tm: &TrackedMech, vehicle: bool) -> Line<'static> {
-    let (label, hits) = if vehicle { ("Crew", tm.crew_hits) } else { ("Pilot", tm.pilot_hits) };
-    let mut spans = vec![Span::styled(format!("{label:<6}"), Style::default().fg(theme().dim))];
+    let (label, hits) = if vehicle {
+        ("Crew", tm.crew_hits)
+    } else {
+        ("Pilot", tm.pilot_hits)
+    };
+    let mut spans = vec![Span::styled(
+        format!("{label:<6}"),
+        Style::default().fg(theme().dim),
+    )];
     for (i, tn) in OV_CONDITION.iter().enumerate() {
         let taken = (i as u8) < hits;
         let style = if taken {
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(theme().dim)
         };
-        let cell = if taken { format!("[{tn}]") } else { format!(" {tn} ") };
+        let cell = if taken {
+            format!("[{tn}]")
+        } else {
+            format!(" {tn} ")
+        };
         spans.push(Span::styled(cell, style));
     }
     Line::from(spans)
@@ -2682,7 +3179,11 @@ fn ov_crit_summary(tm: &TrackedMech) -> Option<String> {
     }
     if fx.ammo_marked {
         // A live ammo crit detonates; a spent/no-ammo one is a dud (becomes a weapon result).
-        parts.push(if tm.ov_ammo_exploded() { "ammo EXPLOSION".into() } else { "ammo (dud)".into() });
+        parts.push(if tm.ov_ammo_exploded() {
+            "ammo EXPLOSION".into()
+        } else {
+            "ammo (dud)".into()
+        });
     }
     if fx.fuel_marked {
         parts.push("fuel".into());
@@ -2697,7 +3198,11 @@ fn ov_shot_summary(tm: &TrackedMech) -> String {
     if s.target_immobile {
         parts.push("tgt immobile".into());
     } else if s.target_tmm > 0 || s.target_jumped {
-        parts.push(format!("tgt TMM{}{}", s.target_tmm, if s.target_jumped { "+j" } else { "" }));
+        parts.push(format!(
+            "tgt TMM{}{}",
+            s.target_tmm,
+            if s.target_jumped { "+j" } else { "" }
+        ));
     }
     if s.secondary {
         parts.push("secondary".into());
@@ -2729,21 +3234,28 @@ fn draw_override_heat_ladder(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             let num = if here {
                 Span::styled(
                     format!("[{n}]"),
-                    Style::default().fg(theme().on_accent).bg(*col).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(theme().on_accent)
+                        .bg(*col)
+                        .add_modifier(Modifier::BOLD),
                 )
             } else {
                 Span::styled(format!(" {n} "), Style::default().fg(*col))
             };
             let label_style = if here {
-                Style::default().fg(theme().fg_strong).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().fg_strong)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(theme().dim)
             };
             Line::from(vec![num, Span::styled(format!(" {label}"), label_style)])
         })
         .collect();
-    let block =
-        Block::default().borders(Borders::ALL).border_style(Style::default().fg(theme().dim)).title(" Heat ");
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(theme().dim))
+        .title(" Heat ");
     f.render_widget(Paragraph::new(lines).block(block), area);
 }
 
@@ -2756,11 +3268,17 @@ fn ov_heat_color(heat: u8) -> Color {
 /// roll + effect, marked results flagged, the selected row highlighted, and a footer hint.
 fn ov_crit_modal_lines(app: &App, loc: Location, sel: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    let Some(tm) = app.session.active_mech() else { return lines };
-    let Some(table) = override_conv::crit_table(&tm.spec, loc) else { return lines };
+    let Some(tm) = app.session.active_mech() else {
+        return lines;
+    };
+    let Some(table) = override_conv::crit_table(&tm.spec, loc) else {
+        return lines;
+    };
     lines.push(Line::from(Span::styled(
         format!("{} — roll 2d6 (8+ confirms)", loc.label()),
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD),
     )));
     for (i, r) in table.iter().enumerate() {
         let count = tm.ov_crit_count(loc, i as u8);
@@ -2772,10 +3290,16 @@ fn ov_crit_modal_lines(app: &App, loc: Location, sel: usize) -> Vec<Line<'static
             1 => "✗ ".to_string(),
             n => format!("✗{n}"),
         };
-        let mut style =
-            if count > 0 { Style::default().fg(theme().danger) } else { Style::default() };
+        let mut style = if count > 0 {
+            Style::default().fg(theme().danger)
+        } else {
+            Style::default()
+        };
         if selected {
-            style = Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD);
+            style = Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD);
         }
         lines.push(Line::from(Span::styled(
             format!("{marker}{hit}{:<5} {}", r.roll, r.effect),
@@ -2786,8 +3310,11 @@ fn ov_crit_modal_lines(app: &App, loc: Location, sel: usize) -> Vec<Line<'static
     // marking it spent makes that crit a dud. Only shown for ammo-bearing regions.
     if tm.ov_region_has_ammo(loc) {
         let live = tm.ov_ammo_live(loc);
-        let (label, col) =
-            if live { ("live", theme().warning) } else { ("spent", theme().dim) };
+        let (label, col) = if live {
+            ("live", theme().warning)
+        } else {
+            ("spent", theme().dim)
+        };
         let mut spans = vec![
             Span::styled("Ammo here: ", Style::default().fg(theme().dim)),
             Span::styled(label, Style::default().fg(col).add_modifier(Modifier::BOLD)),
@@ -2796,7 +3323,9 @@ fn ov_crit_modal_lines(app: &App, loc: Location, sel: usize) -> Vec<Line<'static
         if tm.ov_ammo_exploded() {
             spans.push(Span::styled(
                 "  → EXPLOSION: destroyed +2 pilot",
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
         lines.push(Line::from(spans));
@@ -2812,7 +3341,9 @@ fn ov_crit_modal_lines(app: &App, loc: Location, sel: usize) -> Vec<Line<'static
 /// movement/state, and the arc, with a live per-bracket To-Hit preview for the selected TIC.
 fn ov_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    let Some(tm) = app.session.active_mech() else { return lines };
+    let Some(tm) = app.session.active_mech() else {
+        return lines;
+    };
     let s = &tm.ov_shot;
     let yn = |b: bool| if b { "[x]" } else { "[ ]" };
     let rows = [
@@ -2826,11 +3357,17 @@ fn ov_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
-        lines.push(Line::from(Span::styled(format!("{marker}{name:<22} {val}"), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{name:<22} {val}"),
+            style,
+        )));
     }
     // Live To-Hit preview for the selected TIC (mirrors the card's per-TIC To-Hit row).
     let card = tm.ov_card();
@@ -2893,7 +3430,10 @@ fn trunc(s: &str, n: usize) -> String {
     if chars.len() <= n {
         s.to_string()
     } else {
-        format!("{}…", chars[..n.saturating_sub(1)].iter().collect::<String>())
+        format!(
+            "{}…",
+            chars[..n.saturating_sub(1)].iter().collect::<String>()
+        )
     }
 }
 
@@ -2965,11 +3505,16 @@ fn draw_sbf(f: &mut Frame, area: Rect, app: &mut App) {
     if !app.status.is_empty() {
         spans.push(Span::styled(
             format!("{} ", app.status),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::styled("| ", Style::default().fg(theme().dim)));
     }
-    spans.push(Span::styled(SBF_HELP.trim_start(), Style::default().fg(theme().dim)));
+    spans.push(Span::styled(
+        SBF_HELP.trim_start(),
+        Style::default().fg(theme().dim),
+    ));
     f.render_widget(Paragraph::new(Line::from(spans)), chunks[1]);
 }
 
@@ -2980,13 +3525,19 @@ fn draw_sbf_formations(f: &mut Frame, area: Rect, app: &App) {
         let selected = i == app.session.sbf.active_formation;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
         // An empty formation is a valid workspace, not a casualty — placeholder, no stats.
         if fs.units.is_empty() {
-            lines.push(Line::from(Span::styled(format!("{marker}{}", fs.name), name_style)));
+            lines.push(Line::from(Span::styled(
+                format!("{marker}{}", fs.name),
+                name_style,
+            )));
             lines.push(Line::from(Span::styled(
                 "    (no units — [g] to assign)",
                 Style::default().fg(theme().dim),
@@ -2999,7 +3550,9 @@ fn draw_sbf_formations(f: &mut Frame, area: Rect, app: &App) {
             // The Force Commander's COM is inherited by its parent formation (IO:BF p.165).
             head.push(Span::styled(
                 " COM",
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
         if fs.is_done {
@@ -3011,10 +3564,16 @@ fn draw_sbf_formations(f: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(theme().danger),
             ));
         } else if app.session.sbf_would_withdraw(fs) {
-            head.push(Span::styled(" ⚠withdraw", Style::default().fg(theme().danger)));
+            head.push(Span::styled(
+                " ⚠withdraw",
+                Style::default().fg(theme().danger),
+            ));
         }
         if !app.session.sbf_can_convert(fs) {
-            head.push(Span::styled(" !invalid", Style::default().fg(theme().warning)));
+            head.push(Span::styled(
+                " !invalid",
+                Style::default().fg(theme().warning),
+            ));
         }
         lines.push(Line::from(head));
         // PV lives in the detail pane; keep this line inside the 32-col pane. Aero formations
@@ -3036,7 +3595,10 @@ fn draw_sbf_formations(f: &mut Frame, area: Rect, app: &App) {
                 ),
                 Style::default().fg(theme().dim),
             ),
-            Span::styled(fs.morale.label(), Style::default().fg(morale_color(fs.morale))),
+            Span::styled(
+                fs.morale.label(),
+                Style::default().fg(morale_color(fs.morale)),
+            ),
         ]));
     }
     // Pool elements not yet in any formation (added after the last [g]) — surface the count.
@@ -3074,7 +3636,12 @@ fn draw_sbf_formations(f: &mut Frame, area: Rect, app: &App) {
 /// Middle pane: the active formation's units — name + destroyed flag, armor track, current
 /// (post-crit) damage bands, crit counters.
 fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
-    let Some(fs) = app.session.sbf.formations.get(app.session.sbf.active_formation) else {
+    let Some(fs) = app
+        .session
+        .sbf
+        .formations
+        .get(app.session.sbf.active_formation)
+    else {
         return;
     };
     let mut lines: Vec<Line> = Vec::new();
@@ -3088,7 +3655,10 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
         let selected = i == app.session.sbf.active_unit;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -3109,7 +3679,9 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
         if u.is_commander {
             head.push(Span::styled(
                 " COM",
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
         if u.is_leader {
@@ -3118,7 +3690,9 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
         if u.is_destroyed(&derived) {
             head.push(Span::styled(
                 format!(" {} DESTROYED", icons::cond_destroyed()),
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD),
             ));
         } else if matches!(derived.sbf_type, SbfElementType::As | SbfElementType::La)
             && u.current_movement(&derived) == 0
@@ -3127,10 +3701,15 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
             // in the End Phase (IO:BF p.178/p.181 Thrust Loss); the removal mark stays manual.
             head.push(Span::styled(
                 " CRASHES (End Phase)",
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD),
             ));
         } else if u.crit_check_due(&derived) {
-            head.push(Span::styled(" ⚠crit due", Style::default().fg(theme().warning)));
+            head.push(Span::styled(
+                " ⚠crit due",
+                Style::default().fg(theme().warning),
+            ));
         }
         lines.push(Line::from(head));
 
@@ -3151,7 +3730,11 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
                     sbf_dmg(cur.m),
                     sbf_dmg(cur.l.unwrap_or(0.0))
                 ),
-                Style::default().fg(if u.damage_crits > 0 { theme().danger } else { theme().fg }),
+                Style::default().fg(if u.damage_crits > 0 {
+                    theme().danger
+                } else {
+                    theme().fg
+                }),
             ),
         ]));
         let crit_style = |n: u8| {
@@ -3163,14 +3746,28 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
         };
         lines.push(Line::from(vec![
             Span::styled("    crits ", Style::default().fg(theme().dim)),
-            Span::styled(format!("DMG {}", u.damage_crits), crit_style(u.damage_crits)),
+            Span::styled(
+                format!("DMG {}", u.damage_crits),
+                crit_style(u.damage_crits),
+            ),
             Span::styled("  ", Style::default()),
-            Span::styled(format!("TGT {}", u.targeting_crits), crit_style(u.targeting_crits)),
+            Span::styled(
+                format!("TGT {}", u.targeting_crits),
+                crit_style(u.targeting_crits),
+            ),
             Span::styled("  ", Style::default()),
             Span::styled(format!("MP {}", u.mp_crits), crit_style(u.mp_crits)),
             Span::styled(
-                format!("  MV {}{}", u.current_movement(&derived), derived.move_mode.code()),
-                Style::default().fg(if u.mp_crits > 0 { theme().warning } else { theme().dim }),
+                format!(
+                    "  MV {}{}",
+                    u.current_movement(&derived),
+                    derived.move_mode.code()
+                ),
+                Style::default().fg(if u.mp_crits > 0 {
+                    theme().warning
+                } else {
+                    theme().dim
+                }),
             ),
         ]));
         lines.push(Line::from(""));
@@ -3190,7 +3787,12 @@ fn draw_sbf_units(f: &mut Frame, area: Rect, app: &App) {
 /// Right pane: the active unit's derived stat line + specials, the formation's live state, and
 /// the current hand-entered to-hit number.
 fn draw_sbf_detail(f: &mut Frame, area: Rect, app: &App) {
-    let Some(fs) = app.session.sbf.formations.get(app.session.sbf.active_formation) else {
+    let Some(fs) = app
+        .session
+        .sbf
+        .formations
+        .get(app.session.sbf.active_formation)
+    else {
         return;
     };
     let empty_block = |f: &mut Frame, title: &str| {
@@ -3245,7 +3847,9 @@ fn draw_sbf_detail(f: &mut Frame, area: Rect, app: &App) {
         Span::styled("Skill ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{}", u.base_gunnery(&derived)),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             format!("  PV {}", derived.point_value),
@@ -3278,12 +3882,19 @@ fn draw_sbf_detail(f: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
         "Alpha Strike Elements",
-        Style::default().fg(theme().dim).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().dim)
+            .add_modifier(Modifier::BOLD),
     )));
     for &i in &u.elements {
         if let Some(tm) = app.session.mechs.get(i) {
             lines.push(Line::from(Span::styled(
-                format!("{:>2} {:<24} SK{}", i + 1, trunc(&tm.spec.display_name(), 24), tm.gunnery),
+                format!(
+                    "{:>2} {:<24} SK{}",
+                    i + 1,
+                    trunc(&tm.spec.display_name(), 24),
+                    tm.gunnery
+                ),
                 Style::default().fg(theme().dim),
             )));
         }
@@ -3303,7 +3914,9 @@ fn draw_sbf_detail(f: &mut Frame, area: Rect, app: &App) {
             Span::styled("To-Hit ", Style::default().fg(theme().dim)),
             Span::styled(
                 format!("{n}+"),
-                Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().warning)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(
@@ -3319,7 +3932,10 @@ fn draw_sbf_detail(f: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::from(""));
     lines.push(Line::from(vec![
         Span::styled("Formation  ", Style::default().fg(theme().dim)),
-        Span::styled(fs.morale.label(), Style::default().fg(morale_color(fs.morale))),
+        Span::styled(
+            fs.morale.label(),
+            Style::default().fg(morale_color(fs.morale)),
+        ),
     ]));
     lines.push(Line::from(Span::styled(
         format!(
@@ -3360,7 +3976,9 @@ fn draw_sbf_detail(f: &mut Frame, area: Rect, app: &App) {
     if app.session.sbf_is_crippled(fs) {
         lines.push(Line::from(Span::styled(
             "⚠ CRIPPLED",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD),
         )));
     }
 
@@ -3383,7 +4001,10 @@ fn sbf_group_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -3425,8 +4046,14 @@ fn sbf_group_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
 /// Body lines for the doctrine picker: the three IO:BF p.165 organization schemes.
 fn sbf_doctrine_modal_lines(sel: usize) -> Vec<Line<'static>> {
     let rows = [
-        ("Inner Sphere", "Lances of 4 → Companies; Flights of 2 → Squadrons"),
-        ("Clan", "Stars of 5 → Binary / Trinary; aero Flights → Squadrons"),
+        (
+            "Inner Sphere",
+            "Lances of 4 → Companies; Flights of 2 → Squadrons",
+        ),
+        (
+            "Clan",
+            "Stars of 5 → Binary / Trinary; aero Flights → Squadrons",
+        ),
         ("ComStar", "Level IIs of 6 → Level III"),
     ];
     let mut lines = Vec::new();
@@ -3434,7 +4061,10 @@ fn sbf_doctrine_modal_lines(sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -3477,7 +4107,9 @@ fn sbf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     };
     lines.push(Line::from(Span::styled(
         format!("{} — {}", u.name, due),
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD),
     )));
     lines.push(Line::from(""));
     // Aero at 0 Thrust crashes in the End Phase rather than sitting immobile (p.178/p.181).
@@ -3495,7 +4127,10 @@ fn sbf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if n > 0 {
             Style::default().fg(theme().danger)
         } else {
@@ -3518,11 +4153,11 @@ fn sbf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     // Large craft with more than one weapon class in an arc: a Weapon-Damage result hits only ONE
     // class — the player rolls 1D6 on the Random Weapon Class table and applies the −1 to that
     // class at the table (table-side; the arc card carries raw per-class damage).
-    if derived
-        .arcs
-        .as_ref()
-        .is_some_and(|c| large_craft::Arc::ALL.iter().any(|&a| large_craft::arc_lines(c, a).len() > 1))
-    {
+    if derived.arcs.as_ref().is_some_and(|c| {
+        large_craft::Arc::ALL
+            .iter()
+            .any(|&a| large_craft::arc_lines(c, a).len() > 1)
+    }) {
         lines.push(Line::from(Span::styled(
             "large craft: on a Damage result roll 1D6 (Random Weapon Class):",
             Style::default().fg(theme().warning),
@@ -3568,7 +4203,9 @@ fn sbf_aero_target_label(t: SbfAeroTarget) -> &'static str {
 /// manual and deliberately not a term, §4.3).
 fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    let Some(ctx) = app.sbf_to_hit_ctx() else { return lines };
+    let Some(ctx) = app.sbf_to_hit_ctx() else {
+        return lines;
+    };
     let yn = |b: bool| if b { "[x]" } else { "[ ]" };
     let aero = ctx.aero;
     // Air-to-air / ground-to-air / bombing shots apply no target-movement or terrain modifiers
@@ -3577,7 +4214,11 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let (kind_val, target_val) = match aero {
         None => ("off".to_string(), "—".to_string()),
         Some(a) => (
-            format!("{} ({:+})", sbf_aero_kind_label(a.kind), a.kind.attack_mod()),
+            format!(
+                "{} ({:+})",
+                sbf_aero_kind_label(a.kind),
+                a.kind.attack_mod()
+            ),
             format!("{} ({:+})", sbf_aero_target_label(a.target), a.target_mod()),
         ),
     };
@@ -3589,7 +4230,15 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let cap = aero.and_then(|a| a.capital);
     let cap_active = cap.is_some();
     let mut rows: Vec<(&str, String, bool)> = vec![
-        ("Range", format!("{} (+{})", sbf_range_label(ctx.range), sbf_engine::sbf_range_mod(ctx.range)), true),
+        (
+            "Range",
+            format!(
+                "{} (+{})",
+                sbf_range_label(ctx.range),
+                sbf_engine::sbf_range_mod(ctx.range)
+            ),
+            true,
+        ),
         ("Indirect fire", yn(ctx.indirect_fire).to_string(), true),
         ("Formation JUMP used", ctx.attacker_jump.to_string(), true),
         ("Units withholding", ctx.withheld_units.to_string(), true),
@@ -3597,12 +4246,24 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         ("Secondary target", yn(ctx.secondary).to_string(), true),
         ("Target TMM", ctx.target_tmm.to_string(), !suppressed),
         ("Target JUMP used", ctx.target_jump.to_string(), !suppressed),
-        ("Target evaded", yn(ctx.target_evaded).to_string(), !suppressed),
+        (
+            "Target evaded",
+            yn(ctx.target_evaded).to_string(),
+            !suppressed,
+        ),
         ("Terrain", format!("+{}", ctx.terrain), !suppressed),
         ("Aero attack", kind_val, true),
         ("Aero target", target_val, aero.is_some()),
-        ("Behind target", yn(s.behind_target).to_string(), aero.is_some()),
-        ("Cluster bombs (−1)", yn(s.cluster).to_string(), s.aero_kind.is_bombing()),
+        (
+            "Behind target",
+            yn(s.behind_target).to_string(),
+            aero.is_some(),
+        ),
+        (
+            "Cluster bombs (−1)",
+            yn(s.cluster).to_string(),
+            s.aero_kind.is_bombing(),
+        ),
     ];
     if large {
         let pd = match s.point_defense {
@@ -3617,16 +4278,48 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         };
         rows.extend([
             ("Firing arc", s.firing_arc.label().to_string(), cap_active),
-            ("Weapon class", s.weapon_class.label().to_string(), cap_active),
-            ("Target is large craft (waive)", yn(s.target_large_craft).to_string(), cap_active),
-            ("High-speed attack (+8)", yn(s.high_speed).to_string(), cap_active),
-            ("Atmospheric (+2)", yn(s.atmospheric).to_string(), cap_active),
+            (
+                "Weapon class",
+                s.weapon_class.label().to_string(),
+                cap_active,
+            ),
+            (
+                "Target is large craft (waive)",
+                yn(s.target_large_craft).to_string(),
+                cap_active,
+            ),
+            (
+                "High-speed attack (+8)",
+                yn(s.high_speed).to_string(),
+                cap_active,
+            ),
+            (
+                "Atmospheric (+2)",
+                yn(s.atmospheric).to_string(),
+                cap_active,
+            ),
             ("Point defense (vs MSL)", pd, cap_active),
-            ("Screen launchers (SCR)", format!("+{}", (s.screen).min(4)), cap_active),
+            (
+                "Screen launchers (SCR)",
+                format!("+{}", (s.screen).min(4)),
+                cap_active,
+            ),
             ("Naval C3 (−1)", yn(s.naval_c3).to_string(), cap_active),
-            ("Teleoperated MSL (−1)", yn(s.teleoperated).to_string(), cap_active),
-            ("Target crippled (−2)", yn(s.crippled).to_string(), cap_active),
-            ("Target grappled (−4)", yn(s.grappled).to_string(), cap_active),
+            (
+                "Teleoperated MSL (−1)",
+                yn(s.teleoperated).to_string(),
+                cap_active,
+            ),
+            (
+                "Target crippled (−2)",
+                yn(s.crippled).to_string(),
+                cap_active,
+            ),
+            (
+                "Target grappled (−4)",
+                yn(s.grappled).to_string(),
+                cap_active,
+            ),
             ("Adv capital missile", acm.to_string(), cap_active),
         ]);
     }
@@ -3647,9 +4340,13 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             {
                 if let Some(card) = app.session.sbf_unit(u).arcs {
                     let eff = sbf_engine::capital_range(ctx.range, c.weapon_class);
-                    let dmg = large_craft::arc_damage(&card, s.firing_arc, c.weapon_class).band(eff);
-                    let dmg_str =
-                        if dmg == 0.5 { "0*".to_string() } else { format!("{}", dmg as u32) };
+                    let dmg =
+                        large_craft::arc_damage(&card, s.firing_arc, c.weapon_class).band(eff);
+                    let dmg_str = if dmg == 0.5 {
+                        "0*".to_string()
+                    } else {
+                        format!("{}", dmg as u32)
+                    };
                     let mut line = format!(
                         "{} {} @ {}:  damage {dmg_str}",
                         s.firing_arc.label(),
@@ -3666,7 +4363,9 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
                     }
                     lines.push(Line::from(Span::styled(
                         line,
-                        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme().accent)
+                            .add_modifier(Modifier::BOLD),
                     )));
                 }
             }
@@ -3688,13 +4387,19 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if !active {
             Style::default().fg(theme().dim)
         } else {
             Style::default()
         };
-        lines.push(Line::from(Span::styled(format!("{marker}{name:<20} {val}"), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{name:<20} {val}"),
+            style,
+        )));
     }
     if suppressed {
         lines.push(Line::from(Span::styled(
@@ -3722,7 +4427,10 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     }
     if aero.is_some() && ctx.firing_unit_targeting_crits > 0 {
         // The p.179 table prices targeting crits at +2 each (vs the ground +1).
-        autos.push(format!("TGT crits ×{} +2 each", ctx.firing_unit_targeting_crits));
+        autos.push(format!(
+            "TGT crits ×{} +2 each",
+            ctx.firing_unit_targeting_crits
+        ));
     }
     if !autos.is_empty() {
         lines.push(Line::from(Span::styled(
@@ -3781,7 +4489,12 @@ fn sbf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
 
 fn sbf_help_modal_lines() -> Vec<Line<'static>> {
     let header = |s: &'static str| {
-        Line::from(Span::styled(s, Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)))
+        Line::from(Span::styled(
+            s,
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
+        ))
     };
     let row = |keys: &'static str, desc: &'static str| {
         Line::from(vec![
@@ -3812,7 +4525,10 @@ fn sbf_help_modal_lines() -> Vec<Line<'static>> {
         row("P", "export record-sheet PDF"),
         row("^t", "display picker (theme + layout)"),
         row("q", "quit"),
-        Line::from(Span::styled("  press any key to close", Style::default().fg(theme().dim))),
+        Line::from(Span::styled(
+            "  press any key to close",
+            Style::default().fg(theme().dim),
+        )),
     ]
 }
 
@@ -3855,7 +4571,11 @@ fn draw_acs(f: &mut Frame, area: Rect, app: &mut App) {
     } else {
         let cols = Layout::default()
             .direction(Direction::Horizontal)
-            .constraints([Constraint::Length(34), Constraint::Min(30), Constraint::Length(38)])
+            .constraints([
+                Constraint::Length(34),
+                Constraint::Min(30),
+                Constraint::Length(38),
+            ])
             .split(chunks[0]);
         draw_acs_formations(f, cols[0], app);
         draw_acs_units(f, cols[1], app);
@@ -3866,11 +4586,16 @@ fn draw_acs(f: &mut Frame, area: Rect, app: &mut App) {
     if !app.status.is_empty() {
         spans.push(Span::styled(
             format!("{} ", app.status),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::styled("| ", Style::default().fg(theme().dim)));
     }
-    spans.push(Span::styled(ACS_HELP.trim_start(), Style::default().fg(theme().dim)));
+    spans.push(Span::styled(
+        ACS_HELP.trim_start(),
+        Style::default().fg(theme().dim),
+    ));
     f.render_widget(Paragraph::new(Line::from(spans)), chunks[1]);
 }
 
@@ -3881,12 +4606,18 @@ fn draw_acs_formations(f: &mut Frame, area: Rect, app: &App) {
         let selected = i == app.session.acs.active_formation;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
         if fs.units.is_empty() {
-            lines.push(Line::from(Span::styled(format!("{marker}{}", fs.name), name_style)));
+            lines.push(Line::from(Span::styled(
+                format!("{marker}{}", fs.name),
+                name_style,
+            )));
             lines.push(Line::from(Span::styled(
                 "    (no units — [g] to group)",
                 Style::default().fg(theme().dim),
@@ -3898,7 +4629,9 @@ fn draw_acs_formations(f: &mut Frame, area: Rect, app: &App) {
         if fs.units.iter().any(|u| u.is_commander) {
             head.push(Span::styled(
                 " COM",
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
         if fs.is_done {
@@ -3918,7 +4651,10 @@ fn draw_acs_formations(f: &mut Frame, area: Rect, app: &App) {
                 ),
                 Style::default().fg(theme().dim),
             ),
-            Span::styled(fs.morale.label(), Style::default().fg(acs_morale_color(fs.morale))),
+            Span::styled(
+                fs.morale.label(),
+                Style::default().fg(acs_morale_color(fs.morale)),
+            ),
         ]));
     }
     let grouped: usize = app
@@ -3957,7 +4693,12 @@ fn draw_acs_formations(f: &mut Frame, area: Rect, app: &App) {
 /// Middle pane: the active Formation's Combat Units — name + destroyed flag, armor bar with the
 /// three threshold marks, damage line, fatigue band, morale.
 fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
-    let Some(fs) = app.session.acs.formations.get(app.session.acs.active_formation) else {
+    let Some(fs) = app
+        .session
+        .acs
+        .formations
+        .get(app.session.acs.active_formation)
+    else {
         return;
     };
     let mut lines: Vec<Line> = Vec::new();
@@ -3971,7 +4712,10 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
         let selected = i == app.session.acs.active_unit;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -3980,7 +4724,9 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
         if cu.is_commander {
             head.push(Span::styled(
                 " COM",
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
         if cu.is_leader {
@@ -3989,7 +4735,9 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
         if cu.is_destroyed(&derived) {
             head.push(Span::styled(
                 format!(" {} DESTROYED", icons::cond_destroyed()),
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
         lines.push(Line::from(head));
@@ -3999,10 +4747,16 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
         lines.push(Line::from(vec![
             Span::styled("    A ", Style::default().fg(theme().dim)),
             Span::styled(bar(rem, max, 10), Style::default().fg(frac_color(rem, max))),
-            Span::styled(format!(" {rem}/{max}"), Style::default().fg(frac_color(rem, max))),
+            Span::styled(
+                format!(" {rem}/{max}"),
+                Style::default().fg(frac_color(rem, max)),
+            ),
         ]));
         // Threshold marks + current fatigue band + morale.
-        let band = acs_fatigue_band(cu.fatigue_points(), AcsExperience::from_skill(derived.skill));
+        let band = acs_fatigue_band(
+            cu.fatigue_points(),
+            AcsExperience::from_skill(derived.skill),
+        );
         lines.push(Line::from(vec![
             Span::styled(
                 format!(
@@ -4014,14 +4768,32 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
                 Style::default().fg(theme().dim),
             ),
             Span::styled(
-                format!("  D{}/{}/{}", sbf_dmg(derived.damage.s), sbf_dmg(derived.damage.m), sbf_dmg(derived.damage.l.unwrap_or(0.0))),
+                format!(
+                    "  D{}/{}/{}",
+                    sbf_dmg(derived.damage.s),
+                    sbf_dmg(derived.damage.m),
+                    sbf_dmg(derived.damage.l.unwrap_or(0.0))
+                ),
                 Style::default(),
             ),
         ]));
         lines.push(Line::from(vec![
-            Span::styled(format!("    {:?}", band), Style::default().fg(if matches!(band, AcsFatigueBand::Rested) { theme().dim } else { theme().warning })),
-            Span::styled(format!("  {:.1}FP  ", cu.fatigue_points()), Style::default().fg(theme().dim)),
-            Span::styled(cu.morale.label(), Style::default().fg(acs_morale_color(cu.morale))),
+            Span::styled(
+                format!("    {:?}", band),
+                Style::default().fg(if matches!(band, AcsFatigueBand::Rested) {
+                    theme().dim
+                } else {
+                    theme().warning
+                }),
+            ),
+            Span::styled(
+                format!("  {:.1}FP  ", cu.fatigue_points()),
+                Style::default().fg(theme().dim),
+            ),
+            Span::styled(
+                cu.morale.label(),
+                Style::default().fg(acs_morale_color(cu.morale)),
+            ),
         ]));
         lines.push(Line::from(""));
     }
@@ -4044,7 +4816,9 @@ fn draw_acs_units(f: &mut Frame, area: Rect, app: &App) {
 /// off the arc card; a plain aero Formation uses its aggregated band.
 fn acs_aero_readout(app: &App, derived: &AcsCombatUnit, lines: &mut Vec<Line<'static>>) {
     use super::app::AcsAeroMission;
-    let Some(ctx) = app.acs_aero_to_hit_ctx() else { return };
+    let Some(ctx) = app.acs_aero_to_hit_ctx() else {
+        return;
+    };
     let s = app.acs_shot;
     let tn = acs_aero_to_hit(&ctx);
     // The capital range reduction feeds the TN and the damage lookup — label the effective bracket.
@@ -4053,7 +4827,9 @@ fn acs_aero_readout(app: &App, derived: &AcsCombatUnit, lines: &mut Vec<Line<'st
         Span::styled("To-Hit ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{tn}+"),
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
             format!(
@@ -4081,7 +4857,12 @@ fn acs_aero_readout(app: &App, derived: &AcsCombatUnit, lines: &mut Vec<Line<'st
         },
     );
     let src = if derived.arcs.is_some() {
-        format!("{} {} @ {}", s.firing_arc.label(), s.weapon_class.label(), sbf_range_label(eff))
+        format!(
+            "{} {} @ {}",
+            s.firing_arc.label(),
+            s.weapon_class.label(),
+            sbf_range_label(eff)
+        )
     } else {
         format!("band {}", sbf_range_label(eff))
     };
@@ -4089,7 +4870,9 @@ fn acs_aero_readout(app: &App, derived: &AcsCombatUnit, lines: &mut Vec<Line<'st
         Span::styled("Damage ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{dmg}"),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(format!("  ({src})"), Style::default().fg(theme().dim)),
     ]));
@@ -4146,12 +4929,20 @@ fn acs_aero_readout(app: &App, derived: &AcsCombatUnit, lines: &mut Vec<Line<'st
         }
     };
     if let Some(m) = mission_line {
-        lines.push(Line::from(Span::styled(m, Style::default().fg(theme().good))));
+        lines.push(Line::from(Span::styled(
+            m,
+            Style::default().fg(theme().good),
+        )));
     }
 }
 
 fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
-    let Some(fs) = app.session.acs.formations.get(app.session.acs.active_formation) else {
+    let Some(fs) = app
+        .session
+        .acs
+        .formations
+        .get(app.session.acs.active_formation)
+    else {
         return;
     };
     let empty = |f: &mut Frame, title: &str| {
@@ -4193,10 +4984,15 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
         Span::styled("Skill ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{}", derived.skill),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
-            format!("  Mor {}  PV {}", derived.morale_rating, derived.point_value),
+            format!(
+                "  Mor {}  PV {}",
+                derived.morale_rating, derived.point_value
+            ),
             Style::default().fg(theme().dim),
         ),
     ]));
@@ -4233,7 +5029,9 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
             Span::styled("To-Hit ", Style::default().fg(theme().dim)),
             Span::styled(
                 format!("{tn}+"),
-                Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().warning)
+                    .add_modifier(Modifier::BOLD),
             ),
             Span::styled(
                 format!(
@@ -4249,9 +5047,14 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
             Span::styled("Damage ", Style::default().fg(theme().dim)),
             Span::styled(
                 format!("{dmg}"),
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             ),
-            Span::styled("  ([/] range · +/- TMM · s 2nd)", Style::default().fg(theme().dim)),
+            Span::styled(
+                "  ([/] range · +/- TMM · s 2nd)",
+                Style::default().fg(theme().dim),
+            ),
         ]));
     }
 
@@ -4265,13 +5068,19 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
     let morale_tn = acs_morale_tn(&AcsMoraleCtx {
         morale_value: derived.morale_rating,
         experience: AcsExperience::from_skill(derived.skill),
-        fatigue: acs_fatigue_band(cu.fatigue_points(), AcsExperience::from_skill(derived.skill)),
+        fatigue: acs_fatigue_band(
+            cu.fatigue_points(),
+            AcsExperience::from_skill(derived.skill),
+        ),
         third_threshold: matches!(cu_band, AcsDamageBand::Pct25),
         ..Default::default()
     });
     lines.push(Line::from(vec![
         Span::styled("Morale ", Style::default().fg(theme().dim)),
-        Span::styled(cu.morale.label(), Style::default().fg(acs_morale_color(cu.morale))),
+        Span::styled(
+            cu.morale.label(),
+            Style::default().fg(acs_morale_color(cu.morale)),
+        ),
         Span::styled(
             format!("  check {morale_tn}+ (2d6)"),
             Style::default().fg(theme().dim),
@@ -4282,7 +5091,9 @@ fn draw_acs_detail(f: &mut Frame, area: Rect, app: &App) {
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
         "Combat Teams",
-        Style::default().fg(theme().dim).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().dim)
+            .add_modifier(Modifier::BOLD),
     )));
     for t in &cu.teams {
         let n: usize = t.units.iter().map(|u| u.elements.len()).sum();
@@ -4311,7 +5122,10 @@ fn acs_group_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -4354,7 +5168,12 @@ fn acs_group_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
 
 fn acs_help_modal_lines() -> Vec<Line<'static>> {
     let header = |s: &'static str| {
-        Line::from(Span::styled(s, Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)))
+        Line::from(Span::styled(
+            s,
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
+        ))
     };
     let row = |keys: &'static str, desc: &'static str| {
         Line::from(vec![
@@ -4383,7 +5202,10 @@ fn acs_help_modal_lines() -> Vec<Line<'static>> {
         row("a / z", "add elements / undo"),
         row("P", "export record-sheet PDF"),
         row("S / q", "sessions browser / quit"),
-        Line::from(Span::styled("  press any key to close", Style::default().fg(theme().dim))),
+        Line::from(Span::styled(
+            "  press any key to close",
+            Style::default().fg(theme().dim),
+        )),
     ]
 }
 
@@ -4429,7 +5251,11 @@ enum BfBlock {
 fn draw_battleforce(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(u16::from(!sidebar)), Constraint::Min(1), Constraint::Length(1)])
+        .constraints([
+            Constraint::Length(u16::from(!sidebar)),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ])
         .split(area);
     draw_roster(f, chunks[0], app);
 
@@ -4439,7 +5265,10 @@ fn draw_battleforce(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
             chunks[1],
         );
         f.render_widget(
-            Paragraph::new(Line::from(Span::styled(BF_HELP, Style::default().fg(theme().dim)))),
+            Paragraph::new(Line::from(Span::styled(
+                BF_HELP,
+                Style::default().fg(theme().dim),
+            ))),
             chunks[2],
         );
         return;
@@ -4501,8 +5330,10 @@ fn draw_battleforce(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
         .iter()
         .position(|(b, _)| matches!(b, BfBlock::Cards(v) if v.contains(&active)))
         .unwrap_or(0);
-    let page_idx =
-        pages.iter().position(|p| p.contains(&active_block)).unwrap_or(0);
+    let page_idx = pages
+        .iter()
+        .position(|p| p.contains(&active_block))
+        .unwrap_or(0);
 
     let mut y = chunks[1].y;
     for &bi in &pages[page_idx] {
@@ -4511,7 +5342,12 @@ fn draw_battleforce(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
         if h == 0 {
             break;
         }
-        let rect = Rect { x: chunks[1].x, y, width: chunks[1].width, height: h };
+        let rect = Rect {
+            x: chunks[1].x,
+            y,
+            width: chunks[1].width,
+            height: h,
+        };
         match block {
             BfBlock::Header(ui) => {
                 f.render_widget(Paragraph::new(bf_unit_header_line(app, *ui)), rect);
@@ -4548,7 +5384,10 @@ fn draw_battleforce(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
         format!(" {} | {}", app.status, base.trim_start())
     };
     f.render_widget(
-        Paragraph::new(Line::from(Span::styled(help, Style::default().fg(theme().dim)))),
+        Paragraph::new(Line::from(Span::styled(
+            help,
+            Style::default().fg(theme().dim),
+        ))),
         chunks[2],
     );
 }
@@ -4559,16 +5398,25 @@ fn draw_battleforce(f: &mut Frame, area: Rect, sidebar: bool, app: &mut App) {
 fn bf_unit_header_line(app: &App, ui: Option<usize>) -> Line<'static> {
     let active_assignment = app.session.bf_element_assignment(app.session.active);
     let (name, is_active) = match ui {
-        Some(ui) => (app.session.bf.units[ui].name.clone(), active_assignment == Some(ui)),
+        Some(ui) => (
+            app.session.bf.units[ui].name.clone(),
+            active_assignment == Some(ui),
+        ),
         None => ("Unassigned".to_string(), active_assignment.is_none()),
     };
     let name_style = if is_active {
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
-        Style::default().fg(theme().dim).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().dim)
+            .add_modifier(Modifier::BOLD)
     };
     let mut spans = vec![Span::styled(format!("▸ {name}"), name_style)];
-    let Some(ui) = ui else { return Line::from(spans) };
+    let Some(ui) = ui else {
+        return Line::from(spans);
+    };
     let u = &app.session.bf.units[ui];
     if u.elements.is_empty() {
         return Line::from(spans);
@@ -4589,9 +5437,11 @@ fn bf_unit_header_line(app: &App, ui: Option<usize>) -> Line<'static> {
         format!("   MV {mv}{jump_str}  SZ {}  PV {pv}  ", u.size),
         Style::default().fg(theme().dim),
     ));
-    spans.push(Span::styled(u.morale.label(), Style::default().fg(bf_morale_color(u.morale))));
-    if u
-        .elements
+    spans.push(Span::styled(
+        u.morale.label(),
+        Style::default().fg(bf_morale_color(u.morale)),
+    ));
+    if u.elements
         .iter()
         .any(|&i| app.session.bf_shutdown(i) && !app.session.mechs[i].bf_destroyed())
     {
@@ -4600,7 +5450,9 @@ fn bf_unit_header_line(app: &App, ui: Option<usize>) -> Line<'static> {
         // elements; a dead element can't cool down and would pin forever).
         spans.push(Span::styled(
             "  CANNOT MOVE (shutdown)",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD),
         ));
     }
     Line::from(spans)
@@ -4610,17 +5462,27 @@ fn bf_unit_header_line(app: &App, ui: Option<usize>) -> Line<'static> {
 /// live TMM, post-crit damage + derived ground E, the BF crit vocabulary, per-bracket To-Hit via
 /// the persisted shot context, and the hex range-bracket footer).
 fn draw_bf_card(f: &mut Frame, area: Rect, app: &App, i: usize, active: bool) {
-    let Some(tm) = app.session.mechs.get(i) else { return };
+    let Some(tm) = app.session.mechs.get(i) else {
+        return;
+    };
     let border_style = if tm.bf_destroyed() {
-        Style::default().fg(theme().danger).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().danger)
+            .add_modifier(Modifier::BOLD)
     } else if active {
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(theme().dim)
     };
     let block = Block::default()
         .borders(Borders::ALL)
-        .border_type(if active { BorderType::Double } else { BorderType::Plain })
+        .border_type(if active {
+            BorderType::Double
+        } else {
+            BorderType::Plain
+        })
         .border_style(border_style)
         .title(format!(" {} ", tm.spec.display_name()));
     f.render_widget(Paragraph::new(bf_card_lines(app, i)).block(block), area);
@@ -4636,8 +5498,16 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
     let mut lines: Vec<Line> = Vec::new();
 
     // Type / size / hex-native MV with live degradation / TMM (live) — or the aero TH row.
-    let sz = if a.size == 0 { "-".to_string() } else { a.size.to_string() };
-    let base_mp = if aero { el.primary_move } else { inches_to_hexes(el.primary_move) };
+    let sz = if a.size == 0 {
+        "-".to_string()
+    } else {
+        a.size.to_string()
+    };
+    let base_mp = if aero {
+        el.primary_move
+    } else {
+        inches_to_hexes(el.primary_move)
+    };
     let cur_mp = app.session.bf_current_mp(i);
     let mv_base = movement_hexes(&a.movement);
     let mut mv = format!("MV {mv_base}");
@@ -4687,19 +5557,26 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
         Span::styled("Skill ", gray),
         Span::styled(
             format!("{}+", tm.gunnery),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled("   PV ", gray),
         Span::styled(
             format!("{adj_pv}"),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
     ]));
 
     let pip_row = |label: &str, rem: u8, max: u8| {
         Line::from(vec![
             Span::styled(format!("{label:<10}"), gray),
-            Span::styled("█".repeat(rem as usize), Style::default().fg(frac_color(rem.into(), max.into()))),
+            Span::styled(
+                "█".repeat(rem as usize),
+                Style::default().fg(frac_color(rem.into(), max.into())),
+            ),
             Span::styled("░".repeat(max.saturating_sub(rem) as usize), gray),
             Span::styled(format!("  {rem}/{max}"), gray),
         ])
@@ -4712,18 +5589,27 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
     if !large {
         let mut heat = vec![Span::styled(format!("{:<10}", "Heat"), gray)];
         for h in 0..=4u8 {
-            let label = if h == 4 { "S".to_string() } else { h.to_string() };
+            let label = if h == 4 {
+                "S".to_string()
+            } else {
+                h.to_string()
+            };
             if h == tm.as_heat {
                 heat.push(Span::styled(
                     format!("[{label}]"),
-                    Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+                    Style::default()
+                        .fg(theme().danger)
+                        .add_modifier(Modifier::BOLD | Modifier::REVERSED),
                 ));
             } else {
                 heat.push(Span::styled(format!(" {label} "), gray));
             }
         }
         if a.overheat > 0 {
-            heat.push(Span::styled(format!("  OV {}", a.overheat), Style::default().fg(theme().warning)));
+            heat.push(Span::styled(
+                format!("  OV {}", a.overheat),
+                Style::default().fg(theme().warning),
+            ));
         }
         lines.push(Line::from(heat));
     }
@@ -4739,7 +5625,10 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
             }
             let mut spans = vec![Span::styled(format!("  {:<6}", arc.label()), gray)];
             for (cls, s) in disp {
-                spans.push(Span::styled(format!("{} {}  ", cls.label(), s), Style::default()));
+                spans.push(Span::styled(
+                    format!("{} {}  ", cls.label(), s),
+                    Style::default(),
+                ));
             }
             let arc_specials = &arc.of(card).specials;
             if !arc_specials.is_empty() {
@@ -4754,7 +5643,11 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
         // Post-crit damage per bracket; ground E derives as L−1 at attack time (p.84, spec §1.1).
         let dmg_cell = |label: &str, r: BfRange| {
             let cell = bf_dmg_cell(app.session.bf_current_damage(i, r));
-            let style = if cell == "—" { gray } else { Style::default() };
+            let style = if cell == "—" {
+                gray
+            } else {
+                Style::default()
+            };
             Span::styled(format!("{label}{cell:<4}"), style)
         };
         lines.push(Line::from(vec![
@@ -4770,18 +5663,24 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
     if tm.bf_destroyed() {
         lines.push(Line::from(Span::styled(
             "*** DESTROYED ***",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     } else if tm.as_shutdown() {
         lines.push(Line::from(Span::styled(
             "*** SHUTDOWN (heat) ***",
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     } else if aero && tm.bf.engine >= battleforce::BF_ENGINE_HITS_DESTROY {
         // The aerospace 2nd Engine hit: TP 0 + shutdown, not destruction (spec §1.4).
         lines.push(Line::from(Span::styled(
             "*** TP 0 — SHUTDOWN (engine) ***",
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     } else if a.arcs.is_some() {
         // Large craft resolve to-hit per firing arc + weapon class (the arc block above), not the
@@ -4798,7 +5697,11 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
             Span::styled(format!("{label}{:<4}", format!("{n}+")), gray)
         };
         // `*` = a hand-entered shot context is folded in (edit with t).
-        let tag = if app.bf_shot == BfShotUi::default() { "To-Hit" } else { "To-Hit*" };
+        let tag = if app.bf_shot == BfShotUi::default() {
+            "To-Hit"
+        } else {
+            "To-Hit*"
+        };
         lines.push(Line::from(vec![
             Span::styled(format!("{tag:<10}"), gray),
             to_hit("S ", BfRange::Short),
@@ -4811,10 +5714,20 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
     // The BF crit vocabulary (spec §2.2): counters, the accumulated MP loss, and the flags.
     let mut crits = vec![Span::styled(format!("{:<10}", "Crits"), gray)];
     let mark = |label: String, hot: bool| {
-        Span::styled(label, if hot { Style::default().fg(theme().danger) } else { gray })
+        Span::styled(
+            label,
+            if hot {
+                Style::default().fg(theme().danger)
+            } else {
+                gray
+            },
+        )
     };
     crits.push(mark(format!("Eng{}  ", tm.bf.engine), tm.bf.engine > 0));
-    crits.push(mark(format!("FC{}  ", tm.bf.fire_control), tm.bf.fire_control > 0));
+    crits.push(mark(
+        format!("FC{}  ", tm.bf.fire_control),
+        tm.bf.fire_control > 0,
+    ));
     crits.push(mark(format!("MP−{}  ", tm.bf.mp_lost), tm.bf.mp_lost > 0));
     crits.push(mark(format!("Wpn{}  ", tm.bf.weapon), tm.bf.weapon > 0));
     if tm.bf.crew_stunned {
@@ -4831,11 +5744,18 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
         crits.push(mark("MOT0  ".into(), true));
     }
     if tm.bf.arm_spent {
-        crits.push(Span::styled("ARM✗  ".to_string(), Style::default().fg(theme().warning)));
+        crits.push(Span::styled(
+            "ARM✗  ".to_string(),
+            Style::default().fg(theme().warning),
+        ));
     }
     lines.push(Line::from(crits));
 
-    let specials = if a.specials.is_empty() { "—".to_string() } else { a.specials.join("  ") };
+    let specials = if a.specials.is_empty() {
+        "—".to_string()
+    } else {
+        a.specials.join("  ")
+    };
     lines.push(Line::from(vec![
         Span::styled(format!("{:<10}", "Specials"), gray),
         Span::styled(specials, Style::default().fg(theme().good)),
@@ -4858,7 +5778,9 @@ fn bf_card_lines(app: &App, i: usize) -> Vec<Line<'static>> {
 fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     use battleforce::{BfCrit, BfCritCol};
     let mut lines = Vec::new();
-    let Some(tm) = app.session.active_mech() else { return lines };
+    let Some(tm) = app.session.active_mech() else {
+        return lines;
+    };
     let el = bf_element_of(tm);
     let Some(col) = battleforce::bf_crit_col(&el) else {
         lines.push(Line::from(Span::styled(
@@ -4880,9 +5802,15 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         format!(
             "{} column — pick the 2D6 result{}",
             col_name,
-            if rolls > 1 { "  (IndustrialMech: roll TWICE, apply both)" } else { "" }
+            if rolls > 1 {
+                "  (IndustrialMech: roll TWICE, apply both)"
+            } else {
+                ""
+            }
         ),
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD),
     )));
     // Defender-side crit-roll modifiers (CR −2 / IRA +1 / RFA +2) + the ARM spent-checkbox.
     let m = battleforce::bf_crit_roll_mod(&el);
@@ -4898,7 +5826,10 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         });
     }
     if !hints.is_empty() {
-        lines.push(Line::from(Span::styled(hints.join("   "), Style::default().fg(theme().warning))));
+        lines.push(Line::from(Span::styled(
+            hints.join("   "),
+            Style::default().fg(theme().warning),
+        )));
     }
     // Large-craft crit ladders, shown only when they carry state (spec §10 table-side effects).
     let large = {
@@ -4934,7 +5865,11 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             tm.bf.mp_lost,
             tm.bf.weapon,
             if tm.bf.crew_stunned { " STUN" } else { "" },
-            if tm.bf.motive.minus_one { " MOT−1" } else { "" },
+            if tm.bf.motive.minus_one {
+                " MOT−1"
+            } else {
+                ""
+            },
             if tm.bf.motive.half { " MOT½" } else { "" },
             if tm.bf.motive.immobile { " MOT0" } else { "" },
             large,
@@ -4974,13 +5909,20 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = row == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if result == BfCrit::NoCrit || inapplicable {
             Style::default().fg(theme().dim)
         } else {
             Style::default()
         };
-        let suffix = if inapplicable { "  (+1 damage instead, p.42)" } else { "" };
+        let suffix = if inapplicable {
+            "  (+1 damage instead, p.42)"
+        } else {
+            ""
+        };
         lines.push(Line::from(Span::styled(
             format!("{marker}{roll:>2}  {}{suffix}", crit_label(result)),
             style,
@@ -5002,14 +5944,20 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             let selected = row == sel;
             let marker = if selected { "▶ " } else { "  " };
             let style = if selected {
-                Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(theme().on_accent)
+                    .bg(theme().accent)
+                    .add_modifier(Modifier::BOLD)
             } else if marked {
                 Style::default().fg(theme().dim)
             } else {
                 Style::default()
             };
             let spent = if marked { "  ✓ spent" } else { "" };
-            lines.push(Line::from(Span::styled(format!("{marker}    {label}{spent}"), style)));
+            lines.push(Line::from(Span::styled(
+                format!("{marker}    {label}{spent}"),
+                style,
+            )));
         }
         lines.push(Line::from(Span::styled(
             "1D6 5-6 then 2D6: 8-9 −1MV · 10-11 ½MV · 12 immob.  (Wheeled +2, Hover +3, VTOL/WiGE +4, rear +1)",
@@ -5034,7 +5982,9 @@ fn bf_crit_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
 /// preview below (spec §3.3).
 fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
-    let Some(tm) = app.session.active_mech() else { return lines };
+    let Some(tm) = app.session.active_mech() else {
+        return lines;
+    };
     let el = bf_element_of(tm);
     let aero = battleforce::bf_is_aero(&el);
     let large = el.arcs.is_some();
@@ -5056,7 +6006,11 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             BfRange::Long => vec.l.unwrap_or(0.0),
             BfRange::Extreme => vec.e.unwrap_or(0.0),
         };
-        let dmg_str = if band == 0.5 { "0*".to_string() } else { format!("{}", band as u32) };
+        let dmg_str = if band == 0.5 {
+            "0*".to_string()
+        } else {
+            format!("{}", band as u32)
+        };
         let rl = match s.range {
             BfRange::Short => "S",
             BfRange::Medium => "M",
@@ -5073,12 +6027,21 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             + cap_mod
             + crew_mod;
         lines.push(Line::from(Span::styled(
-            format!("{} {} @ {rl}:  TN {n}+   damage {dmg_str}", s.firing_arc.label(), cls.label()),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            format!(
+                "{} {} @ {rl}:  TN {n}+   damage {dmg_str}",
+                s.firing_arc.label(),
+                cls.label()
+            ),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         )));
         if cap_mod != 0 {
             lines.push(Line::from(Span::styled(
-                format!("  {} vs small target: +{cap_mod} to-hit (p.83)", cls.label()),
+                format!(
+                    "  {} vs small target: +{cap_mod} to-hit (p.83)",
+                    cls.label()
+                ),
                 Style::default().fg(theme().dim),
             )));
         }
@@ -5097,9 +6060,10 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         BfRange::Extreme => "Extreme (+6)",
     };
     let (spotter_attacked, spotter_remote) = match s.kind {
-        BfAttackKind::Indirect { spotter_also_attacked, spotter_is_remote_sensor } => {
-            (spotter_also_attacked, spotter_is_remote_sensor)
-        }
+        BfAttackKind::Indirect {
+            spotter_also_attacked,
+            spotter_is_remote_sensor,
+        } => (spotter_also_attacked, spotter_is_remote_sensor),
         _ => (false, false),
     };
     let max_ov = battleforce::bf_max_ov_commit(&el, tm.as_heat);
@@ -5128,21 +6092,33 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     };
     let indirect = matches!(s.kind, BfAttackKind::Indirect { .. });
     let physical = matches!(s.kind, BfAttackKind::Physical(_));
-    let jumpish = matches!(s.target_move, BfTargetMove::Jumped | BfTargetMove::Submersible);
+    let jumpish = matches!(
+        s.target_move,
+        BfTargetMove::Jumped | BfTargetMove::Submersible
+    );
     // MAS/LMAS bites weapon attacks against a target that stood still OR is immobile (p.148).
-    let mas_active = !physical
-        && (s.target_immobile || s.target_move == BfTargetMove::StoodStill);
+    let mas_active = !physical && (s.target_immobile || s.target_move == BfTargetMove::StoodStill);
     // The strafing/striking rear +1 (p.41); bombing never strikes the rear (p.48).
-    let rear_active =
-        matches!(s.kind, BfAttackKind::AirToGround(BfA2G::Strafing | BfA2G::Striking));
+    let rear_active = matches!(
+        s.kind,
+        BfAttackKind::AirToGround(BfA2G::Strafing | BfA2G::Striking)
+    );
 
     // (label, value, active) — inactive rows render dim (the AS shot-modal pattern).
     let mut rows: Vec<(&str, String, bool)> = vec![
         ("Attacker move", move_label.into(), true),
         ("Range", range_label.into(), true),
         ("Attack kind", bf_kind_label(s.kind).into(), true),
-        ("  spotter also attacked", yn(spotter_attacked).into(), indirect),
-        ("  remote-sensor spotter", yn(spotter_remote).into(), indirect),
+        (
+            "  spotter also attacked",
+            yn(spotter_attacked).into(),
+            indirect,
+        ),
+        (
+            "  remote-sensor spotter",
+            yn(spotter_remote).into(),
+            indirect,
+        ),
         ("OV commit", format!("{} / max {max_ov}", s.ov), max_ov > 0),
         ("Area-effect (+1)", yn(s.area_effect).into(), true),
         ("Secondary target (+1)", yn(s.secondary).into(), true),
@@ -5150,16 +6126,36 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         ("Grounded aero (p.46)", yn(s.grounded).into(), aero),
         ("Target TMM", s.target_tmm.to_string(), true),
         ("Target move", tmove_label.into(), true),
-        ("  ±JMPS/JMPW/SUBS/SUBW", format!("{:+}", s.target_move_adj), jumpish),
+        (
+            "  ±JMPS/JMPW/SUBS/SUBW",
+            format!("{:+}", s.target_move_adj),
+            jumpish,
+        ),
         ("Target immobile (−4)", yn(s.target_immobile).into(), true),
         ("Target type", tkind_label.into(), true),
         ("Target MAS/LMAS", mas_label.into(), mas_active),
         ("Woods (+1)", yn(s.target_woods).into(), true),
-        ("Partial cover (+1)", yn(s.target_partial_cover).into(), true),
-        ("Underwater (+1, atk submerged)", yn(s.target_underwater).into(), true),
+        (
+            "Partial cover (+1)",
+            yn(s.target_partial_cover).into(),
+            true,
+        ),
+        (
+            "Underwater (+1, atk submerged)",
+            yn(s.target_underwater).into(),
+            true,
+        ),
         ("Target STL active", yn(s.target_stealth).into(), !physical),
-        ("Target carrying BA (+3)", yn(s.target_carrying_ba).into(), physical),
-        ("Strikes rear (+1 dmg)", yn(s.strike_rear).into(), rear_active),
+        (
+            "Target carrying BA (+3)",
+            yn(s.target_carrying_ba).into(),
+            physical,
+        ),
+        (
+            "Strikes rear (+1 dmg)",
+            yn(s.strike_rear).into(),
+            rear_active,
+        ),
     ];
     // Large craft add a firing-arc + weapon-class picker; ground units never see these rows.
     if large {
@@ -5170,13 +6166,19 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else if !active {
             Style::default().fg(theme().dim)
         } else {
             Style::default()
         };
-        lines.push(Line::from(Span::styled(format!("{marker}{name:<30} {val}"), style)));
+        lines.push(Line::from(Span::styled(
+            format!("{marker}{name:<30} {val}"),
+            style,
+        )));
     }
 
     // Live TN + damage preview (non-large; large craft render their per-arc preview at the TOP of
@@ -5201,11 +6203,20 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         ),
         BfAttackKind::Indirect { .. } => format!(
             "IF damage {} (never OV-boosted)",
-            bf_dmg_cell(battleforce::bf_indirect_damage(&el, tm.bf.weapon, tm.bf.engine))
+            bf_dmg_cell(battleforce::bf_indirect_damage(
+                &el,
+                tm.bf.weapon,
+                tm.bf.engine
+            ))
         ),
         BfAttackKind::RearWeapons => format!(
             "REAR damage {}",
-            bf_dmg_cell(battleforce::bf_rear_damage(&el, shot.range, tm.bf.weapon, tm.bf.engine))
+            bf_dmg_cell(battleforce::bf_rear_damage(
+                &el,
+                shot.range,
+                tm.bf.weapon,
+                tm.bf.engine
+            ))
         ),
         BfAttackKind::Physical(p) => {
             // Charge spends ground MP; DFA spends jump MP (spec §1.5).
@@ -5251,11 +6262,21 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
             }
             BfA2G::Strafing => format!(
                 "strafing damage {} per element in the strafed hexes",
-                sbf_dmg(battleforce::bf_strafe_damage(&el, tm.bf.weapon, s.ov, s.strike_rear))
+                sbf_dmg(battleforce::bf_strafe_damage(
+                    &el,
+                    tm.bf.weapon,
+                    s.ov,
+                    s.strike_rear
+                ))
             ),
             BfA2G::Striking => format!(
                 "striking damage {}",
-                sbf_dmg(battleforce::bf_strike_damage(&el, tm.bf.weapon, s.ov, s.strike_rear))
+                sbf_dmg(battleforce::bf_strike_damage(
+                    &el,
+                    tm.bf.weapon,
+                    s.ov,
+                    s.strike_rear
+                ))
             ),
         },
     };
@@ -5267,8 +6288,8 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     if matches!(shot.kind, BfAttackKind::RearWeapons) {
         // §1.6: same-turn REAR + forward fire reduces the forward damage 1-for-1 per point of
         // REAR damage dealt, applied BEFORE overheat (p.152) — the composed forward line.
-        let rear = battleforce::bf_rear_damage(&el, shot.range, tm.bf.weapon, tm.bf.engine)
-            .unwrap_or(0.0);
+        let rear =
+            battleforce::bf_rear_damage(&el, shot.range, tm.bf.weapon, tm.bf.engine).unwrap_or(0.0);
         let fwd = app
             .session
             .bf_current_damage(i, shot.range)
@@ -5308,14 +6329,15 @@ fn bf_shot_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
     }
     let target_airborne = matches!(
         s.target_kind,
-        BfTargetKind::AirborneAero(_) | BfTargetKind::AirborneDropship | BfTargetKind::AirborneVtolWige
+        BfTargetKind::AirborneAero(_)
+            | BfTargetKind::AirborneDropship
+            | BfTargetKind::AirborneVtolWige
     );
     if el.has_sua("FLK") && target_airborne {
         // The −2 folds in only for ground-to-air Standard weapon attacks (p.86 fn6; never on
         // REAR, p.152) — mirror bf_to_hit's derived gate: a non-aero attacker is always
         // ground-based, an aero attacker only when grounded (p.46).
-        let folded =
-            matches!(shot.kind, BfAttackKind::Standard) && (!aero || shot.grounded);
+        let folded = matches!(shot.kind, BfAttackKind::Standard) && (!aero || shot.grounded);
         lines.push(Line::from(Span::styled(
             if folded {
                 "FLK: −2 vs airborne folded in; a miss by ≤2 still deals the FLK damage (p.148)"
@@ -5346,7 +6368,10 @@ fn bf_group_modal_lines(app: &App, sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let name_style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -5390,7 +6415,10 @@ fn bf_doctrine_modal_lines(sel: usize) -> Vec<Line<'static>> {
         let selected = i == sel;
         let marker = if selected { "▶ " } else { "  " };
         let style = if selected {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default()
         };
@@ -5419,7 +6447,12 @@ fn bf_doctrine_modal_lines(sel: usize) -> Vec<Line<'static>> {
 /// source of truth alongside the footer and the cheatsheet).
 fn bf_help_modal_lines() -> Vec<Line<'static>> {
     let header = |s: &'static str| {
-        Line::from(Span::styled(s, Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)))
+        Line::from(Span::styled(
+            s,
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
+        ))
     };
     let row = |keys: &'static str, desc: &'static str| {
         Line::from(vec![
@@ -5451,7 +6484,10 @@ fn bf_help_modal_lines() -> Vec<Line<'static>> {
         row("S", "sessions browser"),
         row("^t", "display picker (theme + layout)"),
         row("q", "quit"),
-        Line::from(Span::styled("  press any key to close", Style::default().fg(theme().dim))),
+        Line::from(Span::styled(
+            "  press any key to close",
+            Style::default().fg(theme().dim),
+        )),
     ]
 }
 
@@ -5518,7 +6554,9 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
     let list_h = rows[0].height as usize;
     // Window around the active unit so it stays visible when the roster is taller than the panel.
     let shown = mechs.len().min(list_h);
-    let start = active.saturating_sub(list_h.saturating_sub(1)).min(mechs.len().saturating_sub(shown));
+    let start = active
+        .saturating_sub(list_h.saturating_sub(1))
+        .min(mechs.len().saturating_sub(shown));
 
     let mut lines: Vec<Line> = Vec::new();
     for (i, m) in mechs.iter().enumerate().skip(start).take(list_h) {
@@ -5531,9 +6569,16 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
         // " NN name … " padded to leave the last 2 cols for the glyph.
         let prefix = format!(" {:>2} ", i + 1);
         let name_w = width.saturating_sub(prefix.chars().count() + 2).max(1);
-        let body = format!("{prefix}{:<width$}", truncate(&name, name_w), width = name_w);
+        let body = format!(
+            "{prefix}{:<width$}",
+            truncate(&name, name_w),
+            width = name_w
+        );
         let row_style = if i == active {
-            Style::default().fg(theme().on_accent).bg(theme().accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().on_accent)
+                .bg(theme().accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(theme().dim)
         };
@@ -5546,22 +6591,39 @@ fn draw_sidebar(f: &mut Frame, area: Rect, app: &App) {
 
     // Footer: force total in the session's own system (BV Classic/Override, PV AS/SBF/BF).
     let label = match mode {
-        GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => "PV",
+        GameMode::AlphaStrike
+        | GameMode::StrategicBattleForce
+        | GameMode::BattleForce
+        | GameMode::AbstractCombatSystem => "PV",
         GameMode::Classic | GameMode::Override => "BV",
     };
     let total = app.session.force_total();
     let unit_word = if mechs.len() == 1 { "unit" } else { "units" };
     let mut foot = vec![Span::styled(
-        format!(" {} {unit_word} · {label} {}", mechs.len(), thousands(total)),
+        format!(
+            " {} {unit_word} · {label} {}",
+            mechs.len(),
+            thousands(total)
+        ),
         Style::default().fg(theme().dim),
     )];
     if let Some(limit) = app.session.limit {
-        let col = if total > limit { theme().danger } else { theme().good };
-        foot.push(Span::styled(format!("/{}", thousands(limit)), Style::default().fg(col)));
+        let col = if total > limit {
+            theme().danger
+        } else {
+            theme().good
+        };
+        foot.push(Span::styled(
+            format!("/{}", thousands(limit)),
+            Style::default().fg(col),
+        ));
     }
     // The game-log indicator the top tabs used to show (the tabs are dropped under the sidebar).
     if app.session.turn > 0 {
-        foot.push(Span::styled(format!(" · log {}", app.session.turn), Style::default().fg(theme().dim)));
+        foot.push(Span::styled(
+            format!(" · log {}", app.session.turn),
+            Style::default().fg(theme().dim),
+        ));
     }
     f.render_widget(Paragraph::new(Line::from(foot)), rows[1]);
 }
@@ -5596,7 +6658,10 @@ fn draw_roster(f: &mut Frame, area: Rect, app: &App) {
             let suffix = if dup {
                 // This unit's ordinal among same-chassis units; A..Z (roster caps at 12, so the
                 // Z clamp is just a safety net and never actually hit).
-                let ord = mechs[..i].iter().filter(|o| &o.spec.chassis == chassis).count();
+                let ord = mechs[..i]
+                    .iter()
+                    .filter(|o| &o.spec.chassis == chassis)
+                    .count();
                 format!(" {}", (b'A' + ord.min(25) as u8) as char)
             } else {
                 String::new()
@@ -5645,14 +6710,20 @@ fn draw_roster(f: &mut Frame, area: Rect, app: &App) {
 
     let mut spans = vec![Span::raw(" ")];
     if lo > 0 {
-        spans.push(Span::styled(format!("‹{lo} "), Style::default().fg(theme().dim)));
+        spans.push(Span::styled(
+            format!("‹{lo} "),
+            Style::default().fg(theme().dim),
+        ));
     }
     for (i, label) in labels.iter().enumerate().take(hi).skip(lo) {
         spans.push(Span::styled(label.clone(), tab_style(i == active)));
         spans.push(Span::raw(" "));
     }
     if hi < total {
-        spans.push(Span::styled(format!("{}›", total - hi), Style::default().fg(theme().dim)));
+        spans.push(Span::styled(
+            format!("{}›", total - hi),
+            Style::default().fg(theme().dim),
+        ));
     }
     if let Some(log) = log {
         spans.push(Span::styled(log, Style::default().fg(theme().dim)));
@@ -5667,7 +6738,11 @@ fn draw_doll(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
     let row_c: &[Constraint] = if vehicle {
         &[Constraint::Ratio(1, 4); 4]
     } else {
-        &[Constraint::Percentage(30), Constraint::Percentage(40), Constraint::Percentage(30)]
+        &[
+            Constraint::Percentage(30),
+            Constraint::Percentage(40),
+            Constraint::Percentage(30),
+        ]
     };
     let rows = Layout::default()
         .direction(Direction::Vertical)
@@ -5723,7 +6798,9 @@ fn draw_destroyed_banner(f: &mut Frame, area: Rect, reason: &str) {
     )));
     lines.push(Line::from(Span::styled(format!("({reason})"), red)));
     f.render_widget(
-        Paragraph::new(lines).alignment(Alignment::Center).block(block),
+        Paragraph::new(lines)
+            .alignment(Alignment::Center)
+            .block(block),
         area,
     );
 }
@@ -5747,7 +6824,10 @@ fn draw_location_box(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech, loc
     };
     let mut title = loc.code().to_string();
     if focused && loc.has_rear() {
-        title = format!("{title} ▸{}", if app.facing == Facing::Rear { "R" } else { "F" });
+        title = format!(
+            "{title} ▸{}",
+            if app.facing == Facing::Rear { "R" } else { "F" }
+        );
     }
     let block = Block::default()
         .borders(Borders::ALL)
@@ -5768,7 +6848,10 @@ fn draw_location_box(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech, loc
             s = s.add_modifier(Modifier::BOLD | Modifier::REVERSED);
         }
         lines.push(Line::from(Span::styled(format!("{label} {rem}/{max}"), s)));
-        lines.push(Line::from(Span::styled(bar(rem, max, inner_w), Style::default().fg(col))));
+        lines.push(Line::from(Span::styled(
+            bar(rem, max, inner_w),
+            Style::default().fg(col),
+        )));
     };
 
     let front_hi = focused && app.facing == Facing::Front;
@@ -5804,7 +6887,10 @@ fn draw_heat(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             format!("{heat}"),
             Style::default().fg(heat_col).add_modifier(Modifier::BOLD),
         ),
-        Span::styled(format!(" / 30   diss {}", tm.dissipation()), Style::default().fg(theme().dim)),
+        Span::styled(
+            format!(" / 30   diss {}", tm.dissipation()),
+            Style::default().fg(theme().dim),
+        ),
     ];
     if engine_heat > 0 {
         // Engine criticals add heat each end-turn; surface it next to dissipation.
@@ -5876,7 +6962,10 @@ fn draw_heat(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         }
     }
     if fx.is_empty() {
-        lines.push(Line::from(Span::styled("no penalties", Style::default().fg(theme().good))));
+        lines.push(Line::from(Span::styled(
+            "no penalties",
+            Style::default().fg(theme().good),
+        )));
     } else {
         // One line normally; wrap to two only when the effects overflow (aero at high heat has the
         // most: to-hit + control + shutdown + ammo + pilot).
@@ -5894,7 +6983,9 @@ fn draw_heat(f: &mut Frame, area: Rect, tm: &TrackedMech) {
     if e.auto_shutdown || tm.shutdown {
         lines.push(Line::from(Span::styled(
             "** SHUTDOWN **",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     }
 
@@ -5927,7 +7018,9 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         Line::from(vec![
             Span::styled(
                 " ** IMMOBILE **",
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD | Modifier::REVERSED),
             ),
             Span::styled(
                 format!("  {}", mv.note.unwrap_or("can't move")),
@@ -5937,11 +7030,17 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
     } else {
         // Green at full; yellow once anything is reduced below the sheet value.
         let reduced = mv.walk < tm.spec.walk || mv.run < tm.spec.run;
-        let mp = if reduced { theme().warning } else { theme().good };
+        let mp = if reduced {
+            theme().warning
+        } else {
+            theme().good
+        };
         let num = |n: u8, lit: bool| {
             Span::styled(
                 format!("{n}"),
-                Style::default().fg(if lit { mp } else { theme().dim }).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(if lit { mp } else { theme().dim })
+                    .add_modifier(Modifier::BOLD),
             )
         };
         // Infantry have one ground speed (run == walk) — show Walk + Jump only.
@@ -5955,12 +7054,17 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             spans.push(num(mv.jump, mv.jump > 0));
         }
         if let Some(note) = mv.note {
-            spans.push(Span::styled(format!("  {note}"), Style::default().fg(theme().danger)));
+            spans.push(Span::styled(
+                format!("  {note}"),
+                Style::default().fg(theme().danger),
+            ));
         } else if let Some(boost) = tm.mp_boost_label() {
             // Run boosted by an engaged MASC / Supercharger.
             spans.push(Span::styled(
                 format!("  {boost}↑"),
-                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().accent)
+                    .add_modifier(Modifier::BOLD),
             ));
         } else if reduced {
             spans.push(Span::styled(
@@ -5977,7 +7081,9 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
     if aero {
         line2.push(Span::styled(
             format!(" Vel {}  Alt {}", tm.velocity, tm.altitude),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ));
         line2.push(Span::styled("   [v]", Style::default().fg(theme().dim)));
     } else if tm.move_mode == MoveMode::Stationary && tm.hexes_moved == 0 {
@@ -5988,8 +7094,14 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         ));
     } else {
         line2.push(Span::styled(
-            format!(" {} {}", tm.move_mode.label(vehicle, infantry), tm.hexes_moved),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            format!(
+                " {} {}",
+                tm.move_mode.label(vehicle, infantry),
+                tm.hexes_moved
+            ),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ));
         line2.push(Span::styled(
             format!("  atk {:+}  TMM {:+}", tm.attack_move_modifier(), tm.tmm()),
@@ -6016,7 +7128,13 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             Some(n) => n,
             None => "mobile",
         };
-        let col = if mv.immobile { theme().danger } else if mv.note.is_some() { theme().warning } else { theme().dim };
+        let col = if mv.immobile {
+            theme().danger
+        } else if mv.note.is_some() {
+            theme().warning
+        } else {
+            theme().dim
+        };
         line3.push(Span::styled(format!(" {note}"), Style::default().fg(col)));
     } else if aero {
         // Aerospace: no prone/PSR — surface marked critical-damage results with their hit counts
@@ -6027,21 +7145,34 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             .enumerate()
             .filter_map(|(i, n)| {
                 let h = tm.crit_hits_at(i);
-                (h > 0).then(|| if h > 1 { format!("{n}×{h}") } else { (*n).to_string() })
+                (h > 0).then(|| {
+                    if h > 1 {
+                        format!("{n}×{h}")
+                    } else {
+                        (*n).to_string()
+                    }
+                })
             })
             .collect();
         if marked.is_empty() {
-            line3.push(Span::styled(" no crits   [c]", Style::default().fg(theme().dim)));
+            line3.push(Span::styled(
+                " no crits   [c]",
+                Style::default().fg(theme().dim),
+            ));
         } else {
             line3.push(Span::styled(
                 format!(" crits: {}", marked.join(" · ")),
-                Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().danger)
+                    .add_modifier(Modifier::BOLD),
             ));
         }
     } else if tm.prone {
         line3.push(Span::styled(
             " ** PRONE **",
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         ));
         line3.push(Span::styled(
             format!("  stand: PSR {target}+"),
@@ -6053,7 +7184,9 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         // follows once prone).
         line3.push(Span::styled(
             " ⚠ auto-fall",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD),
         ));
         line3.push(Span::styled(
             format!("  PSR {target}+ pilot dmg"),
@@ -6062,12 +7195,17 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
     } else if !due.is_empty() {
         line3.push(Span::styled(
             format!(" ⚠ PSR {target}+: {}", due.join(", ")),
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD),
         ));
     } else {
         line3.push(Span::styled(" standing", Style::default().fg(theme().dim)));
         if tm.psr_modifier() > 0 {
-            line3.push(Span::styled(format!("   PSR {target}+"), Style::default().fg(theme().dim)));
+            line3.push(Span::styled(
+                format!("   PSR {target}+"),
+                Style::default().fg(theme().dim),
+            ));
         }
     }
 
@@ -6090,7 +7228,11 @@ fn draw_troops(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             .count() as u16;
         (tm.troopers_remaining(), total)
     } else {
-        let total = tm.spec.armor.get(&Location::Platoon).map_or(0, |a| a.internal_max);
+        let total = tm
+            .spec
+            .armor
+            .get(&Location::Platoon)
+            .map_or(0, |a| a.internal_max);
         (tm.troopers_remaining(), total)
     };
     let col = frac_color(rem, max);
@@ -6103,12 +7245,17 @@ fn draw_troops(f: &mut Frame, area: Rect, tm: &TrackedMech) {
                 Style::default().fg(col).add_modifier(Modifier::BOLD),
             ),
         ]),
-        Line::from(Span::styled(bar(rem, max, inner_w), Style::default().fg(col))),
+        Line::from(Span::styled(
+            bar(rem, max, inner_w),
+            Style::default().fg(col),
+        )),
     ];
     if rem == 0 {
         lines.push(Line::from(Span::styled(
             "** WIPED OUT **",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         )));
     } else if ba {
         let suits = tm.suits();
@@ -6136,8 +7283,10 @@ fn draw_troops(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         for b in &tm.spec.ammo {
             // Drop the " Ammo" suffix so the per-suit counts aren't crowded (e.g. "SRM 2").
             let label = b.name.strip_suffix(" Ammo").unwrap_or(&b.name);
-            let mut spans =
-                vec![Span::styled(format!("{:<8}", truncate(label, 7)), Style::default().fg(theme().dim))];
+            let mut spans = vec![Span::styled(
+                format!("{:<8}", truncate(label, 7)),
+                Style::default().fg(theme().dim),
+            )];
             for (i, &l) in suits.iter().enumerate() {
                 let dead = tm.is_destroyed(l);
                 let txt = if dead {
@@ -6172,9 +7321,14 @@ fn draw_troops(f: &mut Frame, area: Rect, tm: &TrackedMech) {
             Span::styled("Damage ≈ ", Style::default().fg(theme().dim)),
             Span::styled(
                 format!("{}", tm.infantry_damage()),
-                Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(theme().warning)
+                    .add_modifier(Modifier::BOLD),
             ),
-            Span::styled(format!("  (full {})", tm.spec.dpt), Style::default().fg(theme().dim)),
+            Span::styled(
+                format!("  (full {})", tm.spec.dpt),
+                Style::default().fg(theme().dim),
+            ),
         ]));
     }
     let title = if ba { " SQUAD " } else { " PLATOON " };
@@ -6197,7 +7351,9 @@ fn adj_bv_span(tm: &TrackedMech) -> Span<'static> {
 }
 
 fn draw_infantry_skills(f: &mut Frame, area: Rect, tm: &TrackedMech) {
-    let cyan = Style::default().fg(theme().accent).add_modifier(Modifier::BOLD);
+    let cyan = Style::default()
+        .fg(theme().accent)
+        .add_modifier(Modifier::BOLD);
     let skills = Line::from(vec![
         Span::styled(" Gunnery ", Style::default().fg(theme().dim)),
         Span::styled(format!("{}+", tm.gunnery), cyan),
@@ -6214,7 +7370,9 @@ fn draw_infantry_skills(f: &mut Frame, area: Rect, tm: &TrackedMech) {
 
 /// Vehicle crew panel (replaces PILOT): gunnery/driving skills + the crew-hit track.
 fn draw_crew(f: &mut Frame, area: Rect, tm: &TrackedMech) {
-    let cyan = Style::default().fg(theme().accent).add_modifier(Modifier::BOLD);
+    let cyan = Style::default()
+        .fg(theme().accent)
+        .add_modifier(Modifier::BOLD);
     let skills = Line::from(vec![
         Span::styled(" Gunnery ", Style::default().fg(theme().dim)),
         Span::styled(format!("{}+", tm.gunnery), cyan),
@@ -6225,17 +7383,28 @@ fn draw_crew(f: &mut Frame, area: Rect, tm: &TrackedMech) {
     let hits = tm.crew_hits.min(CREW_MAX);
     let mut crew = vec![
         Span::raw(" "),
-        Span::styled("█".repeat(hits as usize), Style::default().fg(theme().danger)),
-        Span::styled("░".repeat((CREW_MAX - hits) as usize), Style::default().fg(theme().dim)),
+        Span::styled(
+            "█".repeat(hits as usize),
+            Style::default().fg(theme().danger),
+        ),
+        Span::styled(
+            "░".repeat((CREW_MAX - hits) as usize),
+            Style::default().fg(theme().dim),
+        ),
         Span::raw("   "),
     ];
     if hits >= CREW_MAX {
         crew.push(Span::styled(
             "** CREW OUT **",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         ));
     } else if hits > 0 {
-        crew.push(Span::styled(format!("crew hit (+{hits} to-hit)"), Style::default().fg(theme().warning)));
+        crew.push(Span::styled(
+            format!("crew hit (+{hits} to-hit)"),
+            Style::default().fg(theme().warning),
+        ));
     } else {
         crew.push(Span::styled("crew ok", Style::default().fg(theme().good)));
     }
@@ -6255,20 +7424,28 @@ fn draw_vehicle_crits(f: &mut Frame, area: Rect, tm: &TrackedMech) {
     let (mcol, status) = if immobilized {
         (theme().danger, "  ** IMMOBILIZED **".to_string())
     } else if lost > 0 {
-        (theme().warning, format!("  −{lost} MP  steer +{}", tm.motive_steering()))
+        (
+            theme().warning,
+            format!("  −{lost} MP  steer +{}", tm.motive_steering()),
+        )
     } else {
         (theme().good, "  ok".to_string())
     };
     lines.push(Line::from(vec![
         Span::styled(" Motive ", Style::default().fg(theme().dim)),
-        Span::styled(status, Style::default().fg(mcol).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            status,
+            Style::default().fg(mcol).add_modifier(Modifier::BOLD),
+        ),
     ]));
     // Crit results — marked ones in red, the rest dim.
     let mut spans = vec![Span::raw(" ")];
     for (i, name) in VEHICLE_CRITS.iter().enumerate() {
         let hit = tm.is_vehicle_crit(name);
         let style = if hit {
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(theme().dim)
         };
@@ -6307,38 +7484,58 @@ fn draw_pilot(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         Span::styled(" Gunnery ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{}+", tm.gunnery),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         Span::styled("   Piloting ", Style::default().fg(theme().dim)),
         Span::styled(
             format!("{}+", tm.piloting),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ),
         adj_bv_span(tm),
     ]);
     // Line 2: the 6-box damage track + consciousness status.
     let mut spans = vec![
         Span::raw(" "),
-        Span::styled("█".repeat(hits as usize), Style::default().fg(theme().danger)),
-        Span::styled("░".repeat((PILOT_MAX - hits) as usize), Style::default().fg(theme().dim)),
+        Span::styled(
+            "█".repeat(hits as usize),
+            Style::default().fg(theme().danger),
+        ),
+        Span::styled(
+            "░".repeat((PILOT_MAX - hits) as usize),
+            Style::default().fg(theme().dim),
+        ),
         Span::raw("   "),
     ];
     if tm.pilot_dead() {
         spans.push(Span::styled(
             "** PILOT KIA **",
-            Style::default().fg(theme().danger).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().danger)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         ));
     } else if tm.pilot_unconscious {
         spans.push(Span::styled(
             "** UNCONSCIOUS **",
-            Style::default().fg(theme().warning).add_modifier(Modifier::BOLD | Modifier::REVERSED),
+            Style::default()
+                .fg(theme().warning)
+                .add_modifier(Modifier::BOLD | Modifier::REVERSED),
         ));
         if let Some(n) = tm.consciousness_avoid() {
-            spans.push(Span::styled(format!("  wake {n}+"), Style::default().fg(theme().dim)));
+            spans.push(Span::styled(
+                format!("  wake {n}+"),
+                Style::default().fg(theme().dim),
+            ));
         }
     } else if let Some(n) = tm.consciousness_avoid() {
         // 2d6 target to stay conscious — climbs as the pilot is hurt.
-        spans.push(Span::styled(format!("conscious {n}+"), Style::default().fg(theme().warning)));
+        spans.push(Span::styled(
+            format!("conscious {n}+"),
+            Style::default().fg(theme().warning),
+        ));
     } else {
         spans.push(Span::styled("unhurt", Style::default().fg(theme().good)));
     }
@@ -6356,10 +7553,17 @@ fn draw_pilot(f: &mut Frame, area: Rect, tm: &TrackedMech) {
 fn infantry_range_display(range: &str) -> Option<(String, String)> {
     let class: u8 = range.trim().parse().ok()?;
     let max = infantry_max_range(class);
-    let fmt_mod = |m: i32| if m == 0 { "0".to_string() } else { format!("{m:+}") };
+    let fmt_mod = |m: i32| {
+        if m == 0 {
+            "0".to_string()
+        } else {
+            format!("{m:+}")
+        }
+    };
     // The to-hit modifier at each hex 0..=max, in order (reads as the table row, e.g. "-2/0/+2/+4").
-    let mods: Vec<String> =
-        (0..=max).map(|d| fmt_mod(infantry_range_mod(class, d).unwrap_or(0))).collect();
+    let mods: Vec<String> = (0..=max)
+        .map(|d| fmt_mod(infantry_range_mod(class, d).unwrap_or(0)))
+        .collect();
     Some((format!("0-{max}"), mods.join("/")))
 }
 
@@ -6372,28 +7576,51 @@ enum WeaponTn {
     /// The target is beyond this weapon's extreme range — it cannot fire.
     OutOfRange,
     /// The assembled target number, with the range bracket it falls in and that bracket's modifier.
-    Hit { bracket: RangeBracket, tn: i32, range_mod: i32 },
+    Hit {
+        bracket: RangeBracket,
+        tn: i32,
+        range_mod: i32,
+    },
 }
 
 /// Assemble one weapon's GATOR to-hit against the active target: gunnery + attacker movement +
 /// target movement + range bracket (from the target distance) + equipment/heat/aero-crit "Other".
 /// Minimum-range penalty is omitted (not yet baked; see `engine::gator`).
 fn gator_weapon_tn(tm: &TrackedMech, w: &WeaponMount) -> WeaponTn {
-    let Some(t) = tm.ct_target else { return WeaponTn::NoTarget };
-    let Some((s, m, l)) = parse_ranges(&w.range) else { return WeaponTn::NoTarget };
-    let Some(bracket) = range_bracket(s, m, l, t.distance) else { return WeaponTn::OutOfRange };
+    let Some(t) = tm.ct_target else {
+        return WeaponTn::NoTarget;
+    };
+    let Some((s, m, l)) = parse_ranges(&w.range) else {
+        return WeaponTn::NoTarget;
+    };
+    let Some(bracket) = range_bracket(s, m, l, t.distance) else {
+        return WeaponTn::OutOfRange;
+    };
     let tgt = target_modifier(t.hexes_moved, t.jumped, t.immobile);
-    let other =
-        tm.spec.weapon_to_hit(w) + tm.aero_weapon_to_hit() + tm.heat_effects().to_hit_penalty as i32;
-    let tn =
-        gator_to_hit(tm.gunnery, tm.attack_move_modifier(), tgt, bracket.modifier(), 0, other);
-    WeaponTn::Hit { bracket, tn, range_mod: bracket.modifier() }
+    let other = tm.spec.weapon_to_hit(w)
+        + tm.aero_weapon_to_hit()
+        + tm.heat_effects().to_hit_penalty as i32;
+    let tn = gator_to_hit(
+        tm.gunnery,
+        tm.attack_move_modifier(),
+        tgt,
+        bracket.modifier(),
+        0,
+        other,
+    );
+    WeaponTn::Hit {
+        bracket,
+        tn,
+        range_mod: bracket.modifier(),
+    }
 }
 
 fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
     let focused = app.focus == Focus::Equipment;
     let border_style = if focused {
-        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(theme().accent)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default()
     };
@@ -6419,7 +7646,11 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
             .map(|(span, mods)| format!("range {span}  ({mods})")),
         _ => None,
     });
-    let detail_h: u16 = if detail.is_some() { 2 + u16::from(detail_extra.is_some()) } else { 0 };
+    let detail_h: u16 = if detail.is_some() {
+        2 + u16::from(detail_extra.is_some())
+    } else {
+        0
+    };
     let list_h = inner.height.saturating_sub(detail_h);
     let visible = list_h as usize;
     let offset = if focused {
@@ -6476,7 +7707,9 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 let th = match gator_weapon_tn(tm, w) {
                     WeaponTn::Hit { tn, .. } => Span::styled(
                         format!("  {tn}+"),
-                        Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme().warning)
+                            .add_modifier(Modifier::BOLD),
                     ),
                     WeaponTn::OutOfRange => {
                         Span::styled("  X".to_string(), Style::default().fg(theme().dim))
@@ -6486,8 +7719,11 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                         if to_hit != 0 {
                             Span::styled(
                                 format!("  {to_hit:+}"),
-                                Style::default()
-                                    .fg(if to_hit < 0 { theme().good } else { theme().danger }),
+                                Style::default().fg(if to_hit < 0 {
+                                    theme().good
+                                } else {
+                                    theme().danger
+                                }),
                             )
                         } else {
                             Span::raw("")
@@ -6502,7 +7738,9 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                     if n > 0 {
                         Span::styled(
                             format!("  ✓{n}/{}", tm.troopers_remaining()),
-                            Style::default().fg(theme().good).add_modifier(Modifier::BOLD),
+                            Style::default()
+                                .fg(theme().good)
+                                .add_modifier(Modifier::BOLD),
                         )
                     } else {
                         Span::raw("")
@@ -6511,8 +7749,17 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                     let shots = tm.shots_fired(*id);
                     if shots > 0 {
                         let max = w.max_shots();
-                        let txt = if max > 1 { format!("  ✓{shots}/{max}") } else { "  ✓".into() };
-                        Span::styled(txt, Style::default().fg(theme().good).add_modifier(Modifier::BOLD))
+                        let txt = if max > 1 {
+                            format!("  ✓{shots}/{max}")
+                        } else {
+                            "  ✓".into()
+                        };
+                        Span::styled(
+                            txt,
+                            Style::default()
+                                .fg(theme().good)
+                                .add_modifier(Modifier::BOLD),
+                        )
                     } else {
                         Span::raw("")
                     }
@@ -6529,7 +7776,11 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 };
                 let mut spans = vec![
                     Span::styled(
-                        format!("{marker}{:<15} {:<2}  ", truncate(&w.name, 15), w.location.code()),
+                        format!(
+                            "{marker}{:<15} {:<2}  ",
+                            truncate(&w.name, 15),
+                            w.location.code()
+                        ),
                         base,
                     ),
                     Span::styled(format!("{heat:<4}"), heat_style),
@@ -6541,14 +7792,19 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 if tm.spec.unit_type == UnitType::Infantry && !w.range.is_empty() {
                     let span = infantry_range_display(&w.range)
                         .map_or_else(|| w.range.clone(), |(s, _)| s);
-                    spans.push(Span::styled(format!("r{span}"), Style::default().fg(theme().dim)));
+                    spans.push(Span::styled(
+                        format!("r{span}"),
+                        Style::default().fg(theme().dim),
+                    ));
                 }
                 spans.push(th);
                 spans.push(fired_mark);
                 if jammed {
                     spans.push(Span::styled(
                         "  JAM",
-                        Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme().warning)
+                            .add_modifier(Modifier::BOLD),
                     ));
                 }
                 spans
@@ -6557,7 +7813,12 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 let b = tm.spec.ammo.iter().find(|b| b.id == *id).unwrap();
                 let rem = tm.ammo_remaining(*id);
                 vec![Span::styled(
-                    format!("{marker}{:<17}{}/{}", truncate(&b.name, 17), rem, b.shots_max()),
+                    format!(
+                        "{marker}{:<17}{}/{}",
+                        truncate(&b.name, 17),
+                        rem,
+                        b.shots_max()
+                    ),
                     Style::default().fg(frac_color(rem, b.shots_max())),
                 )]
             }
@@ -6574,7 +7835,11 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                     theme().dim
                 };
                 let mut spans = vec![Span::styled(
-                    format!("{marker}{:<18} {}", truncate(&e.name, 18), e.location.code()),
+                    format!(
+                        "{marker}{:<18} {}",
+                        truncate(&e.name, 18),
+                        e.location.code()
+                    ),
                     Style::default().fg(col),
                 )];
                 // Only annotate the *active* state (an engaged booster / live ECM-Stealth); an
@@ -6582,7 +7847,9 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 if matches!(toggle, Some((_, true))) {
                     spans.push(Span::styled(
                         "  ● ON",
-                        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                        Style::default()
+                            .fg(theme().accent)
+                            .add_modifier(Modifier::BOLD),
                     ));
                 }
                 spans
@@ -6602,7 +7869,10 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
         )));
     }
     f.render_widget(block, area);
-    let list_area = Rect { height: list_h, ..inner };
+    let list_area = Rect {
+        height: list_h,
+        ..inner
+    };
     f.render_widget(Paragraph::new(lines), list_area);
 
     // Scrollbar when the list is taller than the panel, so it's clear there's more off-screen.
@@ -6647,14 +7917,19 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 let equip = tm.spec.weapon_to_hit(w);
                 let moved = tm.attack_move_modifier();
                 let crit = tm.aero_weapon_to_hit(); // aero sensor + FCS damage
-                let move_label =
-                    tm.move_mode.label(tm.spec.is_vehicle(), tm.spec.is_infantry());
+                let move_label = tm
+                    .move_mode
+                    .label(tm.spec.is_vehicle(), tm.spec.is_infantry());
                 let to_hit = match gator_weapon_tn(tm, w) {
                     // GATOR target set: spell out the full assembly (G·A·T·R·O) and the number.
-                    WeaponTn::Hit { bracket, tn, range_mod } => {
-                        let tgt = tm.ct_target.map_or(0, |t| {
-                            target_modifier(t.hexes_moved, t.jumped, t.immobile)
-                        });
+                    WeaponTn::Hit {
+                        bracket,
+                        tn,
+                        range_mod,
+                    } => {
+                        let tgt = tm
+                            .ct_target
+                            .map_or(0, |t| target_modifier(t.hexes_moved, t.jumped, t.immobile));
                         let heat = tm.heat_effects().to_hit_penalty as i32;
                         let mut tags = vec![format!("G{}", tm.gunnery)];
                         if moved != 0 {
@@ -6714,7 +7989,11 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                     let code = if tm.spec.unit_type == UnitType::BattleArmor {
                         tm.suits().get(tm.active_suit).map_or("?", |l| l.code())
                     } else {
-                        tm.spec.ammo.iter().find(|b| b.id == bin).map_or("?", |b| b.location.code())
+                        tm.spec
+                            .ammo
+                            .iter()
+                            .find(|b| b.id == bin)
+                            .map_or("?", |b| b.location.code())
                     };
                     let m = tm.bin_munition(bin);
                     let munition = if m.is_empty() || m == STANDARD_MUNITION {
@@ -6740,7 +8019,10 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
             }
             EquipRow::Ammo(id) => {
                 let b = tm.spec.ammo.iter().find(|b| b.id == id).unwrap();
-                (b.name.clone(), format!("{}/{} shots", tm.ammo_remaining(id), b.shots_max()))
+                (
+                    b.name.clone(),
+                    format!("{}/{} shots", tm.ammo_remaining(id), b.shots_max()),
+                )
             }
             EquipRow::Equip(idx) => {
                 let e = &tm.spec.equipment[idx];
@@ -6794,7 +8076,9 @@ fn draw_status(f: &mut Frame, area: Rect, app: &App) {
     if !app.status.is_empty() {
         spans.push(Span::styled(
             format!("{} ", app.status),
-            Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(theme().accent)
+                .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::styled("| ", Style::default().fg(theme().dim)));
     }

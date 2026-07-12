@@ -111,9 +111,12 @@ pub(crate) fn render_session_pdf(sess: &Session) -> color_eyre::Result<Vec<u8>> 
     let mut sess = sess.clone();
     make_blank(&mut sess);
     let svgs: Vec<String> = match sess.mode {
-        GameMode::StrategicBattleForce => {
-            sess.sbf.formations.iter().map(|fs| sbf_formation_svg(&sess, fs)).collect()
-        }
+        GameMode::StrategicBattleForce => sess
+            .sbf
+            .formations
+            .iter()
+            .map(|fs| sbf_formation_svg(&sess, fs))
+            .collect(),
         GameMode::BattleForce => bf_sheets(&sess),
         GameMode::AbstractCombatSystem => acs_sheets(&sess),
         other => color_eyre::eyre::bail!("PDF export does not support {other:?} sessions"),
@@ -203,7 +206,12 @@ fn svgs_to_pdf(svgs: &[String], opt: &svg2pdf::usvg::Options) -> color_eyre::Res
         let mut map = HashMap::new();
         let chunk = chunk.renumber(|old| *map.entry(old).or_insert_with(|| alloc.bump()));
         let svg_ref = *map.get(&svg_id).expect("xobject ref survives renumber");
-        pages.push(PageObj { chunk, svg_ref, page_id: alloc.bump(), content_id: alloc.bump() });
+        pages.push(PageObj {
+            chunk,
+            svg_ref,
+            page_id: alloc.bump(),
+            content_id: alloc.bump(),
+        });
     }
 
     let mut pdf = Pdf::new();
@@ -225,7 +233,9 @@ fn svgs_to_pdf(svgs: &[String], opt: &svg2pdf::usvg::Options) -> color_eyre::Res
 
         // svg2pdf's XObject is normalised to a unit square — scale it to fill the page.
         let mut content = Content::new();
-        content.transform([PAGE_W, 0.0, 0.0, PAGE_H, 0.0, 0.0]).x_object(svg_name);
+        content
+            .transform([PAGE_W, 0.0, 0.0, PAGE_H, 0.0, 0.0])
+            .x_object(svg_name);
         pdf.stream(p.content_id, &content.finish());
         pdf.extend(&p.chunk);
     }
@@ -249,8 +259,14 @@ fn begin_sheet(title: &[&str]) -> String {
         b,
         r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{PAGE_W}" height="{PAGE_H}" viewBox="0 0 {PAGE_W} {PAGE_H}">"#
     );
-    let _ = write!(b, r#"<rect x="0" y="0" width="{PAGE_W}" height="{PAGE_H}" fill="white"/>"#);
-    let _ = write!(b, r#"<g transform="translate({tx:.2} {ty:.2}) scale({scale:.4})">"#);
+    let _ = write!(
+        b,
+        r#"<rect x="0" y="0" width="{PAGE_W}" height="{PAGE_H}" fill="white"/>"#
+    );
+    let _ = write!(
+        b,
+        r#"<g transform="translate({tx:.2} {ty:.2}) scale({scale:.4})">"#
+    );
 
     // Logos: BattleTech (top-left) + Catalyst (top-right), as MegaMek's SBFRecordSheet draws them.
     image(&mut b, -23.0, 10.0, 722.0, 125.0, BT_LOGO);
@@ -259,15 +275,32 @@ fn begin_sheet(title: &[&str]) -> String {
     // Title banner (same chamfered outline as the SBF sheet).
     stroke_poly(
         &mut b,
-        &[(732.0, 60.0), (732.0, 55.0), (756.0, 32.0), (1401.0, 32.0), (1424.0, 55.0), (1424.0, 107.0), (1401.0, 130.0), (756.0, 130.0), (732.0, 107.0), (732.0, 60.0)],
+        &[
+            (732.0, 60.0),
+            (732.0, 55.0),
+            (756.0, 32.0),
+            (1401.0, 32.0),
+            (1424.0, 55.0),
+            (1424.0, 107.0),
+            (1401.0, 130.0),
+            (756.0, 130.0),
+            (732.0, 107.0),
+            (732.0, 60.0),
+        ],
         "black",
         5.0,
     );
     match title {
-        [one] => txtw(&mut b, 1019.0, 81.0, 30.0, true, "middle", true, "black", 440.0, one),
+        [one] => txtw(
+            &mut b, 1019.0, 81.0, 30.0, true, "middle", true, "black", 440.0, one,
+        ),
         [one, two] => {
-            txtw(&mut b, 1019.0, 63.0, 28.0, true, "middle", true, "black", 440.0, one);
-            txtw(&mut b, 1019.0, 100.0, 28.0, true, "middle", true, "black", 440.0, two);
+            txtw(
+                &mut b, 1019.0, 63.0, 28.0, true, "middle", true, "black", 440.0, one,
+            );
+            txtw(
+                &mut b, 1019.0, 100.0, 28.0, true, "middle", true, "black", 440.0, two,
+            );
         }
         _ => {}
     }
@@ -305,96 +338,544 @@ fn sbf_formation_svg(sess: &Session, fs: &SbfFormationState) -> String {
         b,
         r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{PAGE_W}" height="{PAGE_H}" viewBox="0 0 {PAGE_W} {PAGE_H}">"#
     );
-    let _ = write!(b, r#"<rect x="0" y="0" width="{PAGE_W}" height="{PAGE_H}" fill="white"/>"#);
-    let _ = write!(b, r#"<g transform="translate({tx:.2} {ty:.2}) scale({scale:.4})">"#);
+    let _ = write!(
+        b,
+        r#"<rect x="0" y="0" width="{PAGE_W}" height="{PAGE_H}" fill="white"/>"#
+    );
+    let _ = write!(
+        b,
+        r#"<g transform="translate({tx:.2} {ty:.2}) scale({scale:.4})">"#
+    );
 
     // ── Logos: BattleTech (top-left) + Catalyst (top-right), as MegaMek's SBFRecordSheet draws them ──
     image(&mut b, -23.0, 10.0, 722.0, 125.0, BT_LOGO);
     image(&mut b, 1287.0, 45.0, 125.0, 72.0, CGL_LOGO);
 
     // Title banner
-    stroke_poly(&mut b, &[(732.0, 60.0), (732.0, 55.0), (756.0, 32.0), (1401.0, 32.0), (1424.0, 55.0), (1424.0, 107.0), (1401.0, 130.0), (756.0, 130.0), (732.0, 107.0), (732.0, 60.0)], "black", 5.0);
-    txtw(&mut b, 1019.0, 63.0, 28.0, true, "middle", true, "black", 440.0, "STRATEGIC BATTLEFORCE");
-    txtw(&mut b, 1019.0, 100.0, 28.0, true, "middle", true, "black", 440.0, "FORMATION RECORD SHEET");
+    stroke_poly(
+        &mut b,
+        &[
+            (732.0, 60.0),
+            (732.0, 55.0),
+            (756.0, 32.0),
+            (1401.0, 32.0),
+            (1424.0, 55.0),
+            (1424.0, 107.0),
+            (1401.0, 130.0),
+            (756.0, 130.0),
+            (732.0, 107.0),
+            (732.0, 60.0),
+        ],
+        "black",
+        5.0,
+    );
+    txtw(
+        &mut b,
+        1019.0,
+        63.0,
+        28.0,
+        true,
+        "middle",
+        true,
+        "black",
+        440.0,
+        "STRATEGIC BATTLEFORCE",
+    );
+    txtw(
+        &mut b,
+        1019.0,
+        100.0,
+        28.0,
+        true,
+        "middle",
+        true,
+        "black",
+        440.0,
+        "FORMATION RECORD SHEET",
+    );
 
     // ── Formation block ──
-    fill_poly(&mut b, &[(1425.0, 189.0), (1435.0, 199.0), (1435.0, 285.0), (1410.0, 312.0), (30.0, 312.0), (19.0, 301.0), (1402.0, 301.0), (1424.0, 276.0)], SHADOW);
-    stroke_poly(&mut b, &[(104.0, 167.0), (1401.0, 167.0), (1424.0, 193.0), (1424.0, 276.0), (1401.0, 302.0), (24.0, 302.0), (0.0, 276.0), (0.0, 193.0), (24.0, 167.0), (104.0, 167.0)], "black", 5.0);
-    fill_poly(&mut b, &[(11.0, 198.0), (30.0, 179.0), (214.0, 179.0), (233.0, 198.0), (214.0, 217.0), (30.0, 217.0), (11.0, 198.0)], "black");
-    txt(&mut b, 470.0, 210.0, 22.0, true, "middle", true, "black", "Type");
-    txt(&mut b, 535.0, 210.0, 22.0, true, "middle", true, "black", "Size");
-    txt(&mut b, 604.0, 210.0, 22.0, true, "middle", true, "black", "Move");
-    txt(&mut b, 683.0, 210.0, 22.0, true, "middle", true, "black", "Jump");
-    txt(&mut b, 762.0, 185.0, 22.0, true, "middle", true, "black", "Transport");
-    txt(&mut b, 762.0, 210.0, 22.0, true, "middle", true, "black", "Move");
-    txt(&mut b, 839.0, 210.0, 22.0, true, "middle", true, "black", "TMM");
-    txt(&mut b, 919.0, 210.0, 22.0, true, "middle", true, "black", "Tactics");
-    txt(&mut b, 1012.0, 210.0, 22.0, true, "middle", true, "black", "Morale");
-    txt(&mut b, 1088.0, 210.0, 22.0, true, "middle", true, "black", "Skill");
-    txt(&mut b, 1150.0, 210.0, 22.0, true, "middle", true, "black", "PV");
-    txt(&mut b, 1196.0, 210.0, 22.0, true, "start", true, "black", "Formation Specials");
-    for &(x1, x2) in &[(21.0, 425.0), (446.0, 494.0), (511.0, 559.0), (575.0, 633.0), (654.0, 712.0), (727.0, 797.0), (812.0, 867.0), (884.0, 955.0), (972.0, 1052.0), (1064.0, 1113.0), (1125.0, 1175.0), (1188.0, 1403.0)] {
+    fill_poly(
+        &mut b,
+        &[
+            (1425.0, 189.0),
+            (1435.0, 199.0),
+            (1435.0, 285.0),
+            (1410.0, 312.0),
+            (30.0, 312.0),
+            (19.0, 301.0),
+            (1402.0, 301.0),
+            (1424.0, 276.0),
+        ],
+        SHADOW,
+    );
+    stroke_poly(
+        &mut b,
+        &[
+            (104.0, 167.0),
+            (1401.0, 167.0),
+            (1424.0, 193.0),
+            (1424.0, 276.0),
+            (1401.0, 302.0),
+            (24.0, 302.0),
+            (0.0, 276.0),
+            (0.0, 193.0),
+            (24.0, 167.0),
+            (104.0, 167.0),
+        ],
+        "black",
+        5.0,
+    );
+    fill_poly(
+        &mut b,
+        &[
+            (11.0, 198.0),
+            (30.0, 179.0),
+            (214.0, 179.0),
+            (233.0, 198.0),
+            (214.0, 217.0),
+            (30.0, 217.0),
+            (11.0, 198.0),
+        ],
+        "black",
+    );
+    txt(
+        &mut b, 470.0, 210.0, 22.0, true, "middle", true, "black", "Type",
+    );
+    txt(
+        &mut b, 535.0, 210.0, 22.0, true, "middle", true, "black", "Size",
+    );
+    txt(
+        &mut b, 604.0, 210.0, 22.0, true, "middle", true, "black", "Move",
+    );
+    txt(
+        &mut b, 683.0, 210.0, 22.0, true, "middle", true, "black", "Jump",
+    );
+    txt(
+        &mut b,
+        762.0,
+        185.0,
+        22.0,
+        true,
+        "middle",
+        true,
+        "black",
+        "Transport",
+    );
+    txt(
+        &mut b, 762.0, 210.0, 22.0, true, "middle", true, "black", "Move",
+    );
+    txt(
+        &mut b, 839.0, 210.0, 22.0, true, "middle", true, "black", "TMM",
+    );
+    txt(
+        &mut b, 919.0, 210.0, 22.0, true, "middle", true, "black", "Tactics",
+    );
+    txt(
+        &mut b, 1012.0, 210.0, 22.0, true, "middle", true, "black", "Morale",
+    );
+    txt(
+        &mut b, 1088.0, 210.0, 22.0, true, "middle", true, "black", "Skill",
+    );
+    txt(
+        &mut b, 1150.0, 210.0, 22.0, true, "middle", true, "black", "PV",
+    );
+    txt(
+        &mut b,
+        1196.0,
+        210.0,
+        22.0,
+        true,
+        "start",
+        true,
+        "black",
+        "Formation Specials",
+    );
+    for &(x1, x2) in &[
+        (21.0, 425.0),
+        (446.0, 494.0),
+        (511.0, 559.0),
+        (575.0, 633.0),
+        (654.0, 712.0),
+        (727.0, 797.0),
+        (812.0, 867.0),
+        (884.0, 955.0),
+        (972.0, 1052.0),
+        (1064.0, 1113.0),
+        (1125.0, 1175.0),
+        (1188.0, 1403.0),
+    ] {
         line(&mut b, x1, 278.0, x2, 278.0, LINE, 3.0);
     }
-    txtw(&mut b, 122.0, 198.0, 32.0, true, "middle", true, "white", 176.0, "FORMATION:");
+    txtw(
+        &mut b,
+        122.0,
+        198.0,
+        32.0,
+        true,
+        "middle",
+        true,
+        "white",
+        176.0,
+        "FORMATION:",
+    );
     // Formation values (pristine, static stats)
-    txtw(&mut b, 24.0, 260.0, 25.0, false, "start", true, "black", 390.0, &fs.name);
-    txt(&mut b, 470.0, 260.0, 25.0, false, "middle", true, "black", &type_label(&format!("{:?}", form.sbf_type)));
-    txt(&mut b, 535.0, 260.0, 25.0, false, "middle", true, "black", &form.size.to_string());
-    txt(&mut b, 604.0, 260.0, 25.0, false, "middle", true, "black", &format!("{}{}", form.movement, form.move_mode.code()));
-    txt(&mut b, 683.0, 260.0, 25.0, false, "middle", true, "black", &form.jump_move.to_string());
-    txt(&mut b, 762.0, 260.0, 25.0, false, "middle", true, "black", &format!("{}{}", form.trsp_movement, form.trsp_mode.code()));
+    txtw(
+        &mut b, 24.0, 260.0, 25.0, false, "start", true, "black", 390.0, &fs.name,
+    );
+    txt(
+        &mut b,
+        470.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &type_label(&format!("{:?}", form.sbf_type)),
+    );
+    txt(
+        &mut b,
+        535.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &form.size.to_string(),
+    );
+    txt(
+        &mut b,
+        604.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &format!("{}{}", form.movement, form.move_mode.code()),
+    );
+    txt(
+        &mut b,
+        683.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &form.jump_move.to_string(),
+    );
+    txt(
+        &mut b,
+        762.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &format!("{}{}", form.trsp_movement, form.trsp_mode.code()),
+    );
     if !aero {
-        txt(&mut b, 839.0, 260.0, 25.0, false, "middle", true, "black", &form.tmm.to_string());
+        txt(
+            &mut b,
+            839.0,
+            260.0,
+            25.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &form.tmm.to_string(),
+        );
     }
-    txt(&mut b, 919.0, 260.0, 25.0, false, "middle", true, "black", &form.tactics.to_string());
-    txt(&mut b, 1012.0, 260.0, 25.0, false, "middle", true, "black", &form.morale_rating.to_string());
-    txt(&mut b, 1088.0, 260.0, 25.0, false, "middle", true, "black", &form.skill.to_string());
-    txt(&mut b, 1150.0, 260.0, 25.0, false, "middle", true, "black", &form.point_value.to_string());
-    txtw(&mut b, 1196.0, 260.0, 25.0, false, "start", true, "black", 210.0, &suas(&form.suas));
+    txt(
+        &mut b,
+        919.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &form.tactics.to_string(),
+    );
+    txt(
+        &mut b,
+        1012.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &form.morale_rating.to_string(),
+    );
+    txt(
+        &mut b,
+        1088.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &form.skill.to_string(),
+    );
+    txt(
+        &mut b,
+        1150.0,
+        260.0,
+        25.0,
+        false,
+        "middle",
+        true,
+        "black",
+        &form.point_value.to_string(),
+    );
+    txtw(
+        &mut b,
+        1196.0,
+        260.0,
+        25.0,
+        false,
+        "start",
+        true,
+        "black",
+        210.0,
+        &suas(&form.suas),
+    );
 
     // ── Units overview (translate 0,325) ──
     let _ = write!(b, r#"<g transform="translate(0 325)">"#);
-    fill_poly(&mut b, &[(1425.0, 22.0), (1435.0, 32.0), (1435.0, 245.0), (1410.0, 269.0), (443.0, 269.0), (431.0, 259.0), (1402.0, 259.0), (1424.0, 235.0)], SHADOW);
-    fill_poly(&mut b, &[(30.0, 232.0), (20.0, 222.0), (390.0, 222.0), (400.0, 232.0)], SHADOW);
-    stroke_poly(&mut b, &[(104.0, 0.0), (1401.0, 0.0), (1424.0, 26.0), (1424.0, 235.0), (1401.0, 259.0), (435.0, 259.0), (388.0, 222.0), (24.0, 222.0), (0.0, 196.0), (0.0, 26.0), (24.0, 0.0), (104.0, 0.0)], "black", 5.0);
-    txt(&mut b, 388.0, 35.0, 22.0, true, "middle", true, "black", "Type");
-    txt(&mut b, 451.0, 35.0, 22.0, true, "middle", true, "black", "Size");
-    txt(&mut b, 514.0, 35.0, 22.0, true, "middle", true, "black", "Move");
-    txt(&mut b, 577.0, 35.0, 22.0, true, "middle", true, "black", "Jump");
-    txt(&mut b, 639.0, 17.0, 22.0, true, "middle", true, "black", "Trsp");
-    txt(&mut b, 639.0, 35.0, 22.0, true, "middle", true, "black", "Move");
-    txt(&mut b, 702.0, 35.0, 22.0, true, "middle", true, "black", "TMM");
-    txt(&mut b, 764.0, 35.0, 22.0, true, "middle", true, "black", "Arm");
-    txt(&mut b, 856.0, 35.0, 22.0, true, "middle", true, "black", "S/M/L/E");
-    txt(&mut b, 948.0, 35.0, 22.0, true, "middle", true, "black", "Skill");
-    txt(&mut b, 1010.0, 35.0, 22.0, true, "middle", true, "black", "PV");
-    txt(&mut b, 1055.0, 35.0, 22.0, true, "start", true, "black", "Unit Specials");
+    fill_poly(
+        &mut b,
+        &[
+            (1425.0, 22.0),
+            (1435.0, 32.0),
+            (1435.0, 245.0),
+            (1410.0, 269.0),
+            (443.0, 269.0),
+            (431.0, 259.0),
+            (1402.0, 259.0),
+            (1424.0, 235.0),
+        ],
+        SHADOW,
+    );
+    fill_poly(
+        &mut b,
+        &[(30.0, 232.0), (20.0, 222.0), (390.0, 222.0), (400.0, 232.0)],
+        SHADOW,
+    );
+    stroke_poly(
+        &mut b,
+        &[
+            (104.0, 0.0),
+            (1401.0, 0.0),
+            (1424.0, 26.0),
+            (1424.0, 235.0),
+            (1401.0, 259.0),
+            (435.0, 259.0),
+            (388.0, 222.0),
+            (24.0, 222.0),
+            (0.0, 196.0),
+            (0.0, 26.0),
+            (24.0, 0.0),
+            (104.0, 0.0),
+        ],
+        "black",
+        5.0,
+    );
+    txt(
+        &mut b, 388.0, 35.0, 22.0, true, "middle", true, "black", "Type",
+    );
+    txt(
+        &mut b, 451.0, 35.0, 22.0, true, "middle", true, "black", "Size",
+    );
+    txt(
+        &mut b, 514.0, 35.0, 22.0, true, "middle", true, "black", "Move",
+    );
+    txt(
+        &mut b, 577.0, 35.0, 22.0, true, "middle", true, "black", "Jump",
+    );
+    txt(
+        &mut b, 639.0, 17.0, 22.0, true, "middle", true, "black", "Trsp",
+    );
+    txt(
+        &mut b, 639.0, 35.0, 22.0, true, "middle", true, "black", "Move",
+    );
+    txt(
+        &mut b, 702.0, 35.0, 22.0, true, "middle", true, "black", "TMM",
+    );
+    txt(
+        &mut b, 764.0, 35.0, 22.0, true, "middle", true, "black", "Arm",
+    );
+    txt(
+        &mut b, 856.0, 35.0, 22.0, true, "middle", true, "black", "S/M/L/E",
+    );
+    txt(
+        &mut b, 948.0, 35.0, 22.0, true, "middle", true, "black", "Skill",
+    );
+    txt(
+        &mut b, 1010.0, 35.0, 22.0, true, "middle", true, "black", "PV",
+    );
+    txt(
+        &mut b,
+        1055.0,
+        35.0,
+        22.0,
+        true,
+        "start",
+        true,
+        "black",
+        "Unit Specials",
+    );
     for row in 0..4 {
         let y = 85.0 + 41.0 * row as f32;
-        for &(x1, x2) in &[(26.0, 351.0), (363.0, 414.0), (426.0, 476.0), (489.0, 539.0), (552.0, 602.0), (614.0, 664.0), (677.0, 727.0), (739.0, 789.0), (801.0, 911.0), (923.0, 973.0), (985.0, 1035.0), (1047.0, 1404.0)] {
+        for &(x1, x2) in &[
+            (26.0, 351.0),
+            (363.0, 414.0),
+            (426.0, 476.0),
+            (489.0, 539.0),
+            (552.0, 602.0),
+            (614.0, 664.0),
+            (677.0, 727.0),
+            (739.0, 789.0),
+            (801.0, 911.0),
+            (923.0, 973.0),
+            (985.0, 1035.0),
+            (1047.0, 1404.0),
+        ] {
             line(&mut b, x1, y, x2, y, LINE, 3.0);
         }
     }
-    txt(&mut b, 21.0, 31.0, 26.0, true, "start", true, "black", "UNITS:");
-    txt(&mut b, 443.0, 239.0, 22.0, true, "start", true, "black", "Notes:");
+    txt(
+        &mut b, 21.0, 31.0, 26.0, true, "start", true, "black", "UNITS:",
+    );
+    txt(
+        &mut b, 443.0, 239.0, 22.0, true, "start", true, "black", "Notes:",
+    );
     line(&mut b, 524.0, 248.0, 1394.0, 248.0, LINE, 3.0);
     for (i, us) in fs.units.iter().take(4).enumerate() {
         let d = sess.sbf_unit(us);
         let y = 80.0 + 41.0 * i as f32;
-        txtw(&mut b, 34.0, y, 23.0, false, "start", false, "black", 315.0, &us.name);
-        txt(&mut b, 388.0, y, 23.0, false, "middle", false, "black", &type_label(&format!("{:?}", d.sbf_type)));
-        txt(&mut b, 451.0, y, 23.0, false, "middle", false, "black", &d.size.to_string());
-        txt(&mut b, 514.0, y, 23.0, false, "middle", false, "black", &format!("{}{}", d.movement, d.move_mode.code()));
-        txt(&mut b, 577.0, y, 23.0, false, "middle", false, "black", &d.jump_move.to_string());
-        txt(&mut b, 639.0, y, 23.0, false, "middle", false, "black", &format!("{}{}", d.trsp_movement, d.trsp_mode.code()));
+        txtw(
+            &mut b, 34.0, y, 23.0, false, "start", false, "black", 315.0, &us.name,
+        );
+        txt(
+            &mut b,
+            388.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &type_label(&format!("{:?}", d.sbf_type)),
+        );
+        txt(
+            &mut b,
+            451.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &d.size.to_string(),
+        );
+        txt(
+            &mut b,
+            514.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &format!("{}{}", d.movement, d.move_mode.code()),
+        );
+        txt(
+            &mut b,
+            577.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &d.jump_move.to_string(),
+        );
+        txt(
+            &mut b,
+            639.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &format!("{}{}", d.trsp_movement, d.trsp_mode.code()),
+        );
         if !d.sbf_type.is_aerospace() {
-            txt(&mut b, 702.0, y, 23.0, false, "middle", false, "black", &d.tmm.to_string());
+            txt(
+                &mut b,
+                702.0,
+                y,
+                23.0,
+                false,
+                "middle",
+                false,
+                "black",
+                &d.tmm.to_string(),
+            );
         }
-        txt(&mut b, 764.0, y, 23.0, false, "middle", false, "black", &d.armor.to_string());
-        txt(&mut b, 856.0, y, 23.0, false, "middle", false, "black", &dmg_string(&d.damage));
-        txt(&mut b, 948.0, y, 23.0, false, "middle", false, "black", &d.skill.to_string());
-        txt(&mut b, 1010.0, y, 23.0, false, "middle", false, "black", &d.point_value.to_string());
+        txt(
+            &mut b,
+            764.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &d.armor.to_string(),
+        );
+        txt(
+            &mut b,
+            856.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &dmg_string(&d.damage),
+        );
+        txt(
+            &mut b,
+            948.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &d.skill.to_string(),
+        );
+        txt(
+            &mut b,
+            1010.0,
+            y,
+            23.0,
+            false,
+            "middle",
+            false,
+            "black",
+            &d.point_value.to_string(),
+        );
         // COM/LEAD are player designations, not always baked SUAs — surface them in the Specials column.
         let mut sp = suas(&d.suas);
         for (flag, code) in [(us.is_commander, "COM"), (us.is_leader, "LEAD")] {
@@ -405,7 +886,9 @@ fn sbf_formation_svg(sess: &Session, fs: &SbfFormationState) -> String {
                 sp.push_str(code);
             }
         }
-        txtw(&mut b, 1055.0, y, 23.0, false, "start", false, "black", 340.0, &sp);
+        txtw(
+            &mut b, 1055.0, y, 23.0, false, "start", false, "black", 340.0, &sp,
+        );
     }
     b.push_str("</g>");
 
@@ -413,46 +896,260 @@ fn sbf_formation_svg(sess: &Session, fs: &SbfFormationState) -> String {
     for i in 0..4 {
         let yoff = 575.0 + 340.0 * i as f32;
         let _ = write!(b, r#"<g transform="translate(0 {yoff:.1})">"#);
-        fill_poly(&mut b, &[(1425.0, 61.0), (1435.0, 71.0), (1435.0, 317.0), (1410.0, 341.0), (407.0, 341.0), (397.0, 331.0), (1402.0, 331.0), (1424.0, 307.0)], SHADOW);
-        fill_poly(&mut b, &[(30.0, 320.0), (20.0, 310.0), (376.0, 310.0), (386.0, 320.0)], SHADOW);
-        stroke_poly(&mut b, &[(104.0, 0.0), (333.0, 0.0), (379.0, 39.0), (1401.0, 39.0), (1424.0, 65.0), (1424.0, 307.0), (1401.0, 331.0), (401.0, 331.0), (376.0, 310.0), (24.0, 310.0), (0.0, 286.0), (0.0, 26.0), (24.0, 0.0), (104.0, 0.0)], "black", 5.0);
-        txt(&mut b, 21.0, 77.0, 22.0, true, "start", true, "black", "Alpha Strike Elements:");
-        txt(&mut b, 388.0, 77.0, 22.0, true, "middle", true, "black", "Type");
-        txt(&mut b, 451.0, 77.0, 22.0, true, "middle", true, "black", "Size");
-        txt(&mut b, 529.0, 77.0, 22.0, true, "middle", true, "black", "Move");
-        txt(&mut b, 607.0, 77.0, 22.0, true, "middle", true, "black", "Arm");
-        txt(&mut b, 669.0, 77.0, 22.0, true, "middle", true, "black", "Str");
-        txt(&mut b, 761.0, 77.0, 22.0, true, "middle", true, "black", "S/M/L/E");
-        txt(&mut b, 853.0, 77.0, 22.0, true, "middle", true, "black", "OV");
-        txt(&mut b, 915.0, 77.0, 22.0, true, "middle", true, "black", "Skill");
-        txt(&mut b, 977.0, 77.0, 22.0, true, "middle", true, "black", "PV");
-        txt(&mut b, 1019.0, 77.0, 22.0, true, "start", true, "black", "Element Specials");
+        fill_poly(
+            &mut b,
+            &[
+                (1425.0, 61.0),
+                (1435.0, 71.0),
+                (1435.0, 317.0),
+                (1410.0, 341.0),
+                (407.0, 341.0),
+                (397.0, 331.0),
+                (1402.0, 331.0),
+                (1424.0, 307.0),
+            ],
+            SHADOW,
+        );
+        fill_poly(
+            &mut b,
+            &[(30.0, 320.0), (20.0, 310.0), (376.0, 310.0), (386.0, 320.0)],
+            SHADOW,
+        );
+        stroke_poly(
+            &mut b,
+            &[
+                (104.0, 0.0),
+                (333.0, 0.0),
+                (379.0, 39.0),
+                (1401.0, 39.0),
+                (1424.0, 65.0),
+                (1424.0, 307.0),
+                (1401.0, 331.0),
+                (401.0, 331.0),
+                (376.0, 310.0),
+                (24.0, 310.0),
+                (0.0, 286.0),
+                (0.0, 26.0),
+                (24.0, 0.0),
+                (104.0, 0.0),
+            ],
+            "black",
+            5.0,
+        );
+        txt(
+            &mut b,
+            21.0,
+            77.0,
+            22.0,
+            true,
+            "start",
+            true,
+            "black",
+            "Alpha Strike Elements:",
+        );
+        txt(
+            &mut b, 388.0, 77.0, 22.0, true, "middle", true, "black", "Type",
+        );
+        txt(
+            &mut b, 451.0, 77.0, 22.0, true, "middle", true, "black", "Size",
+        );
+        txt(
+            &mut b, 529.0, 77.0, 22.0, true, "middle", true, "black", "Move",
+        );
+        txt(
+            &mut b, 607.0, 77.0, 22.0, true, "middle", true, "black", "Arm",
+        );
+        txt(
+            &mut b, 669.0, 77.0, 22.0, true, "middle", true, "black", "Str",
+        );
+        txt(
+            &mut b, 761.0, 77.0, 22.0, true, "middle", true, "black", "S/M/L/E",
+        );
+        txt(
+            &mut b, 853.0, 77.0, 22.0, true, "middle", true, "black", "OV",
+        );
+        txt(
+            &mut b, 915.0, 77.0, 22.0, true, "middle", true, "black", "Skill",
+        );
+        txt(
+            &mut b, 977.0, 77.0, 22.0, true, "middle", true, "black", "PV",
+        );
+        txt(
+            &mut b,
+            1019.0,
+            77.0,
+            22.0,
+            true,
+            "start",
+            true,
+            "black",
+            "Element Specials",
+        );
         for row in 0..6 {
             let y = 129.0 + 32.0 * row as f32;
-            for &(x1, x2) in &[(26.0, 351.0), (363.0, 414.0), (426.0, 476.0), (489.0, 570.0), (582.0, 632.0), (644.0, 694.0), (706.0, 816.0), (828.0, 878.0), (890.0, 940.0), (952.0, 1002.0), (1014.0, 1404.0)] {
+            for &(x1, x2) in &[
+                (26.0, 351.0),
+                (363.0, 414.0),
+                (426.0, 476.0),
+                (489.0, 570.0),
+                (582.0, 632.0),
+                (644.0, 694.0),
+                (706.0, 816.0),
+                (828.0, 878.0),
+                (890.0, 940.0),
+                (952.0, 1002.0),
+                (1014.0, 1404.0),
+            ] {
                 line(&mut b, x1, y, x2, y, LINE, 3.0);
             }
         }
         let label = ["One", "Two", "Three", "Four"][i];
-        txtw(&mut b, 20.0, 37.0, 26.0, true, "start", false, "black", 90.0, &format!("Unit {label}:"));
+        txtw(
+            &mut b,
+            20.0,
+            37.0,
+            26.0,
+            true,
+            "start",
+            false,
+            "black",
+            90.0,
+            &format!("Unit {label}:"),
+        );
         line(&mut b, 116.0, 41.0, 340.0, 41.0, LINE, 3.0);
         if let Some(us) = fs.units.get(i) {
-            txtw(&mut b, 119.0, 37.0, 25.0, false, "start", false, "black", 215.0, &us.name);
+            txtw(
+                &mut b, 119.0, 37.0, 25.0, false, "start", false, "black", 215.0, &us.name,
+            );
             for (j, &idx) in us.elements.iter().take(6).enumerate() {
-                let Some(tm) = sess.mechs.get(idx) else { continue };
+                let Some(tm) = sess.mechs.get(idx) else {
+                    continue;
+                };
                 let el = element_of(tm);
                 let y = 124.0 + 32.0 * j as f32;
-                txtw(&mut b, 34.0, y, 21.0, false, "start", false, "black", 315.0, &tm.spec.display_name());
-                txt(&mut b, 388.0, y, 21.0, false, "middle", false, "black", &el.as_type);
-                txt(&mut b, 451.0, y, 21.0, false, "middle", false, "black", &el.size.to_string());
-                txt(&mut b, 529.0, y, 21.0, false, "middle", false, "black", &format!("{}{}", el.primary_move, el.primary_mode));
-                txt(&mut b, 607.0, y, 21.0, false, "middle", false, "black", &el.full_armor.to_string());
-                txt(&mut b, 669.0, y, 21.0, false, "middle", false, "black", &el.full_structure.to_string());
-                txt(&mut b, 761.0, y, 21.0, false, "middle", false, "black", &dmg_string(&el.std_damage));
-                txt(&mut b, 853.0, y, 21.0, false, "middle", false, "black", &el.overheat.to_string());
-                txt(&mut b, 915.0, y, 21.0, false, "middle", false, "black", &el.skill.to_string());
-                txt(&mut b, 977.0, y, 21.0, false, "middle", false, "black", &el.base_pv.to_string());
-                txtw(&mut b, 1019.0, y, 21.0, false, "start", false, "black", 380.0, &suas(&el.suas));
+                txtw(
+                    &mut b,
+                    34.0,
+                    y,
+                    21.0,
+                    false,
+                    "start",
+                    false,
+                    "black",
+                    315.0,
+                    &tm.spec.display_name(),
+                );
+                txt(
+                    &mut b,
+                    388.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.as_type,
+                );
+                txt(
+                    &mut b,
+                    451.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.size.to_string(),
+                );
+                txt(
+                    &mut b,
+                    529.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &format!("{}{}", el.primary_move, el.primary_mode),
+                );
+                txt(
+                    &mut b,
+                    607.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.full_armor.to_string(),
+                );
+                txt(
+                    &mut b,
+                    669.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.full_structure.to_string(),
+                );
+                txt(
+                    &mut b,
+                    761.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &dmg_string(&el.std_damage),
+                );
+                txt(
+                    &mut b,
+                    853.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.overheat.to_string(),
+                );
+                txt(
+                    &mut b,
+                    915.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.skill.to_string(),
+                );
+                txt(
+                    &mut b,
+                    977.0,
+                    y,
+                    21.0,
+                    false,
+                    "middle",
+                    false,
+                    "black",
+                    &el.base_pv.to_string(),
+                );
+                txtw(
+                    &mut b,
+                    1019.0,
+                    y,
+                    21.0,
+                    false,
+                    "start",
+                    false,
+                    "black",
+                    380.0,
+                    &suas(&el.suas),
+                );
             }
         }
         b.push_str("</g>");
@@ -486,8 +1183,12 @@ fn bf_sheets(sess: &Session) -> Vec<String> {
         for &e in &u.elements {
             assigned.insert(e);
         }
-        let els: Vec<usize> =
-            u.elements.iter().copied().filter(|&i| i < sess.mechs.len()).collect();
+        let els: Vec<usize> = u
+            .elements
+            .iter()
+            .copied()
+            .filter(|&i| i < sess.mechs.len())
+            .collect();
         if els.is_empty() {
             continue; // an empty Unit (e.g. the default "Unit 1") has nothing to print
         }
@@ -495,8 +1196,9 @@ fn bf_sheets(sess: &Session) -> Vec<String> {
             sheets.push(bf_unit_svg(sess, &u.name, chunk, Some(u), pi > 0));
         }
     }
-    let unassigned: Vec<usize> =
-        (0..sess.mechs.len()).filter(|i| !assigned.contains(i)).collect();
+    let unassigned: Vec<usize> = (0..sess.mechs.len())
+        .filter(|i| !assigned.contains(i))
+        .collect();
     for (pi, chunk) in unassigned.chunks(PER_PAGE).enumerate() {
         sheets.push(bf_unit_svg(sess, "Unassigned", chunk, None, pi > 0));
     }
@@ -516,15 +1218,58 @@ fn bf_unit_svg(
     let mut b = begin_sheet(&["STANDARD BATTLEFORCE", "UNIT RECORD SHEET"]);
 
     // ── Unit header block ──
-    stroke_poly(&mut b, &[(104.0, 167.0), (1401.0, 167.0), (1424.0, 193.0), (1424.0, 276.0), (1401.0, 302.0), (24.0, 302.0), (0.0, 276.0), (0.0, 193.0), (24.0, 167.0), (104.0, 167.0)], "black", 5.0);
-    fill_poly(&mut b, &[(11.0, 198.0), (30.0, 179.0), (174.0, 179.0), (193.0, 198.0), (174.0, 217.0), (30.0, 217.0), (11.0, 198.0)], "black");
-    txtw(&mut b, 102.0, 198.0, 30.0, true, "middle", true, "white", 140.0, "UNIT:");
-    for (x, lbl) in [(660.0, "Move"), (760.0, "Size"), (850.0, "PV"), (960.0, "Morale")] {
+    stroke_poly(
+        &mut b,
+        &[
+            (104.0, 167.0),
+            (1401.0, 167.0),
+            (1424.0, 193.0),
+            (1424.0, 276.0),
+            (1401.0, 302.0),
+            (24.0, 302.0),
+            (0.0, 276.0),
+            (0.0, 193.0),
+            (24.0, 167.0),
+            (104.0, 167.0),
+        ],
+        "black",
+        5.0,
+    );
+    fill_poly(
+        &mut b,
+        &[
+            (11.0, 198.0),
+            (30.0, 179.0),
+            (174.0, 179.0),
+            (193.0, 198.0),
+            (174.0, 217.0),
+            (30.0, 217.0),
+            (11.0, 198.0),
+        ],
+        "black",
+    );
+    txtw(
+        &mut b, 102.0, 198.0, 30.0, true, "middle", true, "white", 140.0, "UNIT:",
+    );
+    for (x, lbl) in [
+        (660.0, "Move"),
+        (760.0, "Size"),
+        (850.0, "PV"),
+        (960.0, "Morale"),
+    ] {
         txt(&mut b, x, 210.0, 22.0, true, "middle", true, "black", lbl);
     }
-    txt(&mut b, 1070.0, 210.0, 22.0, true, "start", true, "black", "Notes");
-    let title = if cont { format!("{name} (cont.)") } else { name.to_string() };
-    txtw(&mut b, 210.0, 260.0, 26.0, false, "start", true, "black", 420.0, &title);
+    txt(
+        &mut b, 1070.0, 210.0, 22.0, true, "start", true, "black", "Notes",
+    );
+    let title = if cont {
+        format!("{name} (cont.)")
+    } else {
+        name.to_string()
+    };
+    txtw(
+        &mut b, 210.0, 260.0, 26.0, false, "start", true, "black", 420.0, &title,
+    );
     if let Some(u) = unit {
         let members = bf_member_stats(sess, &u.elements);
         let (mv, jump) = battleforce::bf_unit_mv(&members);
@@ -538,16 +1283,52 @@ fn bf_unit_svg(
             .filter_map(|&i| sess.mechs.get(i))
             .map(|tm| tm.point_cost(GameMode::BattleForce))
             .sum();
-        txt(&mut b, 660.0, 260.0, 24.0, false, "middle", true, "black", &mv_str);
-        txt(&mut b, 760.0, 260.0, 24.0, false, "middle", true, "black", &u.size.to_string());
-        txt(&mut b, 850.0, 260.0, 24.0, false, "middle", true, "black", &pv.to_string());
-        txt(&mut b, 960.0, 260.0, 24.0, false, "middle", true, "black", u.morale.label());
-        txtw(&mut b, 1070.0, 260.0, 22.0, false, "start", true, "black", 330.0, &u.notes);
+        txt(
+            &mut b, 660.0, 260.0, 24.0, false, "middle", true, "black", &mv_str,
+        );
+        txt(
+            &mut b,
+            760.0,
+            260.0,
+            24.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &u.size.to_string(),
+        );
+        txt(
+            &mut b,
+            850.0,
+            260.0,
+            24.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &pv.to_string(),
+        );
+        txt(
+            &mut b,
+            960.0,
+            260.0,
+            24.0,
+            false,
+            "middle",
+            true,
+            "black",
+            u.morale.label(),
+        );
+        txtw(
+            &mut b, 1070.0, 260.0, 22.0, false, "start", true, "black", 330.0, &u.notes,
+        );
     }
 
     // ── Element cards ──
     for (i, &idx) in elements.iter().enumerate() {
-        let Some(tm) = sess.mechs.get(idx) else { continue };
+        let Some(tm) = sess.mechs.get(idx) else {
+            continue;
+        };
         bf_element_card(&mut b, tm, 355.0 + 262.0 * i as f32);
     }
 
@@ -566,15 +1347,49 @@ fn bf_element_card(b: &mut String, tm: &TrackedMech, yoff: f32) {
     let _ = write!(b, r#"<g transform="translate(0 {yoff:.1})">"#);
 
     // Card outline.
-    stroke_poly(b, &[(0.0, 0.0), (1435.0, 0.0), (1435.0, 240.0), (0.0, 240.0), (0.0, 0.0)], "black", 3.0);
+    stroke_poly(
+        b,
+        &[
+            (0.0, 0.0),
+            (1435.0, 0.0),
+            (1435.0, 240.0),
+            (0.0, 240.0),
+            (0.0, 0.0),
+        ],
+        "black",
+        3.0,
+    );
 
     // Row 1: name + stat cells.
-    txtw(b, 18.0, 40.0, 27.0, true, "start", true, "black", 470.0, &tm.spec.display_name());
+    txtw(
+        b,
+        18.0,
+        40.0,
+        27.0,
+        true,
+        "start",
+        true,
+        "black",
+        470.0,
+        &tm.spec.display_name(),
+    );
     let tmm_lbl = if aero { "TH" } else { "TMM" };
-    let tmm_val = if aero { a.threshold.to_string() } else { a.tmm.to_string() };
+    let tmm_val = if aero {
+        a.threshold.to_string()
+    } else {
+        a.tmm.to_string()
+    };
     let cells = [
         (560.0, "Type", el.as_type.clone()),
-        (645.0, "Size", if a.size == 0 { "-".into() } else { a.size.to_string() }),
+        (
+            645.0,
+            "Size",
+            if a.size == 0 {
+                "-".into()
+            } else {
+                a.size.to_string()
+            },
+        ),
         (740.0, "MV", movement_hexes(&a.movement)),
         (880.0, tmm_lbl, tmm_val),
         (965.0, "OV", a.overheat.to_string()),
@@ -586,8 +1401,21 @@ fn bf_element_card(b: &mut String, tm: &TrackedMech, yoff: f32) {
         txtw(b, *x, 52.0, 24.0, false, "middle", true, "black", 90.0, val);
     }
     // Destroyed checkbox (top-right corner).
-    let _ = write!(b, r#"<rect x="1240" y="18" width="26" height="26" fill="none" stroke="black" stroke-width="3"/>"#);
-    txt(b, 1278.0, 37.0, 20.0, true, "start", true, "black", "DESTROYED");
+    let _ = write!(
+        b,
+        r#"<rect x="1240" y="18" width="26" height="26" fill="none" stroke="black" stroke-width="3"/>"#
+    );
+    txt(
+        b,
+        1278.0,
+        37.0,
+        20.0,
+        true,
+        "start",
+        true,
+        "black",
+        "DESTROYED",
+    );
 
     // Row 2: damage brackets S(+0) M(+2) L(+4) E(+6).
     txt(b, 18.0, 100.0, 22.0, true, "start", true, "black", "Damage");
@@ -613,13 +1441,38 @@ fn bf_element_card(b: &mut String, tm: &TrackedMech, yoff: f32) {
     txt(b, 18.0, 226.0, 20.0, true, "start", true, "black", "Heat");
     for (j, lbl) in ["1", "2", "3", "S"].iter().enumerate() {
         let x = 110.0 + 46.0 * j as f32;
-        let _ = write!(b, r#"<rect x="{x:.1}" y="212" width="30" height="24" fill="none" stroke="black" stroke-width="2"/>"#);
-        txt(b, x + 15.0, 226.0, 17.0, false, "middle", true, "black", lbl);
+        let _ = write!(
+            b,
+            r#"<rect x="{x:.1}" y="212" width="30" height="24" fill="none" stroke="black" stroke-width="2"/>"#
+        );
+        txt(
+            b,
+            x + 15.0,
+            226.0,
+            17.0,
+            false,
+            "middle",
+            true,
+            "black",
+            lbl,
+        );
     }
     let specials = suas(&el.suas);
     if !specials.is_empty() {
-        txt(b, 360.0, 226.0, 20.0, true, "start", true, "black", "Specials:");
-        txtw(b, 480.0, 226.0, 20.0, false, "start", true, "black", 930.0, &specials);
+        txt(
+            b,
+            360.0,
+            226.0,
+            20.0,
+            true,
+            "start",
+            true,
+            "black",
+            "Specials:",
+        );
+        txtw(
+            b, 480.0, 226.0, 20.0, false, "start", true, "black", 930.0, &specials,
+        );
     }
 
     b.push_str("</g>");
@@ -635,7 +1488,11 @@ fn bf_member_stats(sess: &Session, elements: &[usize]) -> Vec<(u32, Option<u32>,
         .filter_map(|&i| sess.mechs.get(i))
         .map(|tm| {
             let el = element_of(tm);
-            let ground = if bf_is_aero(&el) { el.primary_move } else { inches_to_hexes(el.primary_move) };
+            let ground = if bf_is_aero(&el) {
+                el.primary_move
+            } else {
+                inches_to_hexes(el.primary_move)
+            };
             let jump = (el.jump_move > 0).then(|| inches_to_hexes(el.jump_move));
             (ground, jump, true)
         })
@@ -677,23 +1534,87 @@ fn acs_sheets(sess: &Session) -> Vec<String> {
 }
 
 /// One ACS Combat Unit record sheet (p.18).
-fn acs_combat_unit_svg(sess: &Session, formation: &str, cu: &session::AcsCombatUnitState) -> String {
+fn acs_combat_unit_svg(
+    sess: &Session,
+    formation: &str,
+    cu: &session::AcsCombatUnitState,
+) -> String {
     let d = sess.acs_combat_unit(cu);
     let mut b = begin_sheet(&["ABSTRACT COMBAT SYSTEM", "COMBAT UNIT RECORD SHEET"]);
 
     // ── Combat Unit header block ──
-    stroke_poly(&mut b, &[(104.0, 167.0), (1401.0, 167.0), (1424.0, 193.0), (1424.0, 355.0), (1401.0, 381.0), (24.0, 381.0), (0.0, 355.0), (0.0, 193.0), (24.0, 167.0), (104.0, 167.0)], "black", 5.0);
-    fill_poly(&mut b, &[(11.0, 198.0), (30.0, 179.0), (280.0, 179.0), (299.0, 198.0), (280.0, 217.0), (30.0, 217.0), (11.0, 198.0)], "black");
-    txtw(&mut b, 155.0, 198.0, 28.0, true, "middle", true, "white", 240.0, "COMBAT UNIT:");
-    txtw(&mut b, 320.0, 200.0, 26.0, false, "start", true, "black", 500.0, &cu.name);
-    txtw(&mut b, 900.0, 200.0, 20.0, false, "start", true, "black", 500.0, &format!("Formation: {formation}"));
+    stroke_poly(
+        &mut b,
+        &[
+            (104.0, 167.0),
+            (1401.0, 167.0),
+            (1424.0, 193.0),
+            (1424.0, 355.0),
+            (1401.0, 381.0),
+            (24.0, 381.0),
+            (0.0, 355.0),
+            (0.0, 193.0),
+            (24.0, 167.0),
+            (104.0, 167.0),
+        ],
+        "black",
+        5.0,
+    );
+    fill_poly(
+        &mut b,
+        &[
+            (11.0, 198.0),
+            (30.0, 179.0),
+            (280.0, 179.0),
+            (299.0, 198.0),
+            (280.0, 217.0),
+            (30.0, 217.0),
+            (11.0, 198.0),
+        ],
+        "black",
+    );
+    txtw(
+        &mut b,
+        155.0,
+        198.0,
+        28.0,
+        true,
+        "middle",
+        true,
+        "white",
+        240.0,
+        "COMBAT UNIT:",
+    );
+    txtw(
+        &mut b, 320.0, 200.0, 26.0, false, "start", true, "black", 500.0, &cu.name,
+    );
+    txtw(
+        &mut b,
+        900.0,
+        200.0,
+        20.0,
+        false,
+        "start",
+        true,
+        "black",
+        500.0,
+        &format!("Formation: {formation}"),
+    );
 
     // Stat grid (two rows of labelled cells).
     let stat_cells = [
         (60.0, "Type", type_label(&format!("{:?}", d.acs_type))),
         (150.0, "Size", d.size.to_string()),
-        (250.0, "Move", format!("{}{}", d.movement, d.move_mode.code())),
-        (380.0, "TranspMP", format!("{}{}", d.trsp_movement, d.trsp_mode.code())),
+        (
+            250.0,
+            "Move",
+            format!("{}{}", d.movement, d.move_mode.code()),
+        ),
+        (
+            380.0,
+            "TranspMP",
+            format!("{}{}", d.trsp_movement, d.trsp_mode.code()),
+        ),
         (510.0, "TMM", d.tmm.to_string()),
         (600.0, "ARM", d.armor.to_string()),
         (710.0, "S/M/L/E", dmg_string(&d.damage)),
@@ -704,23 +1625,114 @@ fn acs_combat_unit_svg(sess: &Session, formation: &str, cu: &session::AcsCombatU
     ];
     for (x, lbl, val) in &stat_cells {
         txt(&mut b, *x, 250.0, 20.0, true, "middle", true, "black", lbl);
-        txtw(&mut b, *x, 282.0, 24.0, false, "middle", true, "black", 110.0, val);
+        txtw(
+            &mut b, *x, 282.0, 24.0, false, "middle", true, "black", 110.0, val,
+        );
     }
     // Specials + Morale-check triggers.
-    txt(&mut b, 24.0, 330.0, 20.0, true, "start", true, "black", "Specials:");
-    txtw(&mut b, 140.0, 330.0, 20.0, false, "start", true, "black", 620.0, &suas(&d.suas));
-    txt(&mut b, 800.0, 330.0, 20.0, true, "start", true, "black", "Morale Check Triggers (Armor):");
+    txt(
+        &mut b,
+        24.0,
+        330.0,
+        20.0,
+        true,
+        "start",
+        true,
+        "black",
+        "Specials:",
+    );
+    txtw(
+        &mut b,
+        140.0,
+        330.0,
+        20.0,
+        false,
+        "start",
+        true,
+        "black",
+        620.0,
+        &suas(&d.suas),
+    );
+    txt(
+        &mut b,
+        800.0,
+        330.0,
+        20.0,
+        true,
+        "start",
+        true,
+        "black",
+        "Morale Check Triggers (Armor):",
+    );
     let [t75, t50, t25] = d.damage_thresholds;
-    txtw(&mut b, 1180.0, 330.0, 20.0, false, "start", true, "black", 230.0, &format!("75%: {t75}    50%: {t50}    25%: {t25}"));
+    txtw(
+        &mut b,
+        1180.0,
+        330.0,
+        20.0,
+        false,
+        "start",
+        true,
+        "black",
+        230.0,
+        &format!("75%: {t75}    50%: {t50}    25%: {t25}"),
+    );
 
     // ── Combat Teams summary ──
     let _ = write!(b, r#"<g transform="translate(0 420)">"#);
-    stroke_poly(&mut b, &[(104.0, 0.0), (1401.0, 0.0), (1424.0, 26.0), (1424.0, 470.0), (1401.0, 496.0), (24.0, 496.0), (0.0, 470.0), (0.0, 26.0), (24.0, 0.0), (104.0, 0.0)], "black", 5.0);
-    fill_poly(&mut b, &[(11.0, 31.0), (30.0, 12.0), (300.0, 12.0), (319.0, 31.0), (300.0, 50.0), (30.0, 50.0), (11.0, 31.0)], "black");
-    txtw(&mut b, 165.0, 31.0, 26.0, true, "middle", true, "white", 260.0, "COMBAT TEAMS:");
+    stroke_poly(
+        &mut b,
+        &[
+            (104.0, 0.0),
+            (1401.0, 0.0),
+            (1424.0, 26.0),
+            (1424.0, 470.0),
+            (1401.0, 496.0),
+            (24.0, 496.0),
+            (0.0, 470.0),
+            (0.0, 26.0),
+            (24.0, 0.0),
+            (104.0, 0.0),
+        ],
+        "black",
+        5.0,
+    );
+    fill_poly(
+        &mut b,
+        &[
+            (11.0, 31.0),
+            (30.0, 12.0),
+            (300.0, 12.0),
+            (319.0, 31.0),
+            (300.0, 50.0),
+            (30.0, 50.0),
+            (11.0, 31.0),
+        ],
+        "black",
+    );
+    txtw(
+        &mut b,
+        165.0,
+        31.0,
+        26.0,
+        true,
+        "middle",
+        true,
+        "white",
+        260.0,
+        "COMBAT TEAMS:",
+    );
     let hdrs = [
-        (360.0, "Type"), (430.0, "Size"), (510.0, "Move"), (600.0, "Jump"), (680.0, "Trsp"),
-        (760.0, "TMM"), (830.0, "Arm"), (930.0, "S/M/L/E"), (1050.0, "Skill"), (1130.0, "PV"),
+        (360.0, "Type"),
+        (430.0, "Size"),
+        (510.0, "Move"),
+        (600.0, "Jump"),
+        (680.0, "Trsp"),
+        (760.0, "TMM"),
+        (830.0, "Arm"),
+        (930.0, "S/M/L/E"),
+        (1050.0, "Skill"),
+        (1130.0, "PV"),
         (1190.0, "Specials"),
     ];
     for (x, lbl) in hdrs {
@@ -729,34 +1741,182 @@ fn acs_combat_unit_svg(sess: &Session, formation: &str, cu: &session::AcsCombatU
     }
     for (i, team) in d.teams.iter().take(8).enumerate() {
         let y = 140.0 + 40.0 * i as f32;
-        txtw(&mut b, 30.0, y, 22.0, false, "start", true, "black", 320.0, &team.name);
-        txt(&mut b, 360.0, y, 22.0, false, "middle", true, "black", &type_label(&format!("{:?}", team.acs_type)));
-        txt(&mut b, 430.0, y, 22.0, false, "middle", true, "black", &team.size.to_string());
-        txt(&mut b, 510.0, y, 22.0, false, "middle", true, "black", &format!("{}{}", team.movement, team.move_mode.code()));
-        txt(&mut b, 600.0, y, 22.0, false, "middle", true, "black", &team.jump_move.to_string());
-        txt(&mut b, 680.0, y, 22.0, false, "middle", true, "black", &format!("{}{}", team.trsp_movement, team.trsp_mode.code()));
-        txt(&mut b, 760.0, y, 22.0, false, "middle", true, "black", &team.tmm.to_string());
-        txt(&mut b, 830.0, y, 22.0, false, "middle", true, "black", &team.armor.to_string());
-        txt(&mut b, 930.0, y, 22.0, false, "middle", true, "black", &dmg_string(&team.damage));
-        txt(&mut b, 1050.0, y, 22.0, false, "middle", true, "black", &team.skill.to_string());
-        txt(&mut b, 1130.0, y, 22.0, false, "middle", true, "black", &team.point_value.to_string());
-        txtw(&mut b, 1180.0, y, 22.0, false, "start", true, "black", 240.0, &suas(&team.suas));
+        txtw(
+            &mut b, 30.0, y, 22.0, false, "start", true, "black", 320.0, &team.name,
+        );
+        txt(
+            &mut b,
+            360.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &type_label(&format!("{:?}", team.acs_type)),
+        );
+        txt(
+            &mut b,
+            430.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &team.size.to_string(),
+        );
+        txt(
+            &mut b,
+            510.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &format!("{}{}", team.movement, team.move_mode.code()),
+        );
+        txt(
+            &mut b,
+            600.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &team.jump_move.to_string(),
+        );
+        txt(
+            &mut b,
+            680.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &format!("{}{}", team.trsp_movement, team.trsp_mode.code()),
+        );
+        txt(
+            &mut b,
+            760.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &team.tmm.to_string(),
+        );
+        txt(
+            &mut b,
+            830.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &team.armor.to_string(),
+        );
+        txt(
+            &mut b,
+            930.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &dmg_string(&team.damage),
+        );
+        txt(
+            &mut b,
+            1050.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &team.skill.to_string(),
+        );
+        txt(
+            &mut b,
+            1130.0,
+            y,
+            22.0,
+            false,
+            "middle",
+            true,
+            "black",
+            &team.point_value.to_string(),
+        );
+        txtw(
+            &mut b,
+            1180.0,
+            y,
+            22.0,
+            false,
+            "start",
+            true,
+            "black",
+            240.0,
+            &suas(&team.suas),
+        );
     }
     b.push_str("</g>");
 
     // ── Live-tracking aids (blank boxes): Fatigue, Morale rung, COM/LEAD ──
     let _ = write!(b, r#"<g transform="translate(0 960)">"#);
-    txt(&mut b, 24.0, 30.0, 22.0, true, "start", true, "black", "Fatigue (FP):");
+    txt(
+        &mut b,
+        24.0,
+        30.0,
+        22.0,
+        true,
+        "start",
+        true,
+        "black",
+        "Fatigue (FP):",
+    );
     line(&mut b, 220.0, 34.0, 520.0, 34.0, LINE, 3.0);
-    txt(&mut b, 560.0, 30.0, 22.0, true, "start", true, "black", "Morale:");
-    for (j, lbl) in ["Normal", "Shaken", "Unsteady", "Broken", "Routed"].iter().enumerate() {
+    txt(
+        &mut b, 560.0, 30.0, 22.0, true, "start", true, "black", "Morale:",
+    );
+    for (j, lbl) in ["Normal", "Shaken", "Unsteady", "Broken", "Routed"]
+        .iter()
+        .enumerate()
+    {
         let x = 700.0 + 150.0 * j as f32;
-        let _ = write!(b, r#"<rect x="{x:.1}" y="14" width="20" height="20" fill="none" stroke="black" stroke-width="2"/>"#);
-        txt(&mut b, x + 28.0, 30.0, 18.0, false, "start", true, "black", lbl);
+        let _ = write!(
+            b,
+            r#"<rect x="{x:.1}" y="14" width="20" height="20" fill="none" stroke="black" stroke-width="2"/>"#
+        );
+        txt(
+            &mut b,
+            x + 28.0,
+            30.0,
+            18.0,
+            false,
+            "start",
+            true,
+            "black",
+            lbl,
+        );
     }
-    for (j, lbl) in ["Force Commander (COM)", "Formation Leader (LEAD)"].iter().enumerate() {
+    for (j, lbl) in ["Force Commander (COM)", "Formation Leader (LEAD)"]
+        .iter()
+        .enumerate()
+    {
         let y = 90.0 + 40.0 * j as f32;
-        let _ = write!(b, r#"<rect x="24" y="{:.1}" width="22" height="22" fill="none" stroke="black" stroke-width="2"/>"#, y - 16.0);
+        let _ = write!(
+            b,
+            r#"<rect x="24" y="{:.1}" width="22" height="22" fill="none" stroke="black" stroke-width="2"/>"#,
+            y - 16.0
+        );
         txt(&mut b, 60.0, y, 20.0, false, "start", true, "black", lbl);
     }
     b.push_str("</g>");
@@ -771,19 +1931,27 @@ fn acs_formation_tracking_svg(sess: &Session) -> String {
     let mut b = begin_sheet(&["ABSTRACT COMBAT SYSTEM", "FORMATION TRACKING SHEET"]);
 
     // Force line.
-    txt(&mut b, 24.0, 200.0, 24.0, true, "start", true, "black", "FORCE:");
+    txt(
+        &mut b, 24.0, 200.0, 24.0, true, "start", true, "black", "FORCE:",
+    );
     let force = format!(
         "Round ___    Force PV {}    Leadership {}",
         sess.acs_force_pv(),
         sess.acs.leadership_rating
     );
-    txt(&mut b, 160.0, 200.0, 22.0, false, "start", true, "black", &force);
+    txt(
+        &mut b, 160.0, 200.0, 22.0, false, "start", true, "black", &force,
+    );
 
     // Two columns of formation boxes (empty formations — e.g. the default "Formation 1" — omitted).
     const BOX_W: f32 = 690.0;
     const BOX_H: f32 = 232.0;
-    let formations: Vec<&session::AcsFormationState> =
-        sess.acs.formations.iter().filter(|f| !f.units.is_empty()).collect();
+    let formations: Vec<&session::AcsFormationState> = sess
+        .acs
+        .formations
+        .iter()
+        .filter(|f| !f.units.is_empty())
+        .collect();
     for (i, f) in formations.into_iter().enumerate() {
         let d = sess.acs_formation(f);
         let col = (i % 2) as f32;
@@ -794,9 +1962,41 @@ fn acs_formation_tracking_svg(sess: &Session) -> String {
         let x = 10.0 + col * (BOX_W + 25.0);
         let y = 240.0 + row * (BOX_H + 12.0);
         let _ = write!(b, r#"<g transform="translate({x:.1} {y:.1})">"#);
-        stroke_poly(&mut b, &[(0.0, 0.0), (BOX_W, 0.0), (BOX_W, BOX_H), (0.0, BOX_H), (0.0, 0.0)], "black", 3.0);
-        txt(&mut b, 16.0, 34.0, 20.0, true, "start", true, "black", &format!("#{}", i + 1));
-        txtw(&mut b, 70.0, 34.0, 24.0, true, "start", true, "black", BOX_W - 90.0, &f.name);
+        stroke_poly(
+            &mut b,
+            &[
+                (0.0, 0.0),
+                (BOX_W, 0.0),
+                (BOX_W, BOX_H),
+                (0.0, BOX_H),
+                (0.0, 0.0),
+            ],
+            "black",
+            3.0,
+        );
+        txt(
+            &mut b,
+            16.0,
+            34.0,
+            20.0,
+            true,
+            "start",
+            true,
+            "black",
+            &format!("#{}", i + 1),
+        );
+        txtw(
+            &mut b,
+            70.0,
+            34.0,
+            24.0,
+            true,
+            "start",
+            true,
+            "black",
+            BOX_W - 90.0,
+            &f.name,
+        );
         let meta = format!(
             "Type {}   Move {}   Tactics {}   Skill {}   Morale {}",
             type_label(&format!("{:?}", d.acs_type)),
@@ -805,8 +2005,29 @@ fn acs_formation_tracking_svg(sess: &Session) -> String {
             d.skill,
             d.morale_rating,
         );
-        txtw(&mut b, 16.0, 74.0, 20.0, false, "start", true, "black", BOX_W - 32.0, &meta);
-        txt(&mut b, 16.0, 108.0, 20.0, true, "start", true, "black", "Combat Units:");
+        txtw(
+            &mut b,
+            16.0,
+            74.0,
+            20.0,
+            false,
+            "start",
+            true,
+            "black",
+            BOX_W - 32.0,
+            &meta,
+        );
+        txt(
+            &mut b,
+            16.0,
+            108.0,
+            20.0,
+            true,
+            "start",
+            true,
+            "black",
+            "Combat Units:",
+        );
         for (j, cu) in f.units.iter().take(4).enumerate() {
             let cd = sess.acs_combat_unit(cu);
             let ly = 140.0 + 28.0 * j as f32;
@@ -817,8 +2038,26 @@ fn acs_formation_tracking_svg(sess: &Session) -> String {
             if cu.is_leader {
                 tags.push("LEAD");
             }
-            let tag = if tags.is_empty() { String::new() } else { format!("  [{}]", tags.join(" ")) };
-            txtw(&mut b, 30.0, ly, 19.0, false, "start", true, "black", BOX_W - 60.0, &format!("• {} (ARM {}, PV {}){tag}", cu.name, cd.armor, cd.point_value));
+            let tag = if tags.is_empty() {
+                String::new()
+            } else {
+                format!("  [{}]", tags.join(" "))
+            };
+            txtw(
+                &mut b,
+                30.0,
+                ly,
+                19.0,
+                false,
+                "start",
+                true,
+                "black",
+                BOX_W - 60.0,
+                &format!(
+                    "• {} (ARM {}, PV {}){tag}",
+                    cu.name, cd.armor, cd.point_value
+                ),
+            );
         }
         b.push_str("</g>");
     }
@@ -835,7 +2074,9 @@ fn type_label(debug: &str) -> String {
 }
 
 /// Space-joined SUA keys.
-fn suas(map: &std::collections::BTreeMap<String, neurohelmet_core::engine::as_element::SuaVal>) -> String {
+fn suas(
+    map: &std::collections::BTreeMap<String, neurohelmet_core::engine::as_element::SuaVal>,
+) -> String {
     map.keys().cloned().collect::<Vec<_>>().join(" ")
 }
 
@@ -855,7 +2096,10 @@ fn opt_num(o: Option<f32>) -> String {
 }
 
 fn esc(s: &str) -> String {
-    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 /// The typed AS element behind a pool member (mirrors `app::bf_element_of`).
@@ -876,7 +2120,10 @@ fn dmg_string(dv: &DamageVector) -> String {
 }
 
 fn points(pts: &[(f32, f32)]) -> String {
-    pts.iter().map(|(x, y)| format!("{x:.1},{y:.1}")).collect::<Vec<_>>().join(" ")
+    pts.iter()
+        .map(|(x, y)| format!("{x:.1},{y:.1}"))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Standard base64 (with padding), to inline the PNG logos as `data:` URIs.
@@ -889,8 +2136,16 @@ fn base64(data: &[u8]) -> String {
             | (*c.get(2).unwrap_or(&0) as u32);
         out.push(T[(n >> 18 & 63) as usize] as char);
         out.push(T[(n >> 12 & 63) as usize] as char);
-        out.push(if c.len() > 1 { T[(n >> 6 & 63) as usize] as char } else { '=' });
-        out.push(if c.len() > 2 { T[(n & 63) as usize] as char } else { '=' });
+        out.push(if c.len() > 1 {
+            T[(n >> 6 & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if c.len() > 2 {
+            T[(n & 63) as usize] as char
+        } else {
+            '='
+        });
     }
     out
 }
@@ -927,19 +2182,44 @@ fn line(b: &mut String, x1: f32, y1: f32, x2: f32, y2: f32, color: &str, width: 
 
 /// Text in sheet space. `anchor` ∈ {"start","middle","end"}; `vc` vertically centers on `y`.
 #[allow(clippy::too_many_arguments)]
-fn txt(b: &mut String, x: f32, y: f32, size: f32, bold: bool, anchor: &str, vc: bool, fill: &str, s: &str) {
+fn txt(
+    b: &mut String,
+    x: f32,
+    y: f32,
+    size: f32,
+    bold: bool,
+    anchor: &str,
+    vc: bool,
+    fill: &str,
+    s: &str,
+) {
     txtw(b, x, y, size, bold, anchor, vc, fill, 0.0, s);
 }
 
 /// Like [`txt`] but shrinks the font so the text fits within `maxw` sheet units (approximating
 /// MegaMek's `StringDrawer.maxWidth`), so long names/specials don't overflow their column.
 #[allow(clippy::too_many_arguments)]
-fn txtw(b: &mut String, x: f32, y: f32, size: f32, bold: bool, anchor: &str, vc: bool, fill: &str, maxw: f32, s: &str) {
+fn txtw(
+    b: &mut String,
+    x: f32,
+    y: f32,
+    size: f32,
+    bold: bool,
+    anchor: &str,
+    vc: bool,
+    fill: &str,
+    maxw: f32,
+    s: &str,
+) {
     if s.is_empty() {
         return;
     }
     let est = s.chars().count() as f32 * size * 0.60;
-    let size = if maxw > 0.0 && est > maxw { (size * maxw / est).max(6.0) } else { size };
+    let size = if maxw > 0.0 && est > maxw {
+        (size * maxw / est).max(6.0)
+    } else {
+        size
+    };
     let yb = if vc { y + size * 0.35 } else { y };
     let weight = if bold { r#" font-weight="bold""# } else { "" };
     let _ = write!(
@@ -970,9 +2250,10 @@ mod tests {
     #[test]
     fn multipage_pdf_has_a_page_per_formation() {
         let mut sess = Session::new_with_mode(GameMode::StrategicBattleForce);
-        sess.sbf
-            .formations
-            .push(SbfFormationState { name: "Formation 2".into(), ..Default::default() });
+        sess.sbf.formations.push(SbfFormationState {
+            name: "Formation 2".into(),
+            ..Default::default()
+        });
         let pdf = render_session_pdf(&sess).unwrap();
         assert!(pdf.starts_with(b"%PDF"), "output must be a PDF");
         let pages = String::from_utf8_lossy(&pdf).matches("/MediaBox").count();
@@ -999,7 +2280,10 @@ mod tests {
         let f = &sess.sbf.formations[0];
         assert_eq!(f.morale, MoraleStatus::Normal);
         let u = &f.units[0];
-        assert_eq!((u.armor_hits, u.damage_crits, u.targeting_crits, u.mp_crits), (0, 0, 0, 0));
+        assert_eq!(
+            (u.armor_hits, u.damage_crits, u.targeting_crits, u.mp_crits),
+            (0, 0, 0, 0)
+        );
         assert!(u.is_commander, "COM/LEAD designations are preserved");
     }
 
@@ -1007,7 +2291,8 @@ mod tests {
     fn populated_formation_renders_units() {
         // Real data: build an SBF Unit from baked elements and confirm the card path renders.
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/mechs.bin");
-        let bundle = neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
+        let bundle =
+            neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
         let mut sess = Session::new_with_mode(GameMode::StrategicBattleForce);
         for i in 0..3 {
             if let Some(m) = bundle.mechs.get(i).cloned() {
@@ -1015,21 +2300,33 @@ mod tests {
             }
         }
         sess.sbf.formations[0].name = "Lance Command".into();
-        sess.sbf.formations[0].units.push(neurohelmet_core::session::SbfUnitState {
-            name: "Test Lance".into(),
-            elements: (0..sess.mechs.len()).collect(),
-            is_commander: true,
-            ..Default::default()
-        });
+        sess.sbf.formations[0]
+            .units
+            .push(neurohelmet_core::session::SbfUnitState {
+                name: "Test Lance".into(),
+                elements: (0..sess.mechs.len()).collect(),
+                is_commander: true,
+                ..Default::default()
+            });
 
         let svg = sbf_formation_svg(&sess, &sess.sbf.formations[0]);
         assert!(svg.contains("Lance Command"), "formation name on the sheet");
         assert!(svg.contains("Test Lance"), "unit name on the sheet");
-        assert!(svg.contains("COM"), "commander designation rendered in Specials");
-        assert!(svg.contains("Alpha Strike Elements:"), "element sub-block rendered");
+        assert!(
+            svg.contains("COM"),
+            "commander designation rendered in Specials"
+        );
+        assert!(
+            svg.contains("Alpha Strike Elements:"),
+            "element sub-block rendered"
+        );
 
         let pdf = render_session_pdf(&sess).unwrap();
-        assert!(pdf.starts_with(b"%PDF") && pdf.len() > 1500, "non-trivial PDF: {} bytes", pdf.len());
+        assert!(
+            pdf.starts_with(b"%PDF") && pdf.len() > 1500,
+            "non-trivial PDF: {} bytes",
+            pdf.len()
+        );
 
         // Manual-inspection hatch: `PDF_DUMP=/path cargo test populated_formation_renders_units`.
         if let Ok(p) = std::env::var("PDF_DUMP") {
@@ -1043,7 +2340,8 @@ mod tests {
     #[test]
     fn preview_realistic_sheets() {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/mechs.bin");
-        let bundle = neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
+        let bundle =
+            neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
         let mut sess = Session::new_with_mode(GameMode::StrategicBattleForce);
 
         // 28 real BattleMechs → 7 lances of 4.
@@ -1068,19 +2366,50 @@ mod tests {
             let f = &mut sess.sbf.formations[0];
             f.name = "1st Company (Command)".into();
             f.units = vec![
-                SbfUnitState { name: "Command Lance".into(), elements: lance(0), is_commander: true, is_leader: true, ..Default::default() },
-                SbfUnitState { name: "Battle Lance".into(), elements: lance(1), ..Default::default() },
-                SbfUnitState { name: "Fire Lance".into(), elements: lance(2), ..Default::default() },
-                SbfUnitState { name: "Recon Lance".into(), elements: lance(3), ..Default::default() },
+                SbfUnitState {
+                    name: "Command Lance".into(),
+                    elements: lance(0),
+                    is_commander: true,
+                    is_leader: true,
+                    ..Default::default()
+                },
+                SbfUnitState {
+                    name: "Battle Lance".into(),
+                    elements: lance(1),
+                    ..Default::default()
+                },
+                SbfUnitState {
+                    name: "Fire Lance".into(),
+                    elements: lance(2),
+                    ..Default::default()
+                },
+                SbfUnitState {
+                    name: "Recon Lance".into(),
+                    elements: lance(3),
+                    ..Default::default()
+                },
             ];
         }
         // 2nd Company — 3 lances.
         sess.sbf.formations.push(SbfFormationState {
             name: "2nd Company".into(),
             units: vec![
-                SbfUnitState { name: "Assault Lance".into(), elements: lance(4), is_leader: true, ..Default::default() },
-                SbfUnitState { name: "Striker Lance".into(), elements: lance(5), ..Default::default() },
-                SbfUnitState { name: "Pursuit Lance".into(), elements: lance(6), ..Default::default() },
+                SbfUnitState {
+                    name: "Assault Lance".into(),
+                    elements: lance(4),
+                    is_leader: true,
+                    ..Default::default()
+                },
+                SbfUnitState {
+                    name: "Striker Lance".into(),
+                    elements: lance(5),
+                    ..Default::default()
+                },
+                SbfUnitState {
+                    name: "Pursuit Lance".into(),
+                    elements: lance(6),
+                    ..Default::default()
+                },
             ],
             ..Default::default()
         });
@@ -1100,9 +2429,16 @@ mod tests {
     /// Load N real 'Mechs of a given AS type into a session of `mode`.
     fn seed(mode: GameMode, n: usize) -> Session {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/mechs.bin");
-        let bundle = neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
+        let bundle =
+            neurohelmet_core::data::bundle::Bundle::load(&path).expect("load baked bundle");
         let mut sess = Session::new_with_mode(mode);
-        for m in bundle.mechs.iter().filter(|m| m.as_stats.tp == "BM").take(n).cloned() {
+        for m in bundle
+            .mechs
+            .iter()
+            .filter(|m| m.as_stats.tp == "BM")
+            .take(n)
+            .cloned()
+        {
             sess.add_mech(m);
         }
         sess
@@ -1118,7 +2454,10 @@ mod tests {
         assert!(svgs[0].contains("STANDARD BATTLEFORCE"));
         assert!(svgs[0].contains("Battle Lance"));
         assert!(svgs[0].contains("Armor") && svgs[0].contains("Heat"));
-        assert!(svg2pdf::usvg::Tree::from_str(&svgs[0], &svg_options()).is_ok(), "valid SVG");
+        assert!(
+            svg2pdf::usvg::Tree::from_str(&svgs[0], &svg_options()).is_ok(),
+            "valid SVG"
+        );
 
         let pdf = render_session_pdf(&sess).unwrap();
         assert!(pdf.starts_with(b"%PDF") && pdf.len() > 1500);
@@ -1151,17 +2490,26 @@ mod tests {
         let mut sess = seed(GameMode::AbstractCombatSystem, 8);
         // Build one Formation → one Combat Unit → one Combat Team → two SBF Units of 4 elements.
         let fi = sess.acs_new_formation("Assault Formation", 0..8);
-        assert!(!sess.acs.formations[fi].units.is_empty(), "formation seeded a combat unit");
+        assert!(
+            !sess.acs.formations[fi].units.is_empty(),
+            "formation seeded a combat unit"
+        );
         sess.acs.leadership_rating = 5;
 
         let svgs = acs_sheets(&sess);
-        assert!(svgs.len() >= 2, "at least one Combat Unit sheet + a Formation Tracking sheet");
+        assert!(
+            svgs.len() >= 2,
+            "at least one Combat Unit sheet + a Formation Tracking sheet"
+        );
         assert!(svgs[0].contains("COMBAT UNIT RECORD SHEET"));
         assert!(svgs[0].contains("Morale Check Triggers"));
         assert!(svgs.last().unwrap().contains("FORMATION TRACKING SHEET"));
         assert!(svgs.last().unwrap().contains("Assault Formation"));
         for s in &svgs {
-            assert!(svg2pdf::usvg::Tree::from_str(s, &svg_options()).is_ok(), "valid SVG");
+            assert!(
+                svg2pdf::usvg::Tree::from_str(s, &svg_options()).is_ok(),
+                "valid SVG"
+            );
         }
 
         let pdf = render_session_pdf(&sess).unwrap();

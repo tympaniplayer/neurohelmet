@@ -88,7 +88,9 @@ impl SbfMoveMode {
             Submarine | MekUmu | BaUmu => "s",
             Unknown => "Unknown",
             // Walk/jump variants print blank.
-            BimAerospaceWalk | LamAerospaceWalk | MekWalk | BaWalk | MekJump | BaJump | CiJump => "",
+            BimAerospaceWalk | LamAerospaceWalk | MekWalk | BaWalk | MekJump | BaJump | CiJump => {
+                ""
+            }
         }
     }
 
@@ -275,9 +277,7 @@ impl DamageVector {
             SbfRange::Short => self.s,
             SbfRange::Medium => self.m,
             SbfRange::Long => self.l.unwrap_or(0.0),
-            SbfRange::Extreme => self
-                .e
-                .unwrap_or((self.l.unwrap_or(0.0) - 1.0).max(0.0)),
+            SbfRange::Extreme => self.e.unwrap_or((self.l.unwrap_or(0.0) - 1.0).max(0.0)),
         }
     }
 }
@@ -286,15 +286,24 @@ impl DamageVector {
 /// `ASDamageVector.reducedBy` (:376-387); `getCurrentDamage` = `damage.reducedBy(damageCrits)`.
 pub fn reduced_by(v: DamageVector, n: u8) -> DamageVector {
     let r = |x: f32| (x - n as f32).max(0.0);
-    DamageVector { s: r(v.s), m: r(v.m), l: v.l.map(r), e: v.e.map(r) }
+    DamageVector {
+        s: r(v.s),
+        m: r(v.m),
+        l: v.l.map(r),
+        e: v.e.map(r),
+    }
 }
 
 // ---- SUA aggregation vocabularies (order matters where noted) ----
 const UNIT_IF_ANY: &[&str] = &[
     "WAT", "PRB", "AECM", "BHJ2", "BHJ3", "BH", "BT", "ECM", "HPG", "LPRB", "LECM", "TAG",
 ];
-const UNIT_IF_HALF: &[&str] = &["AMS", "ARM", "ARS", "BAR", "BFC", "CR", "ENG", "RBT", "SRCH", "SHLD"];
-const UNIT_IF_ALL: &[&str] = &["AMP", "AM", "BHJ", "XMEC", "MCS", "UCS", "MEC", "PAR", "SAW", "TRN"];
+const UNIT_IF_HALF: &[&str] = &[
+    "AMS", "ARM", "ARS", "BAR", "BFC", "CR", "ENG", "RBT", "SRCH", "SHLD",
+];
+const UNIT_IF_ALL: &[&str] = &[
+    "AMP", "AM", "BHJ", "XMEC", "MCS", "UCS", "MEC", "PAR", "SAW", "TRN",
+];
 const UNIT_SUM: &[&str] = &[
     "CAR", "CK", "CT", "IT", "CRW", "DCC", "MDS", "MASH", "RSD", "VTM", "VTH", "VTS", "AT", "DT",
     "MT", "PT", "ST", "SCR",
@@ -311,7 +320,9 @@ const FORM_IF_ANY: &[&str] = &[
 const FORM_IF_2_3: &[&str] = &[
     "AC3", "PRB", "AECM", "ECM", "ENG", "LPRB", "LECM", "ORO", "RCN", "SRCH", "SHLD", "TAG", "WAT",
 ];
-const FORM_IF_ALL: &[&str] = &["AMP", "BH", "EE", "FC", "SEAL", "MAG", "PAR", "RAIL", "RBT", "UMU"];
+const FORM_IF_ALL: &[&str] = &[
+    "AMP", "BH", "EE", "FC", "SEAL", "MAG", "PAR", "RAIL", "RBT", "UMU",
+];
 const FORM_SUM: &[&str] = &[
     "SBF_OMNI", "CAR", "CK", "CT", "IT", "CRW", "DCC", "MDS", "MASH", "RSD", "VTM", "VTH", "VTS",
     "AT", "BOMB", "DT", "MT", "PT", "ST", "SCR", "PNT", "IF", "MHQ",
@@ -710,7 +721,10 @@ pub fn convert_unit(name: &str, elems: &[AsElement]) -> SbfUnit {
     let dmg_m = jround(dmg_m / 3.0);
 
     // L band; OV only from OVL elements with real ≥1 L damage.
-    let mut dmg_l: f64 = elems.iter().map(|e| e.std_damage.l.unwrap_or(0.0) as f64).sum();
+    let mut dmg_l: f64 = elems
+        .iter()
+        .map(|e| e.std_damage.l.unwrap_or(0.0) as f64)
+        .sum();
     let ov_l: f64 = elems
         .iter()
         .filter(|e| e.has_sua("OVL") && e.std_damage.l.unwrap_or(0.0) >= 1.0)
@@ -726,7 +740,10 @@ pub fn convert_unit(name: &str, elems: &[AsElement]) -> SbfUnit {
     let dmg_l = jround(dmg_l / 3.0);
 
     let damage = if unit_type == SbfElementType::As {
-        let mut dmg_e: f64 = elems.iter().map(|e| e.std_damage.e.unwrap_or(0.0) as f64).sum();
+        let mut dmg_e: f64 = elems
+            .iter()
+            .map(|e| e.std_damage.e.unwrap_or(0.0) as f64)
+            .sum();
         if art_l > 0.0 {
             dmg_e += art_l;
         }
@@ -1121,12 +1138,11 @@ impl SbfCapital {
     /// with the Naval C3, Teleoperated, Point-Defense or Screen-Launcher rows (p.194), so those
     /// are suppressed when `high_speed`.
     pub fn to_hit_mod(&self) -> i64 {
-        let mut n = self.class_mod()
-            + 8 * i64::from(self.high_speed)
-            + 2 * i64::from(self.atmospheric)
-            - 2 * i64::from(self.crippled)
-            - 4 * i64::from(self.grappled)
-            + i64::from(matches!(self.acm, SbfAcm::AdjacentSector)) * 2;
+        let mut n =
+            self.class_mod() + 8 * i64::from(self.high_speed) + 2 * i64::from(self.atmospheric)
+                - 2 * i64::from(self.crippled)
+                - 4 * i64::from(self.grappled)
+                + i64::from(matches!(self.acm, SbfAcm::AdjacentSector)) * 2;
         if !self.high_speed {
             if self.weapon_class == WeaponClass::Msl && self.point_defense == 1 {
                 n += 1;
@@ -1271,11 +1287,12 @@ pub fn sbf_to_hit(atk: &SbfToHitCtx) -> i64 {
     }
     // Target movement + terrain — suppressed by air-to-air / ground-to-air / bombing (see
     // [`SbfAeroKind::suppresses_target_movement`]); strafe/strike keep them (Open Q 25).
-    if !atk.aero.is_some_and(|a| a.kind.suppresses_target_movement()) {
-        n += atk.target_tmm.max(0)
-            + atk.target_jump as i64
-            + atk.target_evaded as i64
-            + atk.terrain;
+    if !atk
+        .aero
+        .is_some_and(|a| a.kind.suppresses_target_movement())
+    {
+        n +=
+            atk.target_tmm.max(0) + atk.target_jump as i64 + atk.target_evaded as i64 + atk.terrain;
     }
     n
 }
@@ -1337,7 +1354,12 @@ mod tests {
             skill: 4,
             full_armor: 6,
             full_structure: 4,
-            std_damage: DamageVector { s: 4.0, m: 3.0, l: Some(2.0), e: Some(0.0) },
+            std_damage: DamageVector {
+                s: 4.0,
+                m: 3.0,
+                l: Some(2.0),
+                e: Some(0.0),
+            },
             overheat: 0,
             threshold: 0,
             suas: BTreeMap::new(),
@@ -1372,8 +1394,17 @@ mod tests {
     fn infantry_movement_floor_but_tmm_uses_rounded_average() {
         // Two mechs (move 20) + two CI (move 6): rounded_average = round(mean(20,20,6,6)/2)=round(6.5)=7;
         // min_inf = 6/2 = 3; movement = min(7,3) = 3. TMM keys off rounded_average (7) → 3, not 1.
-        let mech = AsElement { primary_move: 20, ..bm() };
-        let inf = AsElement { as_type: "CI".into(), sbf_type: SbfElementType::Ci, primary_move: 6, primary_mode: "f".into(), ..bm() };
+        let mech = AsElement {
+            primary_move: 20,
+            ..bm()
+        };
+        let inf = AsElement {
+            as_type: "CI".into(),
+            sbf_type: SbfElementType::Ci,
+            primary_move: 6,
+            primary_mode: "f".into(),
+            ..bm()
+        };
         let u = convert_unit("Mixed", &[mech.clone(), mech, inf.clone(), inf]);
         assert_eq!(u.movement, 3);
         assert_eq!(u.tmm, tmm_from_move(7)); // = 3, uses the higher rounded-average, not `movement`
@@ -1393,7 +1424,10 @@ mod tests {
     fn stl_mas_tmm_bonus_is_dead_but_flag_is_set() {
         // Every element has STL. The +2 TMM bonus reads unit SUAs (empty at the TMM step) → never
         // fires, so TMM is unchanged from the no-STL value; but STL/MAS/LMAS flags ARE set (step i).
-        let e = AsElement { suas: BTreeMap::from([("STL".into(), SuaVal::Flag)]), ..bm() };
+        let e = AsElement {
+            suas: BTreeMap::from([("STL".into(), SuaVal::Flag)]),
+            ..bm()
+        };
         let u = convert_unit("Stealth", &[e.clone(), e]);
         assert_eq!(u.tmm, 1); // == tmm_from_move(4); the +2 did NOT apply
         assert_eq!(u.suas.get("STL"), Some(&SuaVal::Flag));
@@ -1406,8 +1440,15 @@ mod tests {
         // Two carriers (CAR4, move 12) + two transportable-cargo mechs (move 6): nonTransportable =
         // the two carriers (they lack MEC/XMEC... wait CAR makes them transport-capable) — build so
         // that exactly the two move-6 mechs are non-transportable and the carriers hold CAR.
-        let carrier = AsElement { primary_move: 12, suas: BTreeMap::from([("CAR".into(), SuaVal::Num(4.0))]), ..bm() };
-        let cargo = AsElement { primary_move: 6, ..bm() };
+        let carrier = AsElement {
+            primary_move: 12,
+            suas: BTreeMap::from([("CAR".into(), SuaVal::Num(4.0))]),
+            ..bm()
+        };
+        let cargo = AsElement {
+            primary_move: 6,
+            ..bm()
+        };
         let u = convert_unit("Convoy", &[carrier.clone(), carrier, cargo.clone(), cargo]);
         // branch 3: trsp = round(mean(primary over nonTransportable={6,6})/2) = round(3) = 3.
         assert_eq!(u.trsp_movement, 3);
@@ -1418,7 +1459,10 @@ mod tests {
     #[test]
     fn atac_double_division_reproduced() {
         // Four elements each ATAC 9. sumDivideBy3: round(36/3)=12; then /3 again: round(12/3)=4.
-        let e = AsElement { suas: BTreeMap::from([("ATAC".into(), SuaVal::Num(9.0))]), ..bm() };
+        let e = AsElement {
+            suas: BTreeMap::from([("ATAC".into(), SuaVal::Num(9.0))]),
+            ..bm()
+        };
         let u = convert_unit("Atac", &[e.clone(), e.clone(), e.clone(), e]);
         assert_eq!(u.suas.get("ATAC"), Some(&SuaVal::Num(4.0))); // net ≈ sum/9
     }
@@ -1427,21 +1471,40 @@ mod tests {
     fn flk_from_top_level_ac_and_flk() {
         // Two elements each AC 2/2/2: FLK.M = round((2+2)/3)=round(1.333)=1; FLK.L = round((2+2)/3)=1.
         let e = AsElement {
-            suas: BTreeMap::from([("AC".into(), SuaVal::Dmg(DamageVector { s: 2.0, m: 2.0, l: Some(2.0), e: None }))]),
+            suas: BTreeMap::from([(
+                "AC".into(),
+                SuaVal::Dmg(DamageVector {
+                    s: 2.0,
+                    m: 2.0,
+                    l: Some(2.0),
+                    e: None,
+                }),
+            )]),
             ..bm()
         };
         let u = convert_unit("Flak", &[e.clone(), e]);
         assert_eq!(
             u.suas.get("FLK"),
-            Some(&SuaVal::Dmg(DamageVector { s: 0.0, m: 1.0, l: Some(1.0), e: None }))
+            Some(&SuaVal::Dmg(DamageVector {
+                s: 0.0,
+                m: 1.0,
+                l: Some(1.0),
+                e: None
+            }))
         );
     }
 
     #[test]
     fn ct_folds_into_it_in_finalize() {
         // One element CT2, one IT3: sum CT=2, IT=3; finalize merges CT into IT (5) and drops CT.
-        let ct = AsElement { suas: BTreeMap::from([("CT".into(), SuaVal::Num(2.0))]), ..bm() };
-        let it = AsElement { suas: BTreeMap::from([("IT".into(), SuaVal::Num(3.0))]), ..bm() };
+        let ct = AsElement {
+            suas: BTreeMap::from([("CT".into(), SuaVal::Num(2.0))]),
+            ..bm()
+        };
+        let it = AsElement {
+            suas: BTreeMap::from([("IT".into(), SuaVal::Num(3.0))]),
+            ..bm()
+        };
         let u = convert_unit("Cargo", &[ct, it]);
         assert_eq!(u.suas.get("IT"), Some(&SuaVal::Num(5.0)));
         assert!(!u.suas.contains_key("CT"));
@@ -1459,7 +1522,7 @@ mod tests {
         assert_eq!(f.skill, 4);
         assert_eq!(f.morale_rating, 7); // 3 + skill
         assert_eq!(f.point_value, a.point_value + b.point_value); // SUM, not mean
-        // tactics = max(0, 10 - move(4) + skill(4) - 4) = max(0, 6) = 6.
+                                                                  // tactics = max(0, 10 - move(4) + skill(4) - 4) = max(0, 6) = 6.
         assert_eq!(f.tactics, 6);
         assert_eq!(f.units.len(), 2);
     }
@@ -1478,7 +1541,12 @@ mod tests {
             trsp_mode: SbfMoveMode::Aerodyne,
             tmm: 2,
             armor: 5,
-            damage: DamageVector { s: 3.0, m: 3.0, l: Some(2.0), e: Some(1.0) },
+            damage: DamageVector {
+                s: 3.0,
+                m: 3.0,
+                l: Some(2.0),
+                e: Some(1.0),
+            },
             arcs: None,
             skill: 4,
             point_value: 20,
@@ -1557,7 +1625,11 @@ mod tests {
     }
 
     fn sorted_tokens(s: &str) -> Vec<String> {
-        let mut v: Vec<String> = s.split('|').filter(|x| !x.is_empty()).map(String::from).collect();
+        let mut v: Vec<String> = s
+            .split('|')
+            .filter(|x| !x.is_empty())
+            .map(String::from)
+            .collect();
         v.sort();
         v
     }
@@ -1592,7 +1664,10 @@ mod tests {
 
     #[test]
     fn golden_vs_megamek_converter() {
-        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/sbf-goldens/units.json");
+        let path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../data/sbf-goldens/units.json"
+        );
         let text = match std::fs::read_to_string(path) {
             Ok(t) => t,
             Err(_) => {
@@ -1603,26 +1678,65 @@ mod tests {
         let fixtures: serde_json::Value = serde_json::from_str(&text).unwrap();
         for fx in fixtures.as_array().unwrap() {
             let name = fx["name"].as_str().unwrap();
-            let elems: Vec<AsElement> =
-                fx["elements"].as_array().unwrap().iter().map(build_elem).collect();
+            let elems: Vec<AsElement> = fx["elements"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(build_elem)
+                .collect();
             let u = convert_unit(name, &elems);
             let g = &fx["unit"];
             let ctx = |field: &str| format!("{name}/{field}");
-            assert_eq!(u.sbf_type, parse_type(g["type"].as_str().unwrap()), "{}", ctx("type"));
-            assert_eq!(u.size as i64, g["size"].as_i64().unwrap(), "{}", ctx("size"));
+            assert_eq!(
+                u.sbf_type,
+                parse_type(g["type"].as_str().unwrap()),
+                "{}",
+                ctx("type")
+            );
+            assert_eq!(
+                u.size as i64,
+                g["size"].as_i64().unwrap(),
+                "{}",
+                ctx("size")
+            );
             assert_eq!(u.movement, g["mv"].as_i64().unwrap(), "{}", ctx("mv"));
-            assert_eq!(u.move_mode.code(), g["mvCode"].as_str().unwrap(), "{}", ctx("mvCode"));
+            assert_eq!(
+                u.move_mode.code(),
+                g["mvCode"].as_str().unwrap(),
+                "{}",
+                ctx("mvCode")
+            );
             assert_eq!(u.jump_move, g["jump"].as_i64().unwrap(), "{}", ctx("jump"));
-            assert_eq!(u.trsp_movement, g["trspMv"].as_i64().unwrap(), "{}", ctx("trspMv"));
-            assert_eq!(u.trsp_mode.code(), g["trspCode"].as_str().unwrap(), "{}", ctx("trspCode"));
+            assert_eq!(
+                u.trsp_movement,
+                g["trspMv"].as_i64().unwrap(),
+                "{}",
+                ctx("trspMv")
+            );
+            assert_eq!(
+                u.trsp_mode.code(),
+                g["trspCode"].as_str().unwrap(),
+                "{}",
+                ctx("trspCode")
+            );
             assert_eq!(u.tmm, g["tmm"].as_i64().unwrap(), "{}", ctx("tmm"));
             assert_eq!(u.armor, g["armor"].as_i64().unwrap(), "{}", ctx("armor"));
             assert_eq!(u.skill, g["skill"].as_i64().unwrap(), "{}", ctx("skill"));
             assert_eq!(u.point_value, g["pv"].as_i64().unwrap(), "{}", ctx("pv"));
             assert_eq!(u.damage.s as f64, dmg_num(&g["dmgS"]), "{}", ctx("dmgS"));
             assert_eq!(u.damage.m as f64, dmg_num(&g["dmgM"]), "{}", ctx("dmgM"));
-            assert_eq!(u.damage.l.unwrap_or(0.0) as f64, dmg_num(&g["dmgL"]), "{}", ctx("dmgL"));
-            assert_eq!(u.damage.e.unwrap_or(0.0) as f64, dmg_num(&g["dmgE"]), "{}", ctx("dmgE"));
+            assert_eq!(
+                u.damage.l.unwrap_or(0.0) as f64,
+                dmg_num(&g["dmgL"]),
+                "{}",
+                ctx("dmgL")
+            );
+            assert_eq!(
+                u.damage.e.unwrap_or(0.0) as f64,
+                dmg_num(&g["dmgE"]),
+                "{}",
+                ctx("dmgE")
+            );
             // MegaMek's display string hides SRCH for vehicles and SOA/SRCH for BattleMechs
             // (SBFUnit.showSUA:256-264) — a cosmetic filter, not a conversion difference. Mirror it
             // so the display-string golden compares like-for-like (the underlying aggregation of
@@ -1647,39 +1761,142 @@ mod tests {
 
     /// Baseline hand-entered shot: skill 4, no modifiers, Medium range (+1) → 5.
     fn shot() -> SbfToHitCtx {
-        SbfToHitCtx { attacker_skill: 4, ..Default::default() }
+        SbfToHitCtx {
+            attacker_skill: 4,
+            ..Default::default()
+        }
     }
 
     #[test]
     fn to_hit_printed_table() {
         // Range ladder — the printed IO:BF p.172 table: S +0 / M +1 / L +2 / E +3, all legal.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { range: SbfRange::Short, ..shot() }), 4);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                range: SbfRange::Short,
+                ..shot()
+            }),
+            4
+        );
         assert_eq!(sbf_to_hit(&shot()), 5);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { range: SbfRange::Long, ..shot() }), 6);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { range: SbfRange::Extreme, ..shot() }), 7);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                range: SbfRange::Long,
+                ..shot()
+            }),
+            6
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                range: SbfRange::Extreme,
+                ..shot()
+            }),
+            7
+        );
         // Indirect fire adds +1 on top of the range modifier.
         assert_eq!(
-            sbf_to_hit(&SbfToHitCtx { range: SbfRange::Long, indirect_fire: true, ..shot() }),
+            sbf_to_hit(&SbfToHitCtx {
+                range: SbfRange::Long,
+                indirect_fire: true,
+                ..shot()
+            }),
             7
         );
         // Positive TMM adds; negative TMM is ignored.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { target_tmm: 2, ..shot() }), 7);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { target_tmm: -1, ..shot() }), 5);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                target_tmm: 2,
+                ..shot()
+            }),
+            7
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                target_tmm: -1,
+                ..shot()
+            }),
+            5
+        );
         // Jump is +1 PER POINT used, both sides (not a flat +1).
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { attacker_jump: 3, ..shot() }), 8);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { target_jump: 2, ..shot() }), 7);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                attacker_jump: 3,
+                ..shot()
+            }),
+            8
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                target_jump: 2,
+                ..shot()
+            }),
+            7
+        );
         // Withholding fire: −1 per unit, floored at −2.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { withheld_units: 1, ..shot() }), 4);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { withheld_units: 3, ..shot() }), 3);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                withheld_units: 1,
+                ..shot()
+            }),
+            4
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                withheld_units: 3,
+                ..shot()
+            }),
+            3
+        );
         // One-point attacker specials: BFC, drone, spotting, secondary target; target evaded.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { bfc: true, ..shot() }), 6);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { drone: true, ..shot() }), 6);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { spotting: true, ..shot() }), 6);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { secondary: true, ..shot() }), 6);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { target_evaded: true, ..shot() }), 6);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                bfc: true,
+                ..shot()
+            }),
+            6
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                drone: true,
+                ..shot()
+            }),
+            6
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                spotting: true,
+                ..shot()
+            }),
+            6
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                secondary: true,
+                ..shot()
+            }),
+            6
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                target_evaded: true,
+                ..shot()
+            }),
+            6
+        );
         // Targeting crits: +1 per crit; terrain: hand-entered.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { firing_unit_targeting_crits: 2, ..shot() }), 7);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { terrain: 2, ..shot() }), 7);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                firing_unit_targeting_crits: 2,
+                ..shot()
+            }),
+            7
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                terrain: 2,
+                ..shot()
+            }),
+            7
+        );
         // All legs at once: 3 +1crit +0S +1IF +2jump −2withheld +1bfc +1spot +1sec +3tmm +2tjump
         // +1evade +1terrain = 15.
         assert_eq!(
@@ -1725,13 +1942,19 @@ mod tests {
     /// Baseline air-to-air shot: skill 4 + Medium (+1) = 5; the +2 airborne row is gated off
     /// (attacker is itself an airborne aerospace Squadron, p.179 fn).
     fn a2a() -> SbfToHitCtx {
-        SbfToHitCtx { aero: Some(aero(SbfAeroKind::AirToAir)), ..shot() }
+        SbfToHitCtx {
+            aero: Some(aero(SbfAeroKind::AirToAir)),
+            ..shot()
+        }
     }
 
     #[test]
     fn aero_to_hit_target_rows() {
         let vs = |target| SbfToHitCtx {
-            aero: Some(SbfAeroShot { target, ..aero(SbfAeroKind::AirToAir) }),
+            aero: Some(SbfAeroShot {
+                target,
+                ..aero(SbfAeroKind::AirToAir)
+            }),
             ..shot()
         };
         // Airborne aerospace +2 is gated on the attacker NOT being airborne aerospace (fn) —
@@ -1748,15 +1971,24 @@ mod tests {
         assert_eq!(sbf_to_hit(&ground_attacker(SbfAeroTarget::AirborneAero)), 7);
         // The DropShip −2 / Small Craft −1 rows stack on the gated +2 (both are airborne
         // aerospace per the fn): ground-to-air vs a DropShip is "effectively a +0" (p.181).
-        assert_eq!(sbf_to_hit(&ground_attacker(SbfAeroTarget::AirborneDropship)), 5);
+        assert_eq!(
+            sbf_to_hit(&ground_attacker(SbfAeroTarget::AirborneDropship)),
+            5
+        );
         assert_eq!(sbf_to_hit(&vs(SbfAeroTarget::AirborneDropship)), 3);
         assert_eq!(sbf_to_hit(&ground_attacker(SbfAeroTarget::SmallCraft)), 6);
         assert_eq!(sbf_to_hit(&vs(SbfAeroTarget::SmallCraft)), 4);
         // VTOL/WiGE +1 is not an aerospace row — no gated +2 underneath, either attacker.
-        assert_eq!(sbf_to_hit(&ground_attacker(SbfAeroTarget::AirborneVtolWige)), 6);
+        assert_eq!(
+            sbf_to_hit(&ground_attacker(SbfAeroTarget::AirborneVtolWige)),
+            6
+        );
         assert_eq!(sbf_to_hit(&vs(SbfAeroTarget::AirborneVtolWige)), 6);
         // Grounded Squadron: the −4 immobile target row (p.181).
-        assert_eq!(sbf_to_hit(&ground_attacker(SbfAeroTarget::GroundedSquadron)), 1);
+        assert_eq!(
+            sbf_to_hit(&ground_attacker(SbfAeroTarget::GroundedSquadron)),
+            1
+        );
         // A ground Formation has no target-type row.
         assert_eq!(sbf_to_hit(&vs(SbfAeroTarget::GroundFormation)), 5);
     }
@@ -1771,12 +2003,18 @@ mod tests {
             ..shot()
         };
         // Altitude +3 / Dive +2 / Strafing +4 (vs Standard BF's +2 — different scale) / Strike +2.
-        assert_eq!(sbf_to_hit(&a2g(SbfA2G::AltitudeBombing { cluster: false })), 8);
+        assert_eq!(
+            sbf_to_hit(&a2g(SbfA2G::AltitudeBombing { cluster: false })),
+            8
+        );
         assert_eq!(sbf_to_hit(&a2g(SbfA2G::DiveBombing { cluster: false })), 7);
         assert_eq!(sbf_to_hit(&a2g(SbfA2G::Strafing)), 9);
         assert_eq!(sbf_to_hit(&a2g(SbfA2G::Striking)), 7);
         // Cluster Bomb −1 rides on a bombing attack.
-        assert_eq!(sbf_to_hit(&a2g(SbfA2G::AltitudeBombing { cluster: true })), 7);
+        assert_eq!(
+            sbf_to_hit(&a2g(SbfA2G::AltitudeBombing { cluster: true })),
+            7
+        );
         assert_eq!(sbf_to_hit(&a2g(SbfA2G::DiveBombing { cluster: true })), 6);
     }
 
@@ -1801,7 +2039,12 @@ mod tests {
         use crate::domain::{ArcCard, ArcDamage, FiringArc};
         let card = ArcCard {
             front: FiringArc {
-                std: ArcDamage { s: "5".into(), m: "5".into(), l: "3".into(), e: "0".into() },
+                std: ArcDamage {
+                    s: "5".into(),
+                    m: "5".into(),
+                    l: "3".into(),
+                    e: "0".into(),
+                },
                 ..Default::default()
             },
             ..Default::default()
@@ -1833,7 +2076,11 @@ mod tests {
         assert_eq!(capital_range(SbfRange::Long, ScAp), SbfRange::Medium);
         assert_eq!(capital_range(SbfRange::Medium, Msl), SbfRange::Short);
         assert_eq!(capital_range(SbfRange::Short, Cap), SbfRange::Short);
-        assert_eq!(capital_range(SbfRange::Long, Std), SbfRange::Long, "STD unaffected");
+        assert_eq!(
+            capital_range(SbfRange::Long, Std),
+            SbfRange::Long,
+            "STD unaffected"
+        );
     }
 
     #[test]
@@ -1845,27 +2092,95 @@ mod tests {
         assert_eq!(capital(ScAp).to_hit_mod(), 2);
         assert_eq!(capital(Msl).to_hit_mod(), 0);
         assert_eq!(
-            SbfCapital { target_is_large_craft: true, ..base }.to_hit_mod(),
+            SbfCapital {
+                target_is_large_craft: true,
+                ..base
+            }
+            .to_hit_mod(),
             0,
             "weapon-class penalty waived vs a large-craft target"
         );
         // Additive rows.
-        assert_eq!(SbfCapital { atmospheric: true, ..base }.to_hit_mod(), 5);
-        assert_eq!(SbfCapital { crippled: true, ..base }.to_hit_mod(), 1);
-        assert_eq!(SbfCapital { grappled: true, ..base }.to_hit_mod(), -1);
-        assert_eq!(SbfCapital { acm: SbfAcm::AdjacentSector, ..base }.to_hit_mod(), 5);
-        assert_eq!(SbfCapital { screen: 7, ..base }.to_hit_mod(), 3 + 4, "SCR capped at +4");
-        assert_eq!(SbfCapital { naval_c3: true, teleoperated: true, ..base }.to_hit_mod(), 1);
+        assert_eq!(
+            SbfCapital {
+                atmospheric: true,
+                ..base
+            }
+            .to_hit_mod(),
+            5
+        );
+        assert_eq!(
+            SbfCapital {
+                crippled: true,
+                ..base
+            }
+            .to_hit_mod(),
+            1
+        );
+        assert_eq!(
+            SbfCapital {
+                grappled: true,
+                ..base
+            }
+            .to_hit_mod(),
+            -1
+        );
+        assert_eq!(
+            SbfCapital {
+                acm: SbfAcm::AdjacentSector,
+                ..base
+            }
+            .to_hit_mod(),
+            5
+        );
+        assert_eq!(
+            SbfCapital { screen: 7, ..base }.to_hit_mod(),
+            3 + 4,
+            "SCR capped at +4"
+        );
+        assert_eq!(
+            SbfCapital {
+                naval_c3: true,
+                teleoperated: true,
+                ..base
+            }
+            .to_hit_mod(),
+            1
+        );
         // Point defense only bites a missile: 1 pt → +1; 2+ pts → auto-fail.
-        assert_eq!(SbfCapital { point_defense: 1, ..capital(Msl) }.to_hit_mod(), 1);
-        assert!(SbfCapital { point_defense: 2, ..capital(Msl) }.auto_fail());
-        assert!(!SbfCapital { point_defense: 1, ..capital(Msl) }.auto_fail());
+        assert_eq!(
+            SbfCapital {
+                point_defense: 1,
+                ..capital(Msl)
+            }
+            .to_hit_mod(),
+            1
+        );
+        assert!(SbfCapital {
+            point_defense: 2,
+            ..capital(Msl)
+        }
+        .auto_fail());
+        assert!(!SbfCapital {
+            point_defense: 1,
+            ..capital(Msl)
+        }
+        .auto_fail());
         assert!(
-            !SbfCapital { point_defense: 3, ..base }.auto_fail(),
+            !SbfCapital {
+                point_defense: 3,
+                ..base
+            }
+            .auto_fail(),
             "point defense only auto-fails missile attacks"
         );
         assert!(
-            !SbfCapital { point_defense: 2, high_speed: true, ..capital(Msl) }.auto_fail(),
+            !SbfCapital {
+                point_defense: 2,
+                high_speed: true,
+                ..capital(Msl)
+            }
+            .auto_fail(),
             "point defense has no effect on a high-speed attack (p.194)"
         );
         // High-Speed +8 keeps class + atmospheric but suppresses NC3 / teleoperated / PD / screen.
@@ -1886,7 +2201,10 @@ mod tests {
         // −1 bracket = +1) + CAP +3 = 8. The +2 airborne row is gated off (attacker is aero).
         let ctx = SbfToHitCtx {
             range: SbfRange::Long,
-            aero: Some(SbfAeroShot { capital: Some(capital(WeaponClass::Cap)), ..aero(SbfAeroKind::AirToAir) }),
+            aero: Some(SbfAeroShot {
+                capital: Some(capital(WeaponClass::Cap)),
+                ..aero(SbfAeroKind::AirToAir)
+            }),
             ..shot()
         };
         assert_eq!(sbf_to_hit(&ctx), 8);
@@ -1907,37 +2225,70 @@ mod tests {
     fn aero_to_hit_misc_rows() {
         // Behind the target −2; grounded DropShip −2.
         let behind = SbfToHitCtx {
-            aero: Some(SbfAeroShot { behind_target: true, ..aero(SbfAeroKind::AirToAir) }),
+            aero: Some(SbfAeroShot {
+                behind_target: true,
+                ..aero(SbfAeroKind::AirToAir)
+            }),
             ..shot()
         };
         assert_eq!(sbf_to_hit(&behind), 3);
         let grounded_ds = SbfToHitCtx {
-            aero: Some(SbfAeroShot { grounded_dropship: true, ..aero(SbfAeroKind::AirToAir) }),
+            aero: Some(SbfAeroShot {
+                grounded_dropship: true,
+                ..aero(SbfAeroKind::AirToAir)
+            }),
             ..shot()
         };
         assert_eq!(sbf_to_hit(&grounded_ds), 3);
         // SV fire control: AFC +0 / BFC +1 / neither +2.
         let sv = |fc| SbfToHitCtx {
-            aero: Some(SbfAeroShot { sv_fire_control: fc, ..aero(SbfAeroKind::AirToAir) }),
+            aero: Some(SbfAeroShot {
+                sv_fire_control: fc,
+                ..aero(SbfAeroKind::AirToAir)
+            }),
             ..shot()
         };
         assert_eq!(sbf_to_hit(&sv(SbfSvFireControl::Afc)), 5);
         assert_eq!(sbf_to_hit(&sv(SbfSvFireControl::Bfc)), 6);
         assert_eq!(sbf_to_hit(&sv(SbfSvFireControl::None)), 7);
         // The ground `bfc` flag is superseded by the SV ladder under an aero shot (never both) …
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { bfc: true, ..sv(SbfSvFireControl::Bfc) }), 6);
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { bfc: true, ..sv(SbfSvFireControl::Afc) }), 5);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                bfc: true,
+                ..sv(SbfSvFireControl::Bfc)
+            }),
+            6
+        );
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                bfc: true,
+                ..sv(SbfSvFireControl::Afc)
+            }),
+            5
+        );
         // … while the drone +1 is the same row on both tables — applied once.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { drone: true, ..a2a() }), 6);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                drone: true,
+                ..a2a()
+            }),
+            6
+        );
         // Targeting crits are +2 each on the p.179 table (fn: "may apply multiple times") vs the
         // ground table's +1 each.
         assert_eq!(
-            sbf_to_hit(&SbfToHitCtx { firing_unit_targeting_crits: 2, ..a2a() }),
+            sbf_to_hit(&SbfToHitCtx {
+                firing_unit_targeting_crits: 2,
+                ..a2a()
+            }),
             9,
             "+2 per targeting crit under an aero shot"
         );
         assert_eq!(
-            sbf_to_hit(&SbfToHitCtx { firing_unit_targeting_crits: 2, ..shot() }),
+            sbf_to_hit(&SbfToHitCtx {
+                firing_unit_targeting_crits: 2,
+                ..shot()
+            }),
             7,
             "+1 per targeting crit on a ground shot"
         );
@@ -1961,13 +2312,35 @@ mod tests {
         assert_eq!(sbf_to_hit(&legs(SbfAeroKind::AirToAir)), 5);
         assert_eq!(sbf_to_hit(&legs(SbfAeroKind::GroundToAir)), 5);
         // Bombing skips the target's movement/type/terrain (p.180 Step 3).
-        assert_eq!(sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::AltitudeBombing { cluster: false }))), 8);
-        assert_eq!(sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::DiveBombing { cluster: false }))), 7);
+        assert_eq!(
+            sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::AltitudeBombing {
+                cluster: false
+            }))),
+            8
+        );
+        assert_eq!(
+            sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::DiveBombing {
+                cluster: false
+            }))),
+            7
+        );
         // Strafe/strike keep them (Open Q 25, DECIDED — Step 3 over the Targeting paragraph).
-        assert_eq!(sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::Strafing))), 5 + 4 + 8);
-        assert_eq!(sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::Striking))), 5 + 2 + 8);
+        assert_eq!(
+            sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::Strafing))),
+            5 + 4 + 8
+        );
+        assert_eq!(
+            sbf_to_hit(&legs(SbfAeroKind::A2G(SbfA2G::Striking))),
+            5 + 2 + 8
+        );
         // A ground shot (no aero leg) is untouched by any of this.
-        assert_eq!(sbf_to_hit(&SbfToHitCtx { aero: None, ..legs(SbfAeroKind::AirToAir) }), 13);
+        assert_eq!(
+            sbf_to_hit(&SbfToHitCtx {
+                aero: None,
+                ..legs(SbfAeroKind::AirToAir)
+            }),
+            13
+        );
     }
 
     #[test]
@@ -2009,24 +2382,57 @@ mod tests {
 
     #[test]
     fn band_selection_and_crit_floor() {
-        let ground = DamageVector { s: 5.0, m: 4.0, l: Some(2.0), e: None };
+        let ground = DamageVector {
+            s: 5.0,
+            m: 4.0,
+            l: Some(2.0),
+            e: None,
+        };
         assert_eq!(ground.band(SbfRange::Short), 5.0);
         assert_eq!(ground.band(SbfRange::Medium), 4.0);
         assert_eq!(ground.band(SbfRange::Long), 2.0);
         // No E band → Extreme deals L − 1 (Step 5a), floored at 0.
         assert_eq!(ground.band(SbfRange::Extreme), 1.0);
         assert_eq!(
-            DamageVector { s: 1.0, m: 1.0, l: Some(0.0), e: None }.band(SbfRange::Extreme),
+            DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: Some(0.0),
+                e: None
+            }
+            .band(SbfRange::Extreme),
             0.0
         );
         // An explicit E band (aerospace) wins over the L−1 fallback.
         assert_eq!(
-            DamageVector { s: 3.0, m: 3.0, l: Some(2.0), e: Some(1.0) }.band(SbfRange::Extreme),
+            DamageVector {
+                s: 3.0,
+                m: 3.0,
+                l: Some(2.0),
+                e: Some(1.0)
+            }
+            .band(SbfRange::Extreme),
             1.0
         );
         // Damage crits floor every band at 0 — never negative (§4.2 crit floors).
         let hit3 = reduced_by(ground, 3);
-        assert_eq!(hit3, DamageVector { s: 2.0, m: 1.0, l: Some(0.0), e: None });
-        assert_eq!(reduced_by(ground, 9), DamageVector { s: 0.0, m: 0.0, l: Some(0.0), e: None });
+        assert_eq!(
+            hit3,
+            DamageVector {
+                s: 2.0,
+                m: 1.0,
+                l: Some(0.0),
+                e: None
+            }
+        );
+        assert_eq!(
+            reduced_by(ground, 9),
+            DamageVector {
+                s: 0.0,
+                m: 0.0,
+                l: Some(0.0),
+                e: None
+            }
+        );
     }
 }

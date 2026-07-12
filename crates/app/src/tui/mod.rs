@@ -186,12 +186,48 @@ mod tests {
                 vec![
                     // First column (slots 0-5 -> shown as 1-6) and a second column
                     // (slots 6+ -> restart at 1) to exercise the paper-sheet numbering.
-                    CritSlot { slot: 0, name: "Fusion Engine".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 1, name: "Gyro".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 2, name: "Life Support".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 3, name: "Sensors".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 6, name: "Medium Laser".into(), system: false, hittable: true, ..Default::default() },
-                    CritSlot { slot: 7, name: "SRM 6".into(), system: false, hittable: true, ..Default::default() },
+                    CritSlot {
+                        slot: 0,
+                        name: "Fusion Engine".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 1,
+                        name: "Gyro".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 2,
+                        name: "Life Support".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 3,
+                        name: "Sensors".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 6,
+                        name: "Medium Laser".into(),
+                        system: false,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 7,
+                        name: "SRM 6".into(),
+                        system: false,
+                        hittable: true,
+                        ..Default::default()
+                    },
                 ],
             )]),
             as_stats: AsStats {
@@ -317,7 +353,14 @@ mod tests {
             Location::Rear,
             Location::Turret,
         ] {
-            armor.insert(loc, LocationArmor { armor_max: 20, rear_max: 0, internal_max: 6 });
+            armor.insert(
+                loc,
+                LocationArmor {
+                    armor_max: 20,
+                    rear_max: 0,
+                    internal_max: 6,
+                },
+            );
         }
         m.armor = armor;
         m.as_stats.tp = "CV".into();
@@ -353,7 +396,14 @@ mod tests {
         // Per-trooper suit tracks, as parsed from the sheet's T1..T4 pips (6 armor + the trooper).
         let mut armor = BTreeMap::new();
         for loc in &Location::TROOPERS[..4] {
-            armor.insert(*loc, LocationArmor { armor_max: 6, rear_max: 0, internal_max: 1 });
+            armor.insert(
+                *loc,
+                LocationArmor {
+                    armor_max: 6,
+                    rear_max: 0,
+                    internal_max: 1,
+                },
+            );
         }
         m.armor = armor;
         m.crit_slots = BTreeMap::new();
@@ -454,7 +504,11 @@ mod tests {
         }];
         m.armor = BTreeMap::from([(
             Location::Platoon,
-            LocationArmor { armor_max: 0, rear_max: 0, internal_max: 21 },
+            LocationArmor {
+                armor_max: 0,
+                rear_max: 0,
+                internal_max: 21,
+            },
         )]);
         m.as_stats.tp = "CI".into();
         m.as_stats.movement = "2\"f".into();
@@ -478,11 +532,46 @@ mod tests {
             heat_sinks: 10,
             dissipation: 10,
             armor: BTreeMap::from([
-                (Location::Nose, LocationArmor { armor_max: 12, rear_max: 0, internal_max: 0 }),
-                (Location::LeftWing, LocationArmor { armor_max: 9, rear_max: 0, internal_max: 0 }),
-                (Location::RightWing, LocationArmor { armor_max: 9, rear_max: 0, internal_max: 0 }),
-                (Location::Aft, LocationArmor { armor_max: 7, rear_max: 0, internal_max: 0 }),
-                (Location::AeroSI, LocationArmor { armor_max: 0, rear_max: 0, internal_max: 5 }),
+                (
+                    Location::Nose,
+                    LocationArmor {
+                        armor_max: 12,
+                        rear_max: 0,
+                        internal_max: 0,
+                    },
+                ),
+                (
+                    Location::LeftWing,
+                    LocationArmor {
+                        armor_max: 9,
+                        rear_max: 0,
+                        internal_max: 0,
+                    },
+                ),
+                (
+                    Location::RightWing,
+                    LocationArmor {
+                        armor_max: 9,
+                        rear_max: 0,
+                        internal_max: 0,
+                    },
+                ),
+                (
+                    Location::Aft,
+                    LocationArmor {
+                        armor_max: 7,
+                        rear_max: 0,
+                        internal_max: 0,
+                    },
+                ),
+                (
+                    Location::AeroSI,
+                    LocationArmor {
+                        armor_max: 0,
+                        rear_max: 0,
+                        internal_max: 5,
+                    },
+                ),
             ]),
             weapons: vec![WeaponMount {
                 id: 0,
@@ -598,9 +687,17 @@ mod tests {
         b.bv = 1800;
         b.availability = BTreeMap::from([(13u16, BTreeMap::from([(27u16, 40u8)]))]);
         let mut bundle = Bundle::new(vec![a, b]);
-        bundle.eras = vec![EraInfo { id: 13, name: "Clan Invasion".into(), from: 3050, to: 3061 }];
-        bundle.factions =
-            vec![FactionInfo { id: 27, name: "Draconis Combine".into(), group: "Inner Sphere".into() }];
+        bundle.eras = vec![EraInfo {
+            id: 13,
+            name: "Clan Invasion".into(),
+            from: 3050,
+            to: 3061,
+        }];
+        bundle.factions = vec![FactionInfo {
+            id: 27,
+            name: "Draconis Combine".into(),
+            group: "Inner Sphere".into(),
+        }];
         let mut app = App::new(bundle, Session::new(), "t".into());
 
         // ^G opens the generator on the config stage.
@@ -608,17 +705,27 @@ mod tests {
         let cfg = render(&mut app);
         assert!(cfg.contains("Generate force"), "modal title");
         assert!(cfg.contains("Faction") && cfg.contains("Size") && cfg.contains("Allow rare"));
-        assert!(cfg.contains("Lance"), "size 4 shows the Lance formation name");
+        assert!(
+            cfg.contains("Lance"),
+            "size 4 shows the Lance formation name"
+        );
 
         // Enter rolls; the result stage offers Accept.
         press(&mut app, KeyCode::Enter);
         let preview = render(&mut app);
-        assert!(preview.contains("accept"), "result stage shows the accept hint");
+        assert!(
+            preview.contains("accept"),
+            "result stage shows the accept hint"
+        );
 
         // Enter accepts: the count floor (4) is appended and the modal closes.
         press(&mut app, KeyCode::Enter);
         assert!(app.modal.is_none(), "modal closes after accept");
-        assert_eq!(app.session.mechs.len(), 4, "count floor appended to the roster");
+        assert_eq!(
+            app.session.mechs.len(),
+            4,
+            "count floor appended to the roster"
+        );
     }
 
     /// Build an app whose facet values carry a few factions, for the combo-box tests.
@@ -626,23 +733,45 @@ mod tests {
         use neurohelmet_core::data::bundle::FactionInfo;
         let mut bundle = Bundle::new(vec![sample_mech()]);
         bundle.factions = vec![
-            FactionInfo { id: 1, name: "Draconis Combine".into(), group: "Inner Sphere".into() },
-            FactionInfo { id: 2, name: "Clan Wolf".into(), group: "Clan".into() },
-            FactionInfo { id: 3, name: "Wolf's Dragoons".into(), group: "Mercenary".into() },
-            FactionInfo { id: 4, name: "Federated Suns".into(), group: "Inner Sphere".into() },
+            FactionInfo {
+                id: 1,
+                name: "Draconis Combine".into(),
+                group: "Inner Sphere".into(),
+            },
+            FactionInfo {
+                id: 2,
+                name: "Clan Wolf".into(),
+                group: "Clan".into(),
+            },
+            FactionInfo {
+                id: 3,
+                name: "Wolf's Dragoons".into(),
+                group: "Mercenary".into(),
+            },
+            FactionInfo {
+                id: 4,
+                name: "Federated Suns".into(),
+                group: "Inner Sphere".into(),
+            },
         ];
         App::new(bundle, Session::new(), "t".into())
     }
 
     fn faction_facet_idx() -> usize {
-        super::filters::Facet::ALL.iter().position(|f| *f == super::filters::Facet::Faction).unwrap()
+        super::filters::Facet::ALL
+            .iter()
+            .position(|f| *f == super::filters::Facet::Faction)
+            .unwrap()
     }
 
     #[test]
     fn faction_pick_list_leads_with_any_then_filters_by_substring() {
         let app = app_with_factions();
         let all = app.faction_pick_list("");
-        assert!(all[0].is_none(), "an empty query leads with the (any) clear entry");
+        assert!(
+            all[0].is_none(),
+            "an empty query leads with the (any) clear entry"
+        );
         assert_eq!(all.len(), 5, "(any) + 4 factions");
         // Typing narrows to substring matches, case-insensitive, with no (any) row.
         let wolf = app.faction_pick_list("WOLF");
@@ -655,22 +784,39 @@ mod tests {
     fn faction_combo_box_filters_and_sets() {
         use super::app::Modal;
         let mut app = app_with_factions();
-        app.modal = Some(Modal::Filters { sel: faction_facet_idx() });
+        app.modal = Some(Modal::Filters {
+            sel: faction_facet_idx(),
+        });
         // Enter on the Faction row opens the combo box (not "close modal").
         press(&mut app, KeyCode::Enter);
-        assert!(matches!(app.modal, Some(Modal::FactionPick { .. })), "Enter opens the picker");
+        assert!(
+            matches!(app.modal, Some(Modal::FactionPick { .. })),
+            "Enter opens the picker"
+        );
 
         for c in "wolf".chars() {
             press(&mut app, KeyCode::Char(c));
         }
         let screen = render(&mut app);
-        assert!(screen.contains("Clan Wolf") && screen.contains("Wolf's Dragoons"), "matches shown");
-        assert!(!screen.contains("Federated Suns"), "non-matches filtered out");
+        assert!(
+            screen.contains("Clan Wolf") && screen.contains("Wolf's Dragoons"),
+            "matches shown"
+        );
+        assert!(
+            !screen.contains("Federated Suns"),
+            "non-matches filtered out"
+        );
 
         // Enter commits the top match and returns to the Filters modal.
         press(&mut app, KeyCode::Enter);
-        assert!(matches!(app.modal, Some(Modal::Filters { .. })), "returns to Filters");
-        assert_eq!(app.filters.faction.as_ref().map(|(_, n)| n.as_str()), Some("Clan Wolf"));
+        assert!(
+            matches!(app.modal, Some(Modal::Filters { .. })),
+            "returns to Filters"
+        );
+        assert_eq!(
+            app.filters.faction.as_ref().map(|(_, n)| n.as_str()),
+            Some("Clan Wolf")
+        );
     }
 
     #[test]
@@ -679,15 +825,28 @@ mod tests {
         let mut app = app_with_factions();
         // Pre-set a faction, then open the picker and Esc — the lens is unchanged.
         app.filters.faction = Some((4, "Federated Suns".into()));
-        app.modal = Some(Modal::FactionPick { query: "dra".into(), sel: 0 });
+        app.modal = Some(Modal::FactionPick {
+            query: "dra".into(),
+            sel: 0,
+        });
         press(&mut app, KeyCode::Esc);
         assert!(matches!(app.modal, Some(Modal::Filters { .. })));
-        assert_eq!(app.filters.faction.as_ref().map(|(id, _)| *id), Some(4), "Esc keeps the faction");
+        assert_eq!(
+            app.filters.faction.as_ref().map(|(id, _)| *id),
+            Some(4),
+            "Esc keeps the faction"
+        );
 
         // Reopen, pick the "(any)" entry (row 0 on an empty query) — clears the lens.
-        app.modal = Some(Modal::FactionPick { query: String::new(), sel: 0 });
+        app.modal = Some(Modal::FactionPick {
+            query: String::new(),
+            sel: 0,
+        });
         press(&mut app, KeyCode::Enter);
-        assert!(app.filters.faction.is_none(), "(any) clears the faction lens");
+        assert!(
+            app.filters.faction.is_none(),
+            "(any) clears the faction lens"
+        );
     }
 
     #[test]
@@ -701,7 +860,10 @@ mod tests {
         assert!(screen.contains("Medium Laser"), "weapon row");
         // Atlas: Walk 3 / Run 5 / Jump 0 — the MOVE panel must surface these.
         assert!(screen.contains("MOVE"), "move panel");
-        assert!(screen.contains("Walk 3") && screen.contains("Run 5"), "movement numbers");
+        assert!(
+            screen.contains("Walk 3") && screen.contains("Run 5"),
+            "movement numbers"
+        );
     }
 
     /// Dev-only: render each theme's tracker to montage PNGs so the palettes can be eyeballed
@@ -748,7 +910,8 @@ mod tests {
             let frames: Vec<_> = group.iter().map(|(_, label, t)| frame(label, *t)).collect();
             let w = frames[0].w;
             let fh = frames[0].h;
-            let mut montage = crate::render::Image::new(w, frames.len() * fh + (frames.len() - 1) * GAP);
+            let mut montage =
+                crate::render::Image::new(w, frames.len() * fh + (frames.len() - 1) * GAP);
             for (i, fr) in frames.iter().enumerate() {
                 montage.blit(fr, 0, i * (fh + GAP));
             }
@@ -768,8 +931,10 @@ mod tests {
         use super::profile::{set_profile, DisplayProfile};
         use super::theme::{set_theme, Theme};
         const SCALE: usize = 2;
-        let out =
-            std::path::PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/guide/src/images"));
+        let out = std::path::PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../docs/guide/src/images"
+        ));
         std::fs::create_dir_all(&out).unwrap();
         // A self-contained theme so the PNG has a real background (terminal-reset themes wouldn't).
         set_theme(Theme::catppuccin_mocha());
@@ -794,7 +959,9 @@ mod tests {
         for _ in 0..12 {
             press(&mut app, KeyCode::Char('o')); // heat into the warning band
         }
-        shot(&mut app, 100, 30).write_png(&out.join("classic-tracker.png")).unwrap();
+        shot(&mut app, 100, 30)
+            .write_png(&out.join("classic-tracker.png"))
+            .unwrap();
 
         // 2) Modern (roomy) profile — a lance in the force sidebar.
         set_profile(DisplayProfile::Modern);
@@ -823,7 +990,9 @@ mod tests {
         for _ in 0..10 {
             press(&mut app, KeyCode::Char('o'));
         }
-        shot(&mut app, 120, 34).write_png(&out.join("modern-force.png")).unwrap();
+        shot(&mut app, 120, 34)
+            .write_png(&out.join("modern-force.png"))
+            .unwrap();
 
         set_theme(Theme::pi());
         set_profile(DisplayProfile::Pi);
@@ -895,7 +1064,10 @@ mod tests {
         set_theme(Theme::pi());
         let mut app = app_with_one_mech();
         press_ctrl(&mut app, KeyCode::Char('t'));
-        assert!(matches!(app.modal, Some(Modal::ThemePicker { sel: 0, .. })), "opens on pi");
+        assert!(
+            matches!(app.modal, Some(Modal::ThemePicker { sel: 0, .. })),
+            "opens on pi"
+        );
         press(&mut app, KeyCode::Down);
         assert_eq!(theme(), THEMES[1].2, "Down live-previews the next theme");
         press(&mut app, KeyCode::Enter);
@@ -917,10 +1089,18 @@ mod tests {
         press_ctrl(&mut app, KeyCode::Char('t'));
         press(&mut app, KeyCode::Down); // preview + select the 2nd theme (truecolor)
         press(&mut app, KeyCode::Enter); // commit → save_current writes config.json
-        assert!(app.status.contains("saved"), "status confirms the save: {}", app.status);
+        assert!(
+            app.status.contains("saved"),
+            "status confirms the save: {}",
+            app.status
+        );
         // The saved file names the picked theme; loading it back resolves to that theme.
         let cfg = Config::load();
-        assert_eq!(cfg.theme.as_deref(), Some(super::theme::THEMES[1].0), "saved the picked theme");
+        assert_eq!(
+            cfg.theme.as_deref(),
+            Some(super::theme::THEMES[1].0),
+            "saved the picked theme"
+        );
         set_theme(Theme::pi()); // restore for other tests on this thread
     }
 
@@ -943,8 +1123,16 @@ mod tests {
         press(&mut app, KeyCode::Right); // toggle the icon set live
         assert_eq!(icons(), IconSet::Nerd, "←→ toggles the icon set live");
         press(&mut app, KeyCode::Enter); // commit → persists to config.json
-        assert!(app.status.contains("saved"), "status confirms the save: {}", app.status);
-        assert_eq!(Config::load().icons.as_deref(), Some("nerd"), "saved the picked icon set");
+        assert!(
+            app.status.contains("saved"),
+            "status confirms the save: {}",
+            app.status
+        );
+        assert_eq!(
+            Config::load().icons.as_deref(),
+            Some("nerd"),
+            "saved the picked icon set"
+        );
 
         // Esc restores the icon set in effect when the picker opened.
         press_ctrl(&mut app, KeyCode::Char('t'));
@@ -952,7 +1140,11 @@ mod tests {
         press(&mut app, KeyCode::Right); // back to Ascii live
         assert_eq!(icons(), IconSet::Ascii);
         press(&mut app, KeyCode::Esc);
-        assert_eq!(icons(), IconSet::Nerd, "Esc restores the icon set from when the picker opened");
+        assert_eq!(
+            icons(),
+            IconSet::Nerd,
+            "Esc restores the icon set from when the picker opened"
+        );
         set_icons(IconSet::Ascii); // restore for other tests on this thread
     }
 
@@ -965,7 +1157,12 @@ mod tests {
         let _guard = config_test_guard(); // shares config.json with the other save tests
         isolate_data_dir();
         // Seed a config carrying a log setting the Ctrl-T picker knows nothing about.
-        Config { log_repo: Some("/srv/logs".into()), ..Default::default() }.save().unwrap();
+        Config {
+            log_repo: Some("/srv/logs".into()),
+            ..Default::default()
+        }
+        .save()
+        .unwrap();
         // A picker commit saves the live display choices...
         set_theme(Theme::pi());
         set_profile(DisplayProfile::Pi);
@@ -973,7 +1170,11 @@ mod tests {
         save_current().unwrap();
         // ...without dropping the hand-edited log_repo (the pre-fix bug clobbered it).
         let cfg = Config::load();
-        assert_eq!(cfg.log_repo.as_deref(), Some("/srv/logs"), "save_current kept log_repo");
+        assert_eq!(
+            cfg.log_repo.as_deref(),
+            Some("/srv/logs"),
+            "save_current kept log_repo"
+        );
         assert!(cfg.theme.is_some(), "and still recorded the picked theme");
     }
 
@@ -990,13 +1191,21 @@ mod tests {
         for _ in 0..THEMES.len() {
             press(&mut app, KeyCode::Down);
         }
-        assert_eq!(theme(), THEMES[THEMES.len() - 1].2, "moving through theme rows previews them");
+        assert_eq!(
+            theme(),
+            THEMES[THEMES.len() - 1].2,
+            "moving through theme rows previews them"
+        );
         press(&mut app, KeyCode::Right); // toggle the layout row live
         assert_eq!(profile(), DisplayProfile::Modern, "←→ toggles layout live");
         press(&mut app, KeyCode::Esc);
         assert!(app.modal.is_none());
         assert_eq!(theme(), Theme::pi(), "Esc restores the original theme");
-        assert_eq!(profile(), DisplayProfile::Pi, "Esc restores the original layout");
+        assert_eq!(
+            profile(),
+            DisplayProfile::Pi,
+            "Esc restores the original layout"
+        );
         set_theme(Theme::pi()); // restore for other tests on this thread
     }
 
@@ -1012,17 +1221,33 @@ mod tests {
             screen.contains('●') || screen.contains('◐') || screen.contains('✖'),
             "a condition glyph is shown\n{screen}"
         );
-        assert!(screen.contains("BV"), "force total in the sidebar footer\n{screen}");
+        assert!(
+            screen.contains("BV"),
+            "force total in the sidebar footer\n{screen}"
+        );
         // The unit is still drawn in the (narrower) main area alongside the sidebar.
-        assert!(screen.contains("HEAT") && screen.contains("Medium Laser"), "main view intact");
+        assert!(
+            screen.contains("HEAT") && screen.contains("Medium Laser"),
+            "main view intact"
+        );
         // The redundant top tabs (rendered as "1:Atlas") are dropped when the sidebar is shown.
-        assert!(!screen.contains("1:Atlas"), "top roster tabs collapsed under the sidebar\n{screen}");
+        assert!(
+            !screen.contains("1:Atlas"),
+            "top roster tabs collapsed under the sidebar\n{screen}"
+        );
     }
 
     #[test]
     fn modern_alpha_strike_grid_grows_with_space() {
         use super::profile::{set_profile, DisplayProfile};
-        let names = ["AlphaOne", "AlphaTwo", "AlphaThree", "AlphaFour", "AlphaFive", "AlphaSix"];
+        let names = [
+            "AlphaOne",
+            "AlphaTwo",
+            "AlphaThree",
+            "AlphaFour",
+            "AlphaFive",
+            "AlphaSix",
+        ];
         let mechs: Vec<Mech> = names
             .iter()
             .map(|n| {
@@ -1049,19 +1274,34 @@ mod tests {
 
         // Big Modern: all six cards fit on one page (3×3), so there's no paging indicator.
         for n in names {
-            assert!(big.contains(n), "{n} should appear on the big Modern grid\n{big}");
+            assert!(
+                big.contains(n),
+                "{n} should appear on the big Modern grid\n{big}"
+            );
         }
-        assert!(!big.contains("page 1/"), "all six fit one page on the big grid\n{big}");
+        assert!(
+            !big.contains("page 1/"),
+            "all six fit one page on the big grid\n{big}"
+        );
         // Terse Pi 2×2 fits only four per page, so the roster pages — shown by the indicator.
-        assert!(small.contains("page 1/2"), "Pi 2×2 pages the roster (page 1/2)\n{small}");
+        assert!(
+            small.contains("page 1/2"),
+            "Pi 2×2 pages the roster (page 1/2)\n{small}"
+        );
     }
 
     #[test]
     fn pi_profile_has_no_sidebar() {
         let mut app = app_with_one_mech();
         let screen = render(&mut app); // default Pi profile
-        assert!(!screen.contains(" Force "), "no force sidebar in the Pi profile\n{screen}");
-        assert!(screen.contains("1:Atlas"), "Pi profile keeps the top roster tabs\n{screen}");
+        assert!(
+            !screen.contains(" Force "),
+            "no force sidebar in the Pi profile\n{screen}"
+        );
+        assert!(
+            screen.contains("1:Atlas"),
+            "Pi profile keeps the top roster tabs\n{screen}"
+        );
     }
 
     #[test]
@@ -1088,7 +1328,10 @@ mod tests {
         app.filters.tech = Some("Clan".into());
         app.picker.refilter(&app.names, &app.bundle, &app.filters);
         assert_eq!(app.picker.filtered.len(), 1);
-        assert_eq!(app.bundle.get(app.picker.filtered[0]).unwrap().chassis, "Timber Wolf");
+        assert_eq!(
+            app.bundle.get(app.picker.filtered[0]).unwrap().chassis,
+            "Timber Wolf"
+        );
 
         // Add a Type=Vehicle filter on top → nothing matches (Clan AND Vehicle).
         app.filters.unit_type = Some(crate::tui::filters::TypeFilter::Unit(UnitType::Vehicle));
@@ -1117,7 +1360,10 @@ mod tests {
         assert_eq!(app.filters.year_min, Some(3000));
         // Only the Clan Timber Wolf (3055) is ≥ 3000; the Atlas/Manticore (2755) drop out.
         assert_eq!(app.picker.filtered.len(), 1);
-        assert_eq!(app.bundle.get(app.picker.filtered[0]).unwrap().chassis, "Timber Wolf");
+        assert_eq!(
+            app.bundle.get(app.picker.filtered[0]).unwrap().chassis,
+            "Timber Wolf"
+        );
 
         // Move to Year ≤ and cap at 3050 → the Timber Wolf (3055) now drops too.
         press(&mut app, KeyCode::Down);
@@ -1317,7 +1563,10 @@ mod tests {
     fn e2e_alpha_strike_card() {
         use super::app::Screen;
         let mut app = app_with_as_mech(sample_mech());
-        assert!(matches!(app.screen, Screen::AlphaStrike), "AS session shows the card");
+        assert!(
+            matches!(app.screen, Screen::AlphaStrike),
+            "AS session shows the card"
+        );
         let screen = render(&mut app);
         assert!(screen.contains("Atlas AS7-D"), "card titled with the unit");
         assert!(screen.contains("PV 52"));
@@ -1349,7 +1598,11 @@ mod tests {
             press(&mut app, KeyCode::Char(' '));
         }
         let tm = app.session.active_mech().unwrap();
-        assert_eq!(tm.internal_remaining(Location::AeroSI), 2, "armor overflow hit SI");
+        assert_eq!(
+            tm.internal_remaining(Location::AeroSI),
+            2,
+            "armor overflow hit SI"
+        );
         // Set velocity + altitude via the `v` editor: v, down→altitude, but first bump velocity.
         press(&mut app, KeyCode::Char('v'));
         for _ in 0..7 {
@@ -1360,16 +1613,31 @@ mod tests {
             press(&mut app, KeyCode::Right); // altitude 5
         }
         press(&mut app, KeyCode::Esc);
-        assert_eq!((app.session.active_mech().unwrap().velocity, app.session.active_mech().unwrap().altitude), (7, 5));
+        assert_eq!(
+            (
+                app.session.active_mech().unwrap().velocity,
+                app.session.active_mech().unwrap().altitude
+            ),
+            (7, 5)
+        );
         // Heat to 21: aero scale shows control + to-hit + shutdown + pilot — never an MP penalty.
         for _ in 0..21 {
             press(&mut app, KeyCode::Char('o'));
         }
         let screen = render(&mut app);
-        assert!(screen.contains("NOS") && screen.contains("SI"), "arc + SI doll");
+        assert!(
+            screen.contains("NOS") && screen.contains("SI"),
+            "arc + SI doll"
+        );
         assert!(screen.contains("Thrust safe 5"), "heat does not cut thrust");
-        assert!(screen.contains("Vel 7") && screen.contains("Alt 5"), "velocity + altitude");
-        assert!(screen.contains("control") && screen.contains("pilot"), "aero heat scale");
+        assert!(
+            screen.contains("Vel 7") && screen.contains("Alt 5"),
+            "velocity + altitude"
+        );
+        assert!(
+            screen.contains("control") && screen.contains("pilot"),
+            "aero heat scale"
+        );
         assert!(!screen.contains("MP"), "no 'Mech MP penalty for aero heat");
         assert!(screen.contains("ER Large Laser"), "arc weapon kept");
         insta::assert_snapshot!(screen);
@@ -1382,15 +1650,26 @@ mod tests {
         let mut app = App::new(bundle, Session::new(), "test".to_string());
         press(&mut app, KeyCode::Enter); // open the pre-add skill/cost modal
         press(&mut app, KeyCode::Enter); // commit the add
-        assert_eq!(app.session.mechs.len(), 1, "aerospace added in a Classic session");
+        assert_eq!(
+            app.session.mechs.len(),
+            1,
+            "aerospace added in a Classic session"
+        );
 
         // And in Alpha Strike.
         let bundle = Bundle::new(vec![sample_aero_fighter()]);
-        let mut app =
-            App::new(bundle, Session::new_with_mode(GameMode::AlphaStrike), "test".to_string());
+        let mut app = App::new(
+            bundle,
+            Session::new_with_mode(GameMode::AlphaStrike),
+            "test".to_string(),
+        );
         press(&mut app, KeyCode::Enter); // open the pre-add skill/cost modal
         press(&mut app, KeyCode::Enter); // commit the add
-        assert_eq!(app.session.mechs.len(), 1, "aerospace added in Alpha Strike");
+        assert_eq!(
+            app.session.mechs.len(),
+            1,
+            "aerospace added in Alpha Strike"
+        );
     }
 
     #[test]
@@ -1455,7 +1734,11 @@ mod tests {
             large_craft.len()
         );
         for m in &large_craft {
-            assert!(m.is_aerospace(), "{} (DropShip/Small Craft) should be aerospace", m.display_name());
+            assert!(
+                m.is_aerospace(),
+                "{} (DropShip/Small Craft) should be aerospace",
+                m.display_name()
+            );
             assert!(
                 m.as_stats.arcs.is_some(),
                 "{} (DropShip/Small Craft) should carry the multi-arc card",
@@ -1493,10 +1776,22 @@ mod tests {
             capital.len()
         );
         for m in &capital {
-            assert!(m.is_aerospace(), "{} should be aerospace-typed", m.display_name());
-            assert!(m.as_stats.arcs.is_some(), "{} should carry the multi-arc card", m.display_name());
+            assert!(
+                m.is_aerospace(),
+                "{} should be aerospace-typed",
+                m.display_name()
+            );
+            assert!(
+                m.as_stats.arcs.is_some(),
+                "{} should carry the multi-arc card",
+                m.display_name()
+            );
             let el = bf_element_of(&neurohelmet_core::session::TrackedMech::new((*m).clone()));
-            assert!(bf_is_aero(&el), "{} fights at aerospace ranges", m.display_name());
+            assert!(
+                bf_is_aero(&el),
+                "{} fights at aerospace ranges",
+                m.display_name()
+            );
             assert_eq!(
                 bf_crit_col(&el),
                 Some(BfCritCol::JumpShip),
@@ -1517,7 +1812,10 @@ mod tests {
                 .any(|a| !a.cap.s.is_empty() && a.cap.s != "0"),
             "the Aegis carries capital (CAP) weapons"
         );
-        assert!(aegis.as_stats.dt_rating > 0, "the Aegis has a baked DT rating");
+        assert!(
+            aegis.as_stats.dt_rating > 0,
+            "the Aegis has a baked DT rating"
+        );
         assert!(
             capital.iter().any(|m| m.as_stats.door_count > 0),
             "some capital ship bakes a transport-bay door count"
@@ -1532,7 +1830,10 @@ mod tests {
             press(&mut app, KeyCode::Char('o')); // heat up to 4 (the S box)
         }
         let screen = render(&mut app);
-        assert!(screen.contains("SHUTDOWN"), "heat 4 shows the shutdown banner");
+        assert!(
+            screen.contains("SHUTDOWN"),
+            "heat 4 shows the shutdown banner"
+        );
         assert!(screen.contains("[S]"), "heat dial marks the S box");
         assert!(app.session.active_mech().unwrap().as_shutdown());
         insta::assert_snapshot!(screen);
@@ -1549,7 +1850,10 @@ mod tests {
         press(&mut app, KeyCode::Char('1'));
         assert!(app.session.as_ground_scale);
         let hexes = render(&mut app);
-        assert!(hexes.contains("MV 3"), "ground scale shows hexes (6\" -> 3)");
+        assert!(
+            hexes.contains("MV 3"),
+            "ground scale shows hexes (6\" -> 3)"
+        );
         assert!(!hexes.contains("MV 6\""), "no inches in ground scale");
         assert!(hexes.contains("1:1 hex scale"), "footer marks the scale");
         assert!(hexes.contains("S 0-3"), "footer shows hex range brackets");
@@ -1609,7 +1913,10 @@ mod tests {
         // exercises the weapons (TIC) table, the 2d6 hit-location armor diagram, the 0–5 heat
         // ladder, and the pilot condition monitor.
         let mut app = app_with_override(combat_mech());
-        assert!(matches!(app.screen, Screen::Override), "Override session shows the live card");
+        assert!(
+            matches!(app.screen, Screen::Override),
+            "Override session shows the live card"
+        );
         let screen = render(&mut app);
         assert!(screen.contains("BattleMech"), "unit type");
         assert!(screen.contains("AC/20"), "weapon row");
@@ -1630,22 +1937,47 @@ mod tests {
         // The doll cursor starts on the centre torso; move up to the head, then Space marks one
         // armor pip off its front.
         press(&mut app, KeyCode::Up); // Torso -> Head
-        let before = app.session.active_mech().unwrap().ov_armor_remaining(Location::Head);
+        let before = app
+            .session
+            .active_mech()
+            .unwrap()
+            .ov_armor_remaining(Location::Head);
         press(&mut app, KeyCode::Char(' '));
-        let after = app.session.active_mech().unwrap().ov_armor_remaining(Location::Head);
+        let after = app
+            .session
+            .active_mech()
+            .unwrap()
+            .ov_armor_remaining(Location::Head);
         assert_eq!(after, before - 1, "Space damages the cursored region");
         // Tab to the weapons panel, fire the first TIC: heat climbs off 0.
         press(&mut app, KeyCode::Tab);
         press(&mut app, KeyCode::Char(' '));
-        assert!(app.session.active_mech().unwrap().ov_heat > 0, "firing a TIC banks heat");
-        assert!(app.session.active_mech().unwrap().ov_fired.contains(&0), "TIC marked fired");
+        assert!(
+            app.session.active_mech().unwrap().ov_heat > 0,
+            "firing a TIC banks heat"
+        );
+        assert!(
+            app.session.active_mech().unwrap().ov_fired.contains(&0),
+            "TIC marked fired"
+        );
         // Pilot hit marks the first condition-monitor box.
         press(&mut app, KeyCode::Char('p'));
-        assert_eq!(app.session.active_mech().unwrap().pilot_hits, 1, "pilot hit recorded");
+        assert_eq!(
+            app.session.active_mech().unwrap().pilot_hits,
+            1,
+            "pilot hit recorded"
+        );
         // End-turn dissipates the banked heat back down by sinks.
         press(&mut app, KeyCode::Char('e'));
-        assert_eq!(app.session.active_mech().unwrap().ov_heat, 0, "end-turn dissipates heat");
-        assert!(app.session.active_mech().unwrap().ov_fired.is_empty(), "fired marks cleared");
+        assert_eq!(
+            app.session.active_mech().unwrap().ov_heat,
+            0,
+            "end-turn dissipates heat"
+        );
+        assert!(
+            app.session.active_mech().unwrap().ov_fired.is_empty(),
+            "fired marks cleared"
+        );
         insta::assert_snapshot!(render(&mut app));
     }
 
@@ -1659,9 +1991,15 @@ mod tests {
         assert!(screen.contains("fire TIC"), "Override-specific help");
         assert!(screen.contains("Armor panel"), "armor panel section");
         assert!(!screen.contains("GATOR"), "no Classic GATOR entry");
-        assert!(!screen.contains("dice reference"), "no Classic dice-reference entry");
+        assert!(
+            !screen.contains("dice reference"),
+            "no Classic dice-reference entry"
+        );
         // DFA attribution is shown with permission — keep it visible in the Override help.
-        assert!(screen.contains("Death From Above Wargaming"), "DFA attribution present");
+        assert!(
+            screen.contains("Death From Above Wargaming"),
+            "DFA attribution present"
+        );
         assert!(screen.contains("dfawargaming.com"), "DFA link present");
         insta::assert_snapshot!(screen);
     }
@@ -1691,13 +2029,21 @@ mod tests {
         press(&mut app, KeyCode::Char(' ')); // record one actuator hit
         press(&mut app, KeyCode::Esc);
         let fx = app.session.active_mech().unwrap().ov_crit_effects();
-        assert_eq!((fx.move_penalty, fx.tmm_penalty), (2, 1), "actuator crit applies");
+        assert_eq!(
+            (fx.move_penalty, fx.tmm_penalty),
+            (2, 1),
+            "actuator crit applies"
+        );
         let screen = render(&mut app);
         assert!(screen.contains("Crits"), "crit-effects summary line");
         assert!(screen.contains("move"), "move penalty summarised");
         // The region carries a crit marker.
         assert!(
-            app.session.active_mech().unwrap().ov_crit_count(Location::LeftLeg, 1) == 1,
+            app.session
+                .active_mech()
+                .unwrap()
+                .ov_crit_count(Location::LeftLeg, 1)
+                == 1,
             "leg actuator hit recorded"
         );
         insta::assert_snapshot!(screen);
@@ -1715,7 +2061,11 @@ mod tests {
         // Row 0 = target TMM (attacker movement is set via `v`, not here); bump it twice.
         press(&mut app, KeyCode::Char(' '));
         press(&mut app, KeyCode::Char(' '));
-        assert_eq!(app.session.active_mech().unwrap().ov_shot.target_tmm, 2, "TMM set");
+        assert_eq!(
+            app.session.active_mech().unwrap().ov_shot.target_tmm,
+            2,
+            "TMM set"
+        );
         assert_eq!(
             app.session.active_mech().unwrap().ov_to_hit(0),
             base + 2,
@@ -1726,7 +2076,10 @@ mod tests {
         // summary.
         press(&mut app, KeyCode::Esc);
         let card = render(&mut app);
-        assert!(card.contains("Rng"), "selected-weapon range/to-hit detail on the panel");
+        assert!(
+            card.contains("Rng"),
+            "selected-weapon range/to-hit detail on the panel"
+        );
         assert!(card.contains("Shot"), "shot-context summary on the panel");
     }
 
@@ -1738,10 +2091,16 @@ mod tests {
         for _ in 0..10 {
             press(&mut app, KeyCode::Char(' '));
         }
-        assert!(app.session.active_mech().unwrap().ov_psr_due(), "massive damage owes a PSR");
+        assert!(
+            app.session.active_mech().unwrap().ov_psr_due(),
+            "massive damage owes a PSR"
+        );
         let screen = render(&mut app);
         assert!(screen.contains("PSR"), "PSR prompt shown");
-        assert!(screen.contains("massive"), "massive-damage situation listed");
+        assert!(
+            screen.contains("massive"),
+            "massive-damage situation listed"
+        );
         insta::assert_snapshot!(screen);
         // Shutting down forces an automatic-failure PSR.
         press(&mut app, KeyCode::Char('x'));
@@ -1750,7 +2109,10 @@ mod tests {
             Some("shutdown"),
             "shutdown auto-fails the PSR"
         );
-        assert!(render(&mut app).contains("auto-fail"), "auto-fail prompt shown");
+        assert!(
+            render(&mut app).contains("auto-fail"),
+            "auto-fail prompt shown"
+        );
     }
 
     #[test]
@@ -1761,10 +2123,17 @@ mod tests {
         let mut app = app_with_override(combat_mech());
         let standstill = app.session.active_mech().unwrap().ov_to_hit(0);
         press(&mut app, KeyCode::Char('v'));
-        assert!(render(&mut app).contains("Movement"), "movement editor open");
+        assert!(
+            render(&mut app).contains("Movement"),
+            "movement editor open"
+        );
         press(&mut app, KeyCode::Char(' ')); // row 0: cycle Stationary -> Walked
         press(&mut app, KeyCode::Esc);
-        assert_eq!(app.session.active_mech().unwrap().move_mode, MoveMode::Walked, "move mode set");
+        assert_eq!(
+            app.session.active_mech().unwrap().move_mode,
+            MoveMode::Walked,
+            "move mode set"
+        );
         assert_eq!(
             app.session.active_mech().unwrap().ov_to_hit(0),
             standstill + 1,
@@ -1779,10 +2148,16 @@ mod tests {
     fn e2e_override_physicals() {
         // §34.8: 'Mechs show Punch ⌈Mass/30⌉ / Kick ⌈Mass/15⌉. Atlas is 100t → 4 / 7.
         let mut app = app_with_override(combat_mech());
-        assert!(render(&mut app).contains("Punch/Kick 4 / 7"), "physical-attack damage on the card");
+        assert!(
+            render(&mut app).contains("Punch/Kick 4 / 7"),
+            "physical-attack damage on the card"
+        );
         // Vehicles have no physical row.
         let mut veh = app_with_override(sample_vehicle());
-        assert!(!render(&mut veh).contains("Punch/Kick"), "no physicals for vehicles");
+        assert!(
+            !render(&mut veh).contains("Punch/Kick"),
+            "no physicals for vehicles"
+        );
     }
 
     #[test]
@@ -1809,8 +2184,14 @@ mod tests {
         let transcript = std::fs::read_to_string(dir.join("transcript.txt")).unwrap();
         // The Override card's signatures (a doll hit-location box + the heat ladder), which the
         // Classic record sheet does not render.
-        assert!(transcript.contains("HD 12"), "Override doll box in the export");
-        assert!(transcript.contains("Automatic Shutdown"), "Override heat ladder in the export");
+        assert!(
+            transcript.contains("HD 12"),
+            "Override doll box in the export"
+        );
+        assert!(
+            transcript.contains("Automatic Shutdown"),
+            "Override heat ladder in the export"
+        );
         let _ = std::fs::remove_file(log::log_file(name));
     }
 
@@ -1821,21 +2202,36 @@ mod tests {
         let mut app = app_with_override(combat_mech());
         press(&mut app, KeyCode::Char('c')); // crit popup on the centre torso
         let popup = render(&mut app);
-        assert!(popup.contains("Ammo here: live"), "live-ammo status in the popup");
+        assert!(
+            popup.contains("Ammo here: live"),
+            "live-ammo status in the popup"
+        );
         press(&mut app, KeyCode::Char(' ')); // mark row 0 = "Ammo (or weapon)"
-        assert!(app.session.active_mech().unwrap().ov_ammo_exploded(), "ammo detonates");
+        assert!(
+            app.session.active_mech().unwrap().ov_ammo_exploded(),
+            "ammo detonates"
+        );
         assert_eq!(
             app.session.active_mech().unwrap().ov_destroyed_reason(),
             Some("ammo"),
             "ammo explosion wrecks the unit"
         );
         let boom = render(&mut app);
-        assert!(boom.contains("EXPLOSION"), "explosion called out in the popup");
+        assert!(
+            boom.contains("EXPLOSION"),
+            "explosion called out in the popup"
+        );
         insta::assert_snapshot!(boom);
         // Marking the bin spent (a) turns the crit into a dud — no explosion.
         press(&mut app, KeyCode::Char('a'));
-        assert!(!app.session.active_mech().unwrap().ov_ammo_exploded(), "spent bin → dud");
-        assert_eq!(app.session.active_mech().unwrap().ov_destroyed_reason(), None);
+        assert!(
+            !app.session.active_mech().unwrap().ov_ammo_exploded(),
+            "spent bin → dud"
+        );
+        assert_eq!(
+            app.session.active_mech().unwrap().ov_destroyed_reason(),
+            None
+        );
     }
 
     #[test]
@@ -1845,7 +2241,10 @@ mod tests {
         let mut app = app_with_override(sample_vehicle());
         let screen = render(&mut app);
         assert!(screen.contains("Combat Vehicle"), "vehicle type");
-        assert!(!screen.contains("Automatic Shutdown"), "no heat ladder for vehicles");
+        assert!(
+            !screen.contains("Automatic Shutdown"),
+            "no heat ladder for vehicles"
+        );
         assert!(screen.contains("Crew"), "crew condition monitor");
         insta::assert_snapshot!(screen);
     }
@@ -1885,15 +2284,26 @@ mod tests {
                 name: "default".into(),
                 mech_count: 1,
                 summary: "Atlas".into(),
-                mode: GameMode::Classic, force_total: 1897, limit: None,
+                mode: GameMode::Classic,
+                force_total: 1897,
+                limit: None,
             },
             SessionMeta {
                 name: "Friday Game".into(),
                 mech_count: 4,
                 summary: "Atlas, Locust, Shadow Hawk +1".into(),
-                mode: GameMode::AlphaStrike, force_total: 174, limit: Some(200),
+                mode: GameMode::AlphaStrike,
+                force_total: 174,
+                limit: Some(200),
             },
-            SessionMeta { name: "scratch".into(), mech_count: 0, summary: "empty".into(), mode: GameMode::Classic, force_total: 0, limit: None },
+            SessionMeta {
+                name: "scratch".into(),
+                mech_count: 0,
+                summary: "empty".into(),
+                mode: GameMode::Classic,
+                force_total: 0,
+                limit: None,
+            },
         ];
         app.sessions_sel = 1;
         app.screen = Screen::Sessions;
@@ -1917,7 +2327,9 @@ mod tests {
             name: "default".into(),
             mech_count: 1,
             summary: "Atlas".into(),
-            mode: GameMode::Classic, force_total: 1897, limit: None,
+            mode: GameMode::Classic,
+            force_total: 1897,
+            limit: None,
         }];
         app.screen = Screen::Sessions;
         app.modal = Some(Modal::Input {
@@ -1962,14 +2374,38 @@ mod tests {
             (
                 Location::CenterTorso,
                 vec![
-                    CritSlot { slot: 0, name: "Fusion Engine".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 1, name: "Fusion Engine".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 2, name: "Fusion Engine".into(), system: true, hittable: true, ..Default::default() },
+                    CritSlot {
+                        slot: 0,
+                        name: "Fusion Engine".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 1,
+                        name: "Fusion Engine".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 2,
+                        name: "Fusion Engine".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
                 ],
             ),
             (
                 Location::RightTorso,
-                vec![CritSlot { slot: 0, name: "AC/20".into(), system: false, hittable: true, ..Default::default() }],
+                vec![CritSlot {
+                    slot: 0,
+                    name: "AC/20".into(),
+                    system: false,
+                    hittable: true,
+                    ..Default::default()
+                }],
             ),
         ]);
         m
@@ -1990,7 +2426,11 @@ mod tests {
         press(&mut app, KeyCode::Char(' ')); // RT slot 0 (AC/20)
         press(&mut app, KeyCode::Esc);
         assert_eq!(app.session.active_mech().unwrap().engine_heat(), 10);
-        assert!(app.session.active_mech().unwrap().is_weapon_disabled(&consequence_mech().weapons[0]));
+        assert!(app
+            .session
+            .active_mech()
+            .unwrap()
+            .is_weapon_disabled(&consequence_mech().weapons[0]));
         insta::assert_snapshot!(render(&mut app));
     }
 
@@ -2049,7 +2489,10 @@ mod tests {
         assert_eq!(tm.dissipation(), tm.spec.dissipation - 2);
         // HEAT panel shows the effective dissipation + the loss tag.
         let screen = render(&mut app);
-        assert!(screen.contains("−2 crit"), "sink loss tag in the HEAT panel");
+        assert!(
+            screen.contains("−2 crit"),
+            "sink loss tag in the HEAT panel"
+        );
         insta::assert_snapshot!(screen);
     }
 
@@ -2062,8 +2505,20 @@ mod tests {
         m.crit_slots = BTreeMap::from([(
             Location::FrontLeftLeg,
             vec![
-                CritSlot { slot: 0, name: "Hip".into(), system: true, hittable: true, ..Default::default() },
-                CritSlot { slot: 1, name: "Upper Leg Actuator".into(), system: true, hittable: true, ..Default::default() },
+                CritSlot {
+                    slot: 0,
+                    name: "Hip".into(),
+                    system: true,
+                    hittable: true,
+                    ..Default::default()
+                },
+                CritSlot {
+                    slot: 1,
+                    name: "Upper Leg Actuator".into(),
+                    system: true,
+                    hittable: true,
+                    ..Default::default()
+                },
             ],
         )]);
         m
@@ -2088,11 +2543,21 @@ mod tests {
         let mut app = app_with_mech(quad_mech());
         let valid = neurohelmet_core::domain::MechConfig::Quad.locations();
         for code in [
-            KeyCode::Left, KeyCode::Left, KeyCode::Down, KeyCode::Down, KeyCode::Right,
-            KeyCode::Right, KeyCode::Up, KeyCode::Up,
+            KeyCode::Left,
+            KeyCode::Left,
+            KeyCode::Down,
+            KeyCode::Down,
+            KeyCode::Right,
+            KeyCode::Right,
+            KeyCode::Up,
+            KeyCode::Up,
         ] {
             press(&mut app, code);
-            assert!(valid.contains(&app.cursor), "cursor on {:?} not valid for a quad", app.cursor);
+            assert!(
+                valid.contains(&app.cursor),
+                "cursor on {:?} not valid for a quad",
+                app.cursor
+            );
         }
     }
 
@@ -2113,9 +2578,17 @@ mod tests {
         let mut app = app_with_one_mech();
         press(&mut app, KeyCode::Char('c'));
         press(&mut app, KeyCode::Char(' ')); // mark slot 0
-        assert!(app.session.active_mech().unwrap().is_crit_hit(Location::CenterTorso, 0));
+        assert!(app
+            .session
+            .active_mech()
+            .unwrap()
+            .is_crit_hit(Location::CenterTorso, 0));
         press(&mut app, KeyCode::Char(' ')); // unmark slot 0
-        assert!(!app.session.active_mech().unwrap().is_crit_hit(Location::CenterTorso, 0));
+        assert!(!app
+            .session
+            .active_mech()
+            .unwrap()
+            .is_crit_hit(Location::CenterTorso, 0));
         press(&mut app, KeyCode::Esc); // close
         assert!(app.modal.is_none());
     }
@@ -2164,7 +2637,13 @@ mod tests {
         ];
         m.crit_slots.insert(
             Location::RightTorso,
-            vec![CritSlot { slot: 0, name: "AC/20 Ammo".into(), system: false, hittable: true, ..Default::default() }],
+            vec![CritSlot {
+                slot: 0,
+                name: "AC/20 Ammo".into(),
+                system: false,
+                hittable: true,
+                ..Default::default()
+            }],
         );
         let mut app = app_with_mech(m);
 
@@ -2172,13 +2651,23 @@ mod tests {
         assert_eq!(app.session.active_mech().unwrap().weapon_bin(1), Some(0));
 
         // Open the RT crit popup on its ammo slot and press `a`.
-        app.modal = Some(Modal::Crit { loc: Location::RightTorso, sel: 0 });
+        app.modal = Some(Modal::Crit {
+            loc: Location::RightTorso,
+            sel: 0,
+        });
         press(&mut app, KeyCode::Char('a'));
 
         let tm = app.session.active_mech().unwrap();
         assert!(tm.is_active_bin(1), "RT bin is now active");
-        assert_eq!(tm.weapon_bin(1), Some(1), "weapon now draws from the RT bin");
-        assert!(app.status.contains("Active bin"), "status confirms the choice");
+        assert_eq!(
+            tm.weapon_bin(1),
+            Some(1),
+            "weapon now draws from the RT bin"
+        );
+        assert!(
+            app.status.contains("Active bin"),
+            "status confirms the choice"
+        );
     }
 
     /// A mech with one LRM bin whose `base_ammo` group offers four munitions, in a bundle whose
@@ -2197,7 +2686,13 @@ mod tests {
         }];
         m.crit_slots.insert(
             Location::LeftTorso,
-            vec![CritSlot { slot: 0, name: "LRM 20 Ammo".into(), system: false, hittable: true, ..Default::default() }],
+            vec![CritSlot {
+                slot: 0,
+                name: "LRM 20 Ammo".into(),
+                system: false,
+                hittable: true,
+                ..Default::default()
+            }],
         );
         let mut bundle = Bundle::new(vec![m.clone()]);
         bundle.munitions.insert(
@@ -2221,18 +2716,30 @@ mod tests {
         use super::app::Modal;
         let mut app = munition_app();
         // Default munition is Standard.
-        assert_eq!(app.session.active_mech().unwrap().bin_munition(0), "Standard");
+        assert_eq!(
+            app.session.active_mech().unwrap().bin_munition(0),
+            "Standard"
+        );
 
         // Open crit on LT, press `t` -> picker opens at the loaded munition (index 0).
-        app.modal = Some(Modal::Crit { loc: Location::LeftTorso, sel: 0 });
+        app.modal = Some(Modal::Crit {
+            loc: Location::LeftTorso,
+            sel: 0,
+        });
         press(&mut app, KeyCode::Char('t'));
-        assert!(matches!(app.modal, Some(Modal::Munition { bin: 0, sel: 0, .. })));
+        assert!(matches!(
+            app.modal,
+            Some(Modal::Munition { bin: 0, sel: 0, .. })
+        ));
 
         // Scroll to Semi-Guided (index 2) and load it; closing returns to the crit popup.
         press(&mut app, KeyCode::Down);
         press(&mut app, KeyCode::Down);
         press(&mut app, KeyCode::Enter);
-        assert_eq!(app.session.active_mech().unwrap().bin_munition(0), "Semi-Guided");
+        assert_eq!(
+            app.session.active_mech().unwrap().bin_munition(0),
+            "Semi-Guided"
+        );
         assert!(matches!(app.modal, Some(Modal::Crit { .. })));
     }
 
@@ -2241,9 +2748,15 @@ mod tests {
         use super::app::Modal;
         // sample_mech's CT slot 0 is the Fusion Engine, not ammo.
         let mut app = app_with_one_mech();
-        app.modal = Some(Modal::Crit { loc: Location::CenterTorso, sel: 0 });
+        app.modal = Some(Modal::Crit {
+            loc: Location::CenterTorso,
+            sel: 0,
+        });
         press(&mut app, KeyCode::Char('t'));
-        assert!(matches!(app.modal, Some(Modal::Crit { .. })), "stays on crit popup");
+        assert!(
+            matches!(app.modal, Some(Modal::Crit { .. })),
+            "stays on crit popup"
+        );
         assert_eq!(app.status, "No munition options");
     }
 
@@ -2251,7 +2764,12 @@ mod tests {
     fn e2e_munition_picker() {
         use super::app::Modal;
         let mut app = munition_app();
-        app.modal = Some(Modal::Munition { loc: Location::LeftTorso, crit_sel: 0, bin: 0, sel: 1 });
+        app.modal = Some(Modal::Munition {
+            loc: Location::LeftTorso,
+            crit_sel: 0,
+            bin: 0,
+            sel: 1,
+        });
         insta::assert_snapshot!(render(&mut app));
     }
 
@@ -2274,10 +2792,22 @@ mod tests {
             count: 1,
         });
         m.equipment = vec![
-            Equipment { name: "Jump Jet".into(), location: Location::LeftLeg },
-            Equipment { name: "Jump Jet".into(), location: Location::RightLeg },
-            Equipment { name: "ECM Suite (Guardian)".into(), location: Location::LeftTorso },
-            Equipment { name: "CASE".into(), location: Location::RightTorso },
+            Equipment {
+                name: "Jump Jet".into(),
+                location: Location::LeftLeg,
+            },
+            Equipment {
+                name: "Jump Jet".into(),
+                location: Location::RightLeg,
+            },
+            Equipment {
+                name: "ECM Suite (Guardian)".into(),
+                location: Location::LeftTorso,
+            },
+            Equipment {
+                name: "CASE".into(),
+                location: Location::RightTorso,
+            },
         ];
         m
     }
@@ -2287,7 +2817,10 @@ mod tests {
         let mut app = app_with_mech(equipped_mech());
         // Gear shows as rows after weapons + ammo.
         let rows = app.equip_rows();
-        let equip_count = rows.iter().filter(|r| matches!(r, EquipRow::Equip(_))).count();
+        let equip_count = rows
+            .iter()
+            .filter(|r| matches!(r, EquipRow::Equip(_)))
+            .count();
         assert_eq!(equip_count, 4, "four gear rows");
 
         // Select the last row (a gear row) and "fire" it -> a harmless no-op with a status.
@@ -2303,9 +2836,15 @@ mod tests {
         press(&mut app, KeyCode::Tab); // focus the equipment panel
         let screen = render(&mut app);
         assert!(screen.contains("EQUIP"), "panel title");
-        assert!(screen.contains("Hatchet"), "physical weapon in the weapon list");
+        assert!(
+            screen.contains("Hatchet"),
+            "physical weapon in the weapon list"
+        );
         assert!(screen.contains("Jump Jet"), "gear listed");
-        assert!(screen.contains("sinks 20× Single"), "heat sinks in HEAT panel");
+        assert!(
+            screen.contains("sinks 20× Single"),
+            "heat sinks in HEAT panel"
+        );
         insta::assert_snapshot!(screen);
     }
 
@@ -2332,8 +2871,14 @@ mod tests {
         }];
         m.ammo = vec![];
         m.equipment = vec![
-            Equipment { name: "MASC".into(), location: Location::CenterTorso },
-            Equipment { name: "ECM Suite (Guardian)".into(), location: Location::LeftTorso },
+            Equipment {
+                name: "MASC".into(),
+                location: Location::CenterTorso,
+            },
+            Equipment {
+                name: "ECM Suite (Guardian)".into(),
+                location: Location::LeftTorso,
+            },
         ];
 
         let mut app = app_with_mech(m);
@@ -2345,13 +2890,20 @@ mod tests {
         let screen = render(&mut app);
         assert!(screen.contains("JAM"), "jammed UAC shows a JAM marker");
         assert!(screen.contains("● ON"), "engaged MASC shows an ON marker");
-        assert!(screen.contains("Run 6"), "MASC lifts run to walk ×2 (3 → 6)");
+        assert!(
+            screen.contains("Run 6"),
+            "MASC lifts run to walk ×2 (3 → 6)"
+        );
         assert!(screen.contains("MASC↑"), "MOVE panel flags the booster");
 
         // Firing a jammed weapon is refused.
         press(&mut app, KeyCode::Up); // back to the UAC row
         press(&mut app, KeyCode::Char(' '));
-        assert!(app.status.contains("JAMMED"), "jammed weapon refuses to fire: {}", app.status);
+        assert!(
+            app.status.contains("JAMMED"),
+            "jammed weapon refuses to fire: {}",
+            app.status
+        );
 
         insta::assert_snapshot!(screen);
     }
@@ -2376,7 +2928,10 @@ mod tests {
         }
         let modal = render(&mut app);
         assert!(modal.contains("Distance"), "modal shows the distance row");
-        assert!(modal.contains("TMM +2"), "derived target movement modifier shown");
+        assert!(
+            modal.contains("TMM +2"),
+            "derived target movement modifier shown"
+        );
 
         press(&mut app, KeyCode::Esc); // close; the target stays set
         let tm = app.session.active_mech().unwrap();
@@ -2384,7 +2939,10 @@ mod tests {
 
         // Gunnery 4 + stationary 0 + target TMM +2 + medium range +2 = 8.
         let screen = render(&mut app);
-        assert!(screen.contains("8+"), "per-weapon GATOR target number on the weapon row");
+        assert!(
+            screen.contains("8+"),
+            "per-weapon GATOR target number on the weapon row"
+        );
         insta::assert_snapshot!(screen);
     }
 
@@ -2420,7 +2978,10 @@ mod tests {
         let mut app = app_with_one_mech();
         // PILOT panel shows the default 4/5.
         let screen = render(&mut app);
-        assert!(screen.contains("Gunnery 4+") && screen.contains("Piloting 5+"), "skills shown");
+        assert!(
+            screen.contains("Gunnery 4+") && screen.contains("Piloting 5+"),
+            "skills shown"
+        );
 
         // `g` opens the editor; `+` improves a skill (lower number), nav with ↑↓.
         press(&mut app, KeyCode::Char('g'));
@@ -2455,8 +3016,14 @@ mod tests {
         let modal = render(&mut app);
         assert!(modal.contains("Cost"), "shows the cost line");
         // Default 4/5 leaves the baked BV unchanged; force = existing 1897 + this 1897 vs 4000.
-        assert!(modal.contains("BV 1897"), "default-skill cost is the base BV");
-        assert!(modal.contains("3794/4000"), "running force total vs the budget");
+        assert!(
+            modal.contains("BV 1897"),
+            "default-skill cost is the base BV"
+        );
+        assert!(
+            modal.contains("3794/4000"),
+            "running force total vs the budget"
+        );
         insta::assert_snapshot!(modal);
 
         // Improve gunnery to 0 (table 0/5 = 1.75 -> round(1897*1.75) = 3320); now it busts 4000.
@@ -2464,7 +3031,10 @@ mod tests {
             press(&mut app, KeyCode::Right);
         }
         let elite = render(&mut app);
-        assert!(elite.contains("BV 3320"), "elite gunnery raises the adjusted BV");
+        assert!(
+            elite.contains("BV 3320"),
+            "elite gunnery raises the adjusted BV"
+        );
         assert!(elite.contains("OVER"), "5217/4000 flags the busted budget");
 
         // Commit the add at the chosen skills.
@@ -2486,9 +3056,15 @@ mod tests {
         press(&mut app, KeyCode::Enter); // open the AddUnit modal (idx 0 = the Atlas)
         let modal = render(&mut app);
         assert!(modal.contains("Skill"), "single AS Skill row");
-        assert!(!modal.contains("Piloting"), "no Piloting row in Alpha Strike");
+        assert!(
+            !modal.contains("Piloting"),
+            "no Piloting row in Alpha Strike"
+        );
         assert!(modal.contains("PV 52"), "default Skill 4 = base PV");
-        assert!(modal.contains("104/200"), "running force total (52 + 52) vs the budget");
+        assert!(
+            modal.contains("104/200"),
+            "running force total (52 + 52) vs the budget"
+        );
         insta::assert_snapshot!(modal);
 
         // Worsen the Skill to 5: PV drops (52 - (5-4) * (1 + (52-5)/10) = 47).
@@ -2519,7 +3095,10 @@ mod tests {
         press(&mut app, KeyCode::Right); // stationary -> walked
         press(&mut app, KeyCode::Right); // walked -> ran
         press(&mut app, KeyCode::Right); // ran -> (skips jumped: no jump MP) -> stationary
-        assert_eq!(app.session.active_mech().unwrap().move_mode, MoveMode::Stationary);
+        assert_eq!(
+            app.session.active_mech().unwrap().move_mode,
+            MoveMode::Stationary
+        );
         press(&mut app, KeyCode::Left); // back to ran
         press(&mut app, KeyCode::Down); // select hexes
         for _ in 0..7 {
@@ -2532,11 +3111,17 @@ mod tests {
         assert_eq!(tm.hexes_moved, 5, "capped at run MP");
         let screen = render(&mut app);
         assert!(screen.contains("ran 5"), "mode + hexes on the MOVE panel");
-        assert!(screen.contains("atk +2") && screen.contains("TMM +2"), "derived modifiers");
+        assert!(
+            screen.contains("atk +2") && screen.contains("TMM +2"),
+            "derived modifiers"
+        );
 
         // End turn clears it back to stationary.
         press(&mut app, KeyCode::Char('e'));
-        assert_eq!(app.session.active_mech().unwrap().move_mode, MoveMode::Stationary);
+        assert_eq!(
+            app.session.active_mech().unwrap().move_mode,
+            MoveMode::Stationary
+        );
     }
 
     #[test]
@@ -2566,9 +3151,15 @@ mod tests {
             .active_mech_mut()
             .unwrap()
             .damage(Location::CenterTorso, Facing::Front, 20);
-        assert!(render(&mut app).contains("PSR"), "PSR prompt after 20 damage");
+        assert!(
+            render(&mut app).contains("PSR"),
+            "PSR prompt after 20 damage"
+        );
         press(&mut app, KeyCode::Char('e'));
-        assert!(render(&mut app).contains("standing"), "PSR cleared on end-turn");
+        assert!(
+            render(&mut app).contains("standing"),
+            "PSR cleared on end-turn"
+        );
     }
 
     #[test]
@@ -2598,7 +3189,11 @@ mod tests {
         // Re-firing is a no-op: no extra heat, just a reminder.
         let heat = app.session.active_mech().unwrap().heat;
         press(&mut app, KeyCode::Char(' '));
-        assert_eq!(app.session.active_mech().unwrap().heat, heat, "no double heat");
+        assert_eq!(
+            app.session.active_mech().unwrap().heat,
+            heat,
+            "no double heat"
+        );
         assert!(app.status.contains("Already fired"));
 
         // `u` un-fires (clears the mark); end-turn would too.
@@ -2666,11 +3261,17 @@ mod tests {
             tc_eligible: true,
             count: 1,
         }];
-        m.equipment = vec![Equipment { name: "Targeting Computer".into(), location: Location::Head }];
+        m.equipment = vec![Equipment {
+            name: "Targeting Computer".into(),
+            location: Location::Head,
+        }];
         let mut app = app_with_mech(m);
         press(&mut app, KeyCode::Tab); // focus the weapons panel
         let screen = render(&mut app);
-        assert!(screen.contains("to-hit -3"), "detail shows the total (pulse -2 + TC -1)");
+        assert!(
+            screen.contains("to-hit -3"),
+            "detail shows the total (pulse -2 + TC -1)"
+        );
         assert!(screen.contains("(TC)"), "TC contribution flagged");
         insta::assert_snapshot!(screen);
     }
@@ -2711,7 +3312,10 @@ mod tests {
             label: "Turn 1".into(),
             ts: None,
             mode: GameMode::Classic,
-            mechs: vec![TrackedMech::new(sample_mech()), TrackedMech::new(combat_mech())],
+            mechs: vec![
+                TrackedMech::new(sample_mech()),
+                TrackedMech::new(combat_mech()),
+            ],
             sbf: Default::default(),
             bf: Default::default(),
         };
@@ -2753,8 +3357,14 @@ mod tests {
         // A vehicle in a Classic session renders its front/sides/rear/turret doll + CRITS/CREW/MOVE.
         let mut app = app_with_mech(sample_vehicle());
         let screen = render(&mut app);
-        assert!(screen.contains("FR") && screen.contains("TU"), "vehicle locations");
-        assert!(screen.contains("CRITS") && screen.contains("CREW"), "vehicle panels");
+        assert!(
+            screen.contains("FR") && screen.contains("TU"),
+            "vehicle locations"
+        );
+        assert!(
+            screen.contains("CRITS") && screen.contains("CREW"),
+            "vehicle panels"
+        );
         assert!(screen.contains("Cruise"), "vehicle movement");
         insta::assert_snapshot!(screen);
     }
@@ -2859,7 +3469,10 @@ mod tests {
         assert!(modal.contains("S 9+"), "preview folds the shot context");
         press(&mut app, KeyCode::Esc); // close
         let screen = render(&mut app);
-        assert!(screen.contains("To-Hit    S 9+"), "card to-hit reflects the shot");
+        assert!(
+            screen.contains("To-Hit    S 9+"),
+            "card to-hit reflects the shot"
+        );
         assert!(screen.contains("atk jump"), "shot summary line");
         assert!(screen.contains("tgt TMM2 jumped"));
         insta::assert_snapshot!(screen);
@@ -2930,7 +3543,10 @@ mod tests {
         let tm = app.session.active_mech().unwrap();
         assert_eq!(tm.troopers_remaining(), 19);
         // Wipe it out.
-        app.session.active_mech_mut().unwrap().damage(Location::Platoon, Facing::Front, 19);
+        app.session
+            .active_mech_mut()
+            .unwrap()
+            .damage(Location::Platoon, Facing::Front, 19);
         let tm = app.session.active_mech().unwrap();
         assert_eq!(tm.destroyed_reason(), Some("platoon wiped out"));
     }
@@ -2946,7 +3562,11 @@ mod tests {
         press(&mut app, KeyCode::Char(' ')); // 1 damage to T2's armor
         let tm = app.session.active_mech().unwrap();
         assert_eq!(tm.armor_remaining(Location::Trooper2, Facing::Front), 5);
-        assert_eq!(tm.armor_remaining(Location::Trooper1, Facing::Front), 6, "T1 untouched");
+        assert_eq!(
+            tm.armor_remaining(Location::Trooper1, Facing::Front),
+            6,
+            "T1 untouched"
+        );
         press(&mut app, KeyCode::Down);
         assert_eq!(app.cursor, Location::Trooper4, "row 2 of the squad grid");
         press(&mut app, KeyCode::Up); // column-aligned: back to T1
@@ -2974,8 +3594,15 @@ mod tests {
         }
         press(&mut app, KeyCode::Enter); // open the pre-add skill/cost modal
         press(&mut app, KeyCode::Enter); // commit the add
-        assert_eq!(app.session.active_mech().unwrap().spec.chassis, "Clan Heavy Foot Infantry");
-        assert_eq!(app.cursor, Location::Platoon, "cursor snapped onto the platoon");
+        assert_eq!(
+            app.session.active_mech().unwrap().spec.chassis,
+            "Clan Heavy Foot Infantry"
+        );
+        assert_eq!(
+            app.cursor,
+            Location::Platoon,
+            "cursor snapped onto the platoon"
+        );
 
         // And damage lands.
         press(&mut app, KeyCode::Char(' '));
@@ -2986,9 +3613,15 @@ mod tests {
     fn e2e_ba_classic_doll() {
         let mut app = app_with_mech(sample_battle_armor());
         // Knock out trooper 2 so the doll shows a dead suit.
-        app.session.active_mech_mut().unwrap().damage(Location::Trooper2, Facing::Front, 7);
+        app.session
+            .active_mech_mut()
+            .unwrap()
+            .damage(Location::Trooper2, Facing::Front, 7);
         let screen = render(&mut app);
-        assert!(screen.contains("T1") && screen.contains("T4"), "trooper boxes");
+        assert!(
+            screen.contains("T1") && screen.contains("T4"),
+            "trooper boxes"
+        );
         assert!(screen.contains("SQUAD"), "squad panel");
         assert!(screen.contains("Anti-Mech"), "infantry skills panel");
         insta::assert_snapshot!(screen);
@@ -3013,7 +3646,10 @@ mod tests {
         let tm = app.session.active_mech().unwrap();
         let suit = tm.suit_index_of(moved_to).unwrap();
         assert_eq!(tm.suit_ammo[&0][suit], 1, "the cursor suit spent a shot");
-        assert_eq!(tm.suit_ammo[&0][0], 1, "suit 1 unchanged by the second shot");
+        assert_eq!(
+            tm.suit_ammo[&0][0], 1,
+            "suit 1 unchanged by the second shot"
+        );
     }
 
     #[test]
@@ -3023,7 +3659,10 @@ mod tests {
         press(&mut app, KeyCode::Tab);
         press(&mut app, KeyCode::Char(' ')); // suit 1: 1 shot
         press(&mut app, KeyCode::Tab);
-        app.session.active_mech_mut().unwrap().damage(Location::Trooper3, Facing::Front, 7);
+        app.session
+            .active_mech_mut()
+            .unwrap()
+            .damage(Location::Trooper3, Facing::Front, 7);
         let screen = render(&mut app);
         assert!(screen.contains("SRM 2"), "per-suit ammo row");
         insta::assert_snapshot!(screen);
@@ -3033,7 +3672,10 @@ mod tests {
     fn e2e_ci_classic_platoon() {
         let mut app = app_with_mech(sample_platoon());
         // Take some losses so the strength bar shows wear.
-        app.session.active_mech_mut().unwrap().damage(Location::Platoon, Facing::Front, 6);
+        app.session
+            .active_mech_mut()
+            .unwrap()
+            .damage(Location::Platoon, Facing::Front, 6);
         let screen = render(&mut app);
         assert!(screen.contains("PLT"), "platoon box");
         assert!(screen.contains("Strength"), "strength panel");
@@ -3050,7 +3692,10 @@ mod tests {
         let screen = render(&mut app);
         // Class-1 weapon (Auto-Rifle) reaches 0-3 with per-hex to-hit -2/0/+2/+4.
         assert!(screen.contains("0-3"), "hex span shown");
-        assert!(screen.contains("-2/0/+2/+4"), "per-hex range modifier table");
+        assert!(
+            screen.contains("-2/0/+2/+4"),
+            "per-hex range modifier table"
+        );
         insta::assert_snapshot!(screen);
     }
 
@@ -3124,10 +3769,19 @@ mod tests {
         m.ammo = vec![bin(0, Location::LeftTorso), bin(1, Location::RightTorso)];
         m.crit_slots.insert(
             Location::RightTorso,
-            vec![CritSlot { slot: 0, name: "AC/20 Ammo".into(), system: false, hittable: true, ..Default::default() }],
+            vec![CritSlot {
+                slot: 0,
+                name: "AC/20 Ammo".into(),
+                system: false,
+                hittable: true,
+                ..Default::default()
+            }],
         );
         let mut app = app_with_mech(m);
-        app.modal = Some(Modal::Crit { loc: Location::RightTorso, sel: 0 });
+        app.modal = Some(Modal::Crit {
+            loc: Location::RightTorso,
+            sel: 0,
+        });
         press(&mut app, KeyCode::Char('a')); // mark the RT bin active
         let screen = render(&mut app);
         assert!(screen.contains("active"), "active-bin marker");
@@ -3213,7 +3867,7 @@ mod tests {
     fn e2e_weapons_scrollbar() {
         let mut app = app_with_mech(many_weapons_mech());
         press(&mut app, KeyCode::Tab); // focus the weapons panel
-        // Scroll to the bottom so the thumb is near the end.
+                                       // Scroll to the bottom so the thumb is near the end.
         for _ in 0..29 {
             press(&mut app, KeyCode::Down);
         }
@@ -3230,7 +3884,10 @@ mod tests {
         press(&mut app, KeyCode::Char('p')); // 3 hits -> conscious 7+
         let screen = render(&mut app);
         assert!(screen.contains("PILOT"), "pilot panel present");
-        assert!(screen.contains("conscious 7+"), "consciousness number for 3 hits");
+        assert!(
+            screen.contains("conscious 7+"),
+            "consciousness number for 3 hits"
+        );
         insta::assert_snapshot!(screen);
     }
 
@@ -3351,10 +4008,22 @@ mod tests {
         app.session.add_mech(sample_vehicle()); // Manticore (unique)
         app.session.active = 0;
         let roster = render(&mut app).lines().next().unwrap().to_string();
-        assert!(roster.contains("1:Atlas A"), "first duplicate -> A: {roster:?}");
-        assert!(roster.contains("2:Atlas B"), "second duplicate -> B: {roster:?}");
-        assert!(roster.contains("3:Manticore"), "unique chassis present: {roster:?}");
-        assert!(!roster.contains("Manticore A"), "no letter for a lone chassis: {roster:?}");
+        assert!(
+            roster.contains("1:Atlas A"),
+            "first duplicate -> A: {roster:?}"
+        );
+        assert!(
+            roster.contains("2:Atlas B"),
+            "second duplicate -> B: {roster:?}"
+        );
+        assert!(
+            roster.contains("3:Manticore"),
+            "unique chassis present: {roster:?}"
+        );
+        assert!(
+            !roster.contains("Manticore A"),
+            "no letter for a lone chassis: {roster:?}"
+        );
     }
 
     #[test]
@@ -3368,10 +4037,19 @@ mod tests {
         app.session.active = neurohelmet_core::session::MAX_MECHS / 2; // a middle tab is active
         let screen = render(&mut app);
         let roster = screen.lines().next().unwrap();
-        assert!(roster.contains('‹'), "hidden tabs to the left are marked: {roster:?}");
-        assert!(roster.contains('›'), "hidden tabs to the right are marked: {roster:?}");
         assert!(
-            roster.contains(&format!("{}:", neurohelmet_core::session::MAX_MECHS / 2 + 1)),
+            roster.contains('‹'),
+            "hidden tabs to the left are marked: {roster:?}"
+        );
+        assert!(
+            roster.contains('›'),
+            "hidden tabs to the right are marked: {roster:?}"
+        );
+        assert!(
+            roster.contains(&format!(
+                "{}:",
+                neurohelmet_core::session::MAX_MECHS / 2 + 1
+            )),
             "the active tab stays visible: {roster:?}"
         );
         insta::assert_snapshot!(screen);
@@ -3387,7 +4065,9 @@ mod tests {
             name: "Friday Game".into(),
             mech_count: 4,
             summary: "Atlas, Locust +2".into(),
-            mode: GameMode::Classic, force_total: 0, limit: None,
+            mode: GameMode::Classic,
+            force_total: 0,
+            limit: None,
         }];
         app.screen = Screen::Sessions;
         app.modal = Some(Modal::Input {
@@ -3408,7 +4088,9 @@ mod tests {
             name: "old game".into(),
             mech_count: 2,
             summary: "Warhammer, Marauder".into(),
-            mode: GameMode::Classic, force_total: 0, limit: None,
+            mode: GameMode::Classic,
+            force_total: 0,
+            limit: None,
         }];
         app.screen = Screen::Sessions;
         app.modal = Some(Modal::Confirm {
@@ -3432,15 +4114,26 @@ mod tests {
         app.screen = Screen::Tracker;
         let turn_before = app.session.turn;
         press(&mut app, KeyCode::Char('L'));
-        assert_eq!(app.session.turn, turn_before, "no turn bump with nothing to log");
-        assert!(app.status.contains("Nothing to log"), "status: {}", app.status);
+        assert_eq!(
+            app.session.turn, turn_before,
+            "no turn bump with nothing to log"
+        );
+        assert!(
+            app.status.contains("Nothing to log"),
+            "status: {}",
+            app.status
+        );
     }
 
     #[test]
     fn sessions_screen_new_keys_open_input_for_each_mode() {
         use super::app::{Modal, PendingAction, Screen};
         let new_mode = |app: &App| match &app.modal {
-            Some(Modal::Input { action: PendingAction::NewSession(mode), buffer, .. }) => {
+            Some(Modal::Input {
+                action: PendingAction::NewSession(mode),
+                buffer,
+                ..
+            }) => {
                 assert!(buffer.is_empty(), "new-session name starts empty");
                 *mode
             }
@@ -3480,7 +4173,13 @@ mod tests {
         // Quit is guarded here too.
         press(&mut app, KeyCode::Char('q'));
         assert!(!app.should_quit);
-        assert!(matches!(app.modal, Some(Modal::Confirm { action: PendingAction::Quit, .. })));
+        assert!(matches!(
+            app.modal,
+            Some(Modal::Confirm {
+                action: PendingAction::Quit,
+                ..
+            })
+        ));
     }
 
     #[test]
@@ -3530,7 +4229,10 @@ mod tests {
         }
         assert_eq!(app.session.active_mech().unwrap().heat, 25);
         let fx = render(&mut app);
-        assert!(fx.contains("MP") || fx.contains("hit"), "heat effects shown");
+        assert!(
+            fx.contains("MP") || fx.contains("hit"),
+            "heat effects shown"
+        );
         press(&mut app, KeyCode::Char('e')); // dissipate 20
         assert_eq!(app.session.active_mech().unwrap().heat, 5);
     }
@@ -3559,13 +4261,19 @@ mod tests {
         use super::app::Screen;
         // 8 elements auto-group into one formation of two units (6 + 2); the three panes render.
         let mut app = app_with_sbf(8);
-        assert!(matches!(app.screen, Screen::Sbf), "SBF mode lands on the SBF screen");
+        assert!(
+            matches!(app.screen, Screen::Sbf),
+            "SBF mode lands on the SBF screen"
+        );
         assert_eq!(app.session.sbf.formations.len(), 1);
         assert_eq!(app.session.sbf.formations[0].units.len(), 2);
         let screen = render(&mut app);
         assert!(screen.contains("FORMATIONS"), "formation pane title");
         assert!(screen.contains("Round 0"), "round counter shown");
-        assert!(screen.contains("To-Hit"), "live to-hit line in the detail pane");
+        assert!(
+            screen.contains("To-Hit"),
+            "live to-hit line in the detail pane"
+        );
         insta::assert_snapshot!(screen);
     }
 
@@ -3573,11 +4281,17 @@ mod tests {
     fn e2e_sbf_tracking() {
         // Damage, spillover message, crit counters, morale rung, round/turn — the live verbs.
         let mut app = app_with_sbf(8);
-        let derived = app.session.sbf_unit(&app.session.sbf.formations[0].units[0]);
+        let derived = app
+            .session
+            .sbf_unit(&app.session.sbf.formations[0].units[0]);
         // Space marks one point of damage on the active unit.
         press(&mut app, KeyCode::Char(' '));
         let u = &app.session.sbf.formations[0].units[0];
-        assert_eq!(u.armor_remaining(&derived), derived.armor - 1, "Space damages the unit");
+        assert_eq!(
+            u.armor_remaining(&derived),
+            derived.armor - 1,
+            "Space damages the unit"
+        );
         // u repairs it.
         press(&mut app, KeyCode::Char('u'));
         assert_eq!(
@@ -3592,7 +4306,11 @@ mod tests {
         press(&mut app, KeyCode::Char(' ')); // +1 targeting crit (row 1)
         press(&mut app, KeyCode::Esc);
         let u = &app.session.sbf.formations[0].units[0];
-        assert_eq!((u.damage_crits, u.targeting_crits), (1, 1), "crit popup marks counters");
+        assert_eq!(
+            (u.damage_crits, u.targeting_crits),
+            (1, 1),
+            "crit popup marks counters"
+        );
         // Morale is a manual rung: m worsens one step.
         press(&mut app, KeyCode::Char('m'));
         assert_eq!(app.session.sbf.formations[0].morale, MoraleStatus::Shaken);
@@ -3602,7 +4320,11 @@ mod tests {
         press(&mut app, KeyCode::Char('n'));
         assert_eq!(app.session.sbf.round, 1);
         assert!(!app.session.sbf.formations[0].is_done);
-        assert_eq!(app.session.sbf.formations[0].morale, MoraleStatus::Shaken, "morale persists");
+        assert_eq!(
+            app.session.sbf.formations[0].morale,
+            MoraleStatus::Shaken,
+            "morale persists"
+        );
         insta::assert_snapshot!(render(&mut app));
     }
 
@@ -3610,14 +4332,19 @@ mod tests {
     fn e2e_sbf_spillover_status() {
         // Damaging past a unit's armor reports the spillover (§4.2 — never discarded).
         let mut app = app_with_sbf(8);
-        let derived = app.session.sbf_unit(&app.session.sbf.formations[0].units[0]);
+        let derived = app
+            .session
+            .sbf_unit(&app.session.sbf.formations[0].units[0]);
         for _ in 0..derived.armor {
             press(&mut app, KeyCode::Char(' '));
         }
         let u = &app.session.sbf.formations[0].units[0];
         assert!(u.is_destroyed(&derived));
         press(&mut app, KeyCode::Char(' ')); // one more point — pure overflow
-        assert!(app.status.contains("spill"), "overflow points the player at spillover");
+        assert!(
+            app.status.contains("spill"),
+            "overflow points the player at spillover"
+        );
         // The unit list shows the destroyed flag.
         assert!(render(&mut app).contains("DESTROYED"));
     }
@@ -3636,7 +4363,10 @@ mod tests {
         press(&mut app, KeyCode::Char(' '));
         press(&mut app, KeyCode::Char(' '));
         let screen = render(&mut app);
-        assert!(screen.contains("To-Hit   8+"), "4 skill + 2 long + 2 TMM:\n{screen}");
+        assert!(
+            screen.contains("To-Hit   8+"),
+            "4 skill + 2 long + 2 TMM:\n{screen}"
+        );
         insta::assert_snapshot!(screen);
         press(&mut app, KeyCode::Esc);
         // The detail pane keeps showing the entered shot.
@@ -3645,7 +4375,10 @@ mod tests {
         // Extreme is a legal attack under the printed ladder (+3), never Impossible.
         press(&mut app, KeyCode::Char('t'));
         press(&mut app, KeyCode::Char(' ')); // Long → Extreme
-        assert!(render(&mut app).contains("To-Hit   9+"), "extreme is +3, still a number");
+        assert!(
+            render(&mut app).contains("To-Hit   9+"),
+            "extreme is +3, still a number"
+        );
         press(&mut app, KeyCode::Esc);
     }
 
@@ -3700,7 +4433,10 @@ mod tests {
         }
         press(&mut app, KeyCode::Char(' '));
         press(&mut app, KeyCode::Char(' '));
-        assert!(render(&mut app).contains("To-Hit   7+"), "ground shot: 4 skill + 1 M + 2 TMM");
+        assert!(
+            render(&mut app).contains("To-Hit   7+"),
+            "ground shot: 4 skill + 1 M + 2 TMM"
+        );
         for _ in 0..4 {
             press(&mut app, KeyCode::Down); // row 10: aero attack kind
         }
@@ -3710,16 +4446,28 @@ mod tests {
             screen.contains("To-Hit   5+"),
             "air-to-air: no +2 vs an aero attacker (p.179 fn), TMM suppressed:\n{screen}"
         );
-        assert!(screen.contains("no TMM vs airborne"), "suppression note renders");
-        assert!(screen.contains("+2 atmosphere"), "engagement-modifier reference line");
+        assert!(
+            screen.contains("no TMM vs airborne"),
+            "suppression note renders"
+        );
+        assert!(
+            screen.contains("+2 atmosphere"),
+            "engagement-modifier reference line"
+        );
         insta::assert_snapshot!(screen);
         // Cycle on to strafing: the +4 attack row, and the target legs come back (Open Q 25).
         for _ in 0..4 {
             press(&mut app, KeyCode::Char(' '));
         }
         let screen = render(&mut app);
-        assert!(screen.contains("To-Hit   11+"), "strafing: 4 + 1 M + 4 + 2 TMM:\n{screen}");
-        assert!(screen.contains("strafe ⌈S/4⌉"), "p.180 damage reference:\n{screen}");
+        assert!(
+            screen.contains("To-Hit   11+"),
+            "strafing: 4 + 1 M + 4 + 2 TMM:\n{screen}"
+        );
+        assert!(
+            screen.contains("strafe ⌈S/4⌉"),
+            "p.180 damage reference:\n{screen}"
+        );
         press(&mut app, KeyCode::Esc);
         // The detail pane summary names the kind — "vs TMM" would misread under suppression.
         assert!(render(&mut app).contains("(Medium strafing)"));
@@ -3745,16 +4493,28 @@ mod tests {
             "the WarShip converts to a large-craft SBF unit carrying arcs"
         );
         press(&mut app, KeyCode::Char('t')); // open the SBF shot modal
-        // Row 10 = aero attack kind; switch Off → air-to-air so the capital leg builds.
+                                             // Row 10 = aero attack kind; switch Off → air-to-air so the capital leg builds.
         for _ in 0..10 {
             press(&mut app, KeyCode::Down);
         }
         press(&mut app, KeyCode::Char(' '));
         let screen = render(&mut app);
-        assert!(screen.contains("Firing arc"), "arc picker row appears:\n{screen}");
-        assert!(screen.contains("Weapon class"), "weapon-class picker row appears");
-        assert!(screen.contains("attack limit 8/turn"), "WarShip per-Flight attack limit:\n{screen}");
-        assert!(screen.contains("Nose STD @"), "per-arc capital damage preview (default Nose STD)");
+        assert!(
+            screen.contains("Firing arc"),
+            "arc picker row appears:\n{screen}"
+        );
+        assert!(
+            screen.contains("Weapon class"),
+            "weapon-class picker row appears"
+        );
+        assert!(
+            screen.contains("attack limit 8/turn"),
+            "WarShip per-Flight attack limit:\n{screen}"
+        );
+        assert!(
+            screen.contains("Nose STD @"),
+            "per-arc capital damage preview (default Nose STD)"
+        );
 
         // Cycle the weapon class STD → CAP (row 15): the preview switches to CAP at the
         // bracket-reduced range (Medium → Short) and the TN gains the CAP +3 (net +2 after −1 range).
@@ -3764,9 +4524,16 @@ mod tests {
         }
         press(&mut app, KeyCode::Char(' ')); // STD → CAP
         let screen = render(&mut app);
-        assert!(screen.contains("Nose CAP @ Short"), "CAP fires at the reduced bracket:\n{screen}");
+        assert!(
+            screen.contains("Nose CAP @ Short"),
+            "CAP fires at the reduced bracket:\n{screen}"
+        );
         let after = neurohelmet_core::engine::sbf::sbf_to_hit(&app.sbf_to_hit_ctx().unwrap());
-        assert_eq!(after - before, 2, "CAP +3 minus the −1 capital range reduction = +2");
+        assert_eq!(
+            after - before,
+            2,
+            "CAP +3 minus the −1 capital range reduction = +2"
+        );
     }
 
     #[test]
@@ -3790,10 +4557,19 @@ mod tests {
         let screen = render(&mut app);
         // Both TMM sites (formation stat line, unit detail header) hide the converter's −4 on
         // aero (Open Q 1, MOOT); the hand-entered target-TMM summary is a different thing.
-        assert!(screen.contains("SZ2 MV10a"), "formation line without TMM:\n{screen}");
-        assert!(!screen.contains("TMM-4"), "no formation TMM on aero:\n{screen}");
+        assert!(
+            screen.contains("SZ2 MV10a"),
+            "formation line without TMM:\n{screen}"
+        );
+        assert!(
+            !screen.contains("TMM-4"),
+            "no formation TMM on aero:\n{screen}"
+        );
         assert!(!screen.contains("TMM -4"), "no unit TMM on aero:\n{screen}");
-        assert!(screen.contains("bombs: −1 Thrust each (min 1)"), "BOMB card note:\n{screen}");
+        assert!(
+            screen.contains("bombs: −1 Thrust each (min 1)"),
+            "BOMB card note:\n{screen}"
+        );
         // Mark MP crits down to 0 Thrust (AF Thrust 10 → Flight movement 10).
         press(&mut app, KeyCode::Char('c'));
         press(&mut app, KeyCode::Down);
@@ -3806,8 +4582,13 @@ mod tests {
             "aero wording on the crit popup's MP row"
         );
         press(&mut app, KeyCode::Esc);
-        let derived = app.session.sbf_unit(&app.session.sbf.formations[0].units[0]);
-        assert_eq!(app.session.sbf.formations[0].units[0].current_movement(&derived), 0);
+        let derived = app
+            .session
+            .sbf_unit(&app.session.sbf.formations[0].units[0]);
+        assert_eq!(
+            app.session.sbf.formations[0].units[0].current_movement(&derived),
+            0
+        );
         let screen = render(&mut app);
         // (The 100-col test grid clips the badge's tail in the middle pane, like any long name.)
         assert!(screen.contains("CRASHES (End"), "crash badge:\n{screen}");
@@ -3818,7 +4599,10 @@ mod tests {
         }
         let screen = render(&mut app);
         assert!(screen.contains("DESTROYED"));
-        assert!(!screen.contains("CRASHES"), "destroyed replaces the crash badge:\n{screen}");
+        assert!(
+            !screen.contains("CRASHES"),
+            "destroyed replaces the crash badge:\n{screen}"
+        );
     }
 
     #[test]
@@ -3832,7 +4616,10 @@ mod tests {
         let screen = render(&mut app);
         assert!(screen.contains("COM"), "commander tag renders");
         assert!(screen.contains("LEAD"), "leader tag renders");
-        assert!(screen.contains("+2 Tactics"), "Step-5b defender hint renders");
+        assert!(
+            screen.contains("+2 Tactics"),
+            "Step-5b defender hint renders"
+        );
         insta::assert_snapshot!(screen);
         // Toggling off clears the mark.
         press(&mut app, KeyCode::Char('l'));
@@ -3844,11 +4631,18 @@ mod tests {
         let mut app = app_with_sbf(8);
         press(&mut app, KeyCode::Char('g')); // editor opens on element 7 (last added)
         press(&mut app, KeyCode::Char('s'));
-        assert_eq!(app.session.mechs[7].gunnery, 5, "s worsens the element's Skill");
+        assert_eq!(
+            app.session.mechs[7].gunnery, 5,
+            "s worsens the element's Skill"
+        );
         press(&mut app, KeyCode::Char('S'));
         assert_eq!(app.session.mechs[7].gunnery, 4, "S improves it back");
         press(&mut app, KeyCode::Char('x'));
-        assert_eq!(app.session.mechs.len(), 7, "x removes the element from the force");
+        assert_eq!(
+            app.session.mechs.len(),
+            7,
+            "x removes the element from the force"
+        );
         assert_eq!(
             app.session.sbf.formations[0].units[1].elements,
             vec![4, 5, 6],
@@ -3875,7 +4669,10 @@ mod tests {
         assert!(ctx.bfc, "unit-level BFC reaches the to-hit ctx");
         assert!(ctx.drone, "all-DRO composition marks the unit as a drone");
         // Base skill: 4 avg + 1 (Step 1G BFC/DRO conversion) = 5; +1 Medium +1 BFC +1 DRO = 8.
-        assert!(render(&mut app).contains("8+"), "conversion skill and attack rows both apply");
+        assert!(
+            render(&mut app).contains("8+"),
+            "conversion skill and attack rows both apply"
+        );
     }
 
     #[test]
@@ -3900,13 +4697,23 @@ mod tests {
         press(&mut app, KeyCode::Char('a'));
         press(&mut app, KeyCode::Enter); // Inner Sphere — but there is state at stake
         let Some(Modal::Confirm { .. }) = app.modal else {
-            panic!("expected an itemized confirmation, got {:?}", render(&mut app));
+            panic!(
+                "expected an itemized confirmation, got {:?}",
+                render(&mut app)
+            );
         };
         let screen = render(&mut app);
-        for needle in
-            ["1 custom name(s)", "1 armor hit(s)", "1 morale rung(s)", "the COM mark", "z undoes"]
-        {
-            assert!(screen.contains(needle), "prompt itemizes {needle:?}:\n{screen}");
+        for needle in [
+            "1 custom name(s)",
+            "1 armor hit(s)",
+            "1 morale rung(s)",
+            "the COM mark",
+            "z undoes",
+        ] {
+            assert!(
+                screen.contains(needle),
+                "prompt itemizes {needle:?}:\n{screen}"
+            );
         }
         // n cancels: nothing changed.
         press(&mut app, KeyCode::Char('n'));
@@ -3922,7 +4729,10 @@ mod tests {
         assert!(!app.session.sbf.formations[0].units[0].is_commander);
         press(&mut app, KeyCode::Char('z'));
         assert_eq!(app.session.sbf.formations[0].units[0].name, "Command Lance");
-        assert!(app.session.sbf.formations[0].units[0].is_commander, "one z restores the lot");
+        assert!(
+            app.session.sbf.formations[0].units[0].is_commander,
+            "one z restores the lot"
+        );
     }
 
     #[test]
@@ -3971,7 +4781,10 @@ mod tests {
         press(&mut app, KeyCode::Char('D'));
         press(&mut app, KeyCode::Char('y'));
         assert!(app.session.sbf.formations.is_empty());
-        assert!(app.session.mechs.is_empty(), "elements removed with the formation");
+        assert!(
+            app.session.mechs.is_empty(),
+            "elements removed with the formation"
+        );
         assert!(matches!(app.screen, Screen::Picker));
     }
 
@@ -3994,11 +4807,19 @@ mod tests {
         // formation STAYS (first-class empty workspace — the play-test regret scenario).
         press(&mut app, KeyCode::Right);
         assert_eq!(app.session.sbf_element_assignment(7), Some((0, 0)));
-        assert_eq!(app.session.sbf.formations.len(), 2, "vacated formation remains a target");
+        assert_eq!(
+            app.session.sbf.formations.len(),
+            2,
+            "vacated formation remains a target"
+        );
         // …so a DIFFERENT decision can still reach it: ← from (0,0) wraps backwards onto the
         // empty formation's virtual "new unit" stop.
         press(&mut app, KeyCode::Left);
-        assert_eq!(app.session.sbf_element_assignment(7), Some((1, 0)), "re-enters the empty formation");
+        assert_eq!(
+            app.session.sbf_element_assignment(7),
+            Some((1, 0)),
+            "re-enters the empty formation"
+        );
         press(&mut app, KeyCode::Right); // back out again for the split test
         assert_eq!(app.session.sbf_element_assignment(7), Some((0, 0)));
         // n splits it into a new unit of its formation.
@@ -4006,18 +4827,28 @@ mod tests {
         assert_eq!(app.session.sbf_element_assignment(7), Some((0, 2)));
         press(&mut app, KeyCode::Esc);
         assert!(app.modal.is_none());
-        assert_eq!(app.session.sbf.formations.len(), 2, "empty formation survives close");
-        assert!(app.session.sbf.formations[1].units.is_empty(), "its empty unit was pruned");
+        assert_eq!(
+            app.session.sbf.formations.len(),
+            2,
+            "empty formation survives close"
+        );
+        assert!(
+            app.session.sbf.formations[1].units.is_empty(),
+            "its empty unit was pruned"
+        );
         assert_eq!(app.session.sbf.formations[0].units.len(), 3);
         // The empty formation renders as a workspace, never as destroyed/eliminated.
         let screen = render(&mut app);
-        assert!(screen.contains("(no units"), "placeholder rendering:\n{screen}");
+        assert!(
+            screen.contains("(no units"),
+            "placeholder rendering:\n{screen}"
+        );
         assert!(!screen.contains("eliminated"));
 
         // Undo unwinds the manual moves one step at a time.
         press(&mut app, KeyCode::Char('z'));
         let _ = app.session.sbf_element_assignment(7); // whatever the previous step was — no panic
-        // (fine-grained undo per assignment is asserted via the session comparisons above)
+                                                       // (fine-grained undo per assignment is asserted via the session comparisons above)
 
         // Manual assignment API guard: out-of-range target is a no-op.
         app.session.sbf_assign_element(7, SbfAssign::Unit(9, 9));
@@ -4038,8 +4869,11 @@ mod tests {
         press(&mut app, KeyCode::Enter);
         assert!(app.modal.is_none());
         assert_eq!(app.session.sbf.formations[0].name, "Binary 1");
-        let sizes: Vec<usize> =
-            app.session.sbf.formations[0].units.iter().map(|u| u.elements.len()).collect();
+        let sizes: Vec<usize> = app.session.sbf.formations[0]
+            .units
+            .iter()
+            .map(|u| u.elements.len())
+            .collect();
         assert_eq!(sizes, vec![5, 3]);
         assert_eq!(app.session.sbf.formations[0].units[0].name, "Star 1");
         // One undo restores the pre-doctrine grouping.
@@ -4077,14 +4911,21 @@ mod tests {
         press(&mut app, KeyCode::Char('C')); // COM
         press(&mut app, KeyCode::Char('m')); // Shaken
         press(&mut app, KeyCode::Char('L')); // snapshot
-        assert!(app.status.contains("Logged"), "snapshot recorded: {}", app.status);
+        assert!(
+            app.status.contains("Logged"),
+            "snapshot recorded: {}",
+            app.status
+        );
 
         let out = tempfile::tempdir().unwrap();
         let dir = crate::export::run(name, Some(out.path().to_path_buf())).unwrap();
         let transcript = std::fs::read_to_string(dir.join("transcript.txt")).unwrap();
         // The formation sheet's signatures — panes, doctrine names, live marks — none of which
         // the AS-card fallback renders.
-        assert!(transcript.contains("== Turn 1 — Company 1 =="), "formation heading:\n{transcript}");
+        assert!(
+            transcript.contains("== Turn 1 — Company 1 =="),
+            "formation heading:\n{transcript}"
+        );
         assert!(transcript.contains("FORMATIONS"), "formation pane exported");
         assert!(transcript.contains("Lance 1"), "unit rows exported");
         assert!(transcript.contains("COM"), "COM mark exported");
@@ -4124,7 +4965,10 @@ mod tests {
         app.dirty = false;
         let screen = render(&mut app);
         assert!(screen.contains("Formation 1"));
-        assert!(screen.contains("(no units"), "formation placeholder:\n{screen}");
+        assert!(
+            screen.contains("(no units"),
+            "formation placeholder:\n{screen}"
+        );
         assert!(screen.contains("+1 ungrouped"), "pool hint");
         assert!(!screen.contains("DESTROYED"));
         insta::assert_snapshot!(screen);
@@ -4157,7 +5001,10 @@ mod tests {
     fn e2e_acs_initial_renders_three_panes() {
         use super::app::Screen;
         let mut app = app_with_acs(6);
-        assert!(matches!(app.screen, Screen::Acs), "ACS mode lands on the ACS screen");
+        assert!(
+            matches!(app.screen, Screen::Acs),
+            "ACS mode lands on the ACS screen"
+        );
         assert_eq!(app.session.acs.formations.len(), 1);
         let screen = render(&mut app);
         assert!(screen.contains("FORMATIONS"), "formation pane title");
@@ -4171,7 +5018,9 @@ mod tests {
     #[test]
     fn e2e_acs_damage_and_thresholds() {
         let mut app = app_with_acs(6);
-        let derived = app.session.acs_combat_unit(&app.session.acs.formations[0].units[0]);
+        let derived = app
+            .session
+            .acs_combat_unit(&app.session.acs.formations[0].units[0]);
         assert!(derived.armor > 0);
         // Space opens a damage input; type the announced amount past the first threshold.
         let dmg = derived.armor - derived.damage_thresholds[0] + 1;
@@ -4182,7 +5031,10 @@ mod tests {
         press(&mut app, KeyCode::Enter);
         let st = &app.session.acs.formations[0].units[0];
         assert_eq!(st.armor_remaining(&derived), derived.armor - dmg);
-        assert!(app.status.contains("threshold"), "threshold-crossing prompts a morale check");
+        assert!(
+            app.status.contains("threshold"),
+            "threshold-crossing prompts a morale check"
+        );
         // u repairs one point.
         press(&mut app, KeyCode::Char('u'));
         assert_eq!(
@@ -4197,7 +5049,10 @@ mod tests {
         let mut app = app_with_acs(6);
         // m cycles the Combat Unit's morale rung; M cycles the Formation's.
         press(&mut app, KeyCode::Char('m'));
-        assert_eq!(app.session.acs.formations[0].units[0].morale, AcsMorale::Shaken);
+        assert_eq!(
+            app.session.acs.formations[0].units[0].morale,
+            AcsMorale::Shaken
+        );
         press(&mut app, KeyCode::Char('M'));
         assert_eq!(app.session.acs.formations[0].morale, AcsMorale::Shaken);
         // f accrues fatigue (skill-4 Regular → 0.5 FP); F rests it back.
@@ -4211,17 +5066,26 @@ mod tests {
         press(&mut app, KeyCode::Char('n'));
         assert_eq!(app.session.acs.round, 1);
         assert!(!app.session.acs.formations[0].is_done);
-        assert_eq!(app.session.acs.formations[0].units[0].morale, AcsMorale::Shaken);
+        assert_eq!(
+            app.session.acs.formations[0].units[0].morale,
+            AcsMorale::Shaken
+        );
     }
 
     #[test]
     fn e2e_acs_readout_cycles_range_and_tmm() {
         let mut app = app_with_acs(6);
-        let base = app.acs_to_hit_ctx().map(|c| neurohelmet_core::engine::acs::acs_to_hit(&c)).unwrap();
+        let base = app
+            .acs_to_hit_ctx()
+            .map(|c| neurohelmet_core::engine::acs::acs_to_hit(&c))
+            .unwrap();
         // ] steps range up (Medium→Long, +2 more to-hit); + steps target TMM up.
         press(&mut app, KeyCode::Char(']'));
         press(&mut app, KeyCode::Char('+'));
-        let after = app.acs_to_hit_ctx().map(|c| neurohelmet_core::engine::acs::acs_to_hit(&c)).unwrap();
+        let after = app
+            .acs_to_hit_ctx()
+            .map(|c| neurohelmet_core::engine::acs::acs_to_hit(&c))
+            .unwrap();
         assert_eq!(after, base + 2 + 1, "Long (+2 over Medium) and TMM +1");
     }
 
@@ -4242,10 +5106,19 @@ mod tests {
         // A WarShip Formation is an aerospace type: the detail pane shows the real p.250 aero readout
         // (with the cross-type matchup + Ground-Support missions), not the old "not supported" banner.
         let mut app = app_with_acs_large_craft(sample_warship());
-        assert!(app.acs_active_formation_is_aero(), "a WarShip Formation is aerospace type");
+        assert!(
+            app.acs_active_formation_is_aero(),
+            "a WarShip Formation is aerospace type"
+        );
         let screen = render(&mut app);
-        assert!(screen.contains("To-Hit"), "aero to-hit readout renders:\n{screen}");
-        assert!(!screen.contains("not yet supported"), "the aero banner is gone");
+        assert!(
+            screen.contains("To-Hit"),
+            "aero to-hit readout renders:\n{screen}"
+        );
+        assert!(
+            !screen.contains("not yet supported"),
+            "the aero banner is gone"
+        );
         assert!(screen.contains("matchup"), "cross-type matchup row");
 
         // Cycling the cross-type matchup None → aero→WarShip applies the −3 (p.241).
@@ -4256,7 +5129,10 @@ mod tests {
 
         // Cycling the Ground-Support mission surfaces its calculator readout.
         press(&mut app, KeyCode::Char('y')); // space combat → CAP
-        assert!(render(&mut app).contains("CAP"), "Ground-Support CAP mission readout");
+        assert!(
+            render(&mut app).contains("CAP"),
+            "Ground-Support CAP mission readout"
+        );
 
         // The capital weapon-class penalty is waived vs a large-craft target (p.191 Notes) — for a
         // same-type (WS→WS) target the 6-row matchup can't encode, the explicit toggle does it.
@@ -4266,7 +5142,11 @@ mod tests {
         let with_pen = acs_aero_to_hit(&app.acs_aero_to_hit_ctx().unwrap());
         app.acs_shot.target_large_craft = true;
         let waived = acs_aero_to_hit(&app.acs_aero_to_hit_ctx().unwrap());
-        assert_eq!(with_pen - waived, 3, "CAP +3 waived vs a large-craft target");
+        assert_eq!(
+            with_pen - waived,
+            3,
+            "CAP +3 waived vs a large-craft target"
+        );
     }
 
     #[test]
@@ -4294,9 +5174,15 @@ mod tests {
         app.dirty = false;
         // g opens the grouping editor.
         press(&mut app, KeyCode::Char('g'));
-        assert!(matches!(app.modal, Some(super::app::Modal::AcsGroup { .. })));
+        assert!(matches!(
+            app.modal,
+            Some(super::app::Modal::AcsGroup { .. })
+        ));
         let screen = render(&mut app);
-        assert!(screen.contains("unassigned"), "pool shows as unassigned:\n{screen}");
+        assert!(
+            screen.contains("unassigned"),
+            "pool shows as unassigned:\n{screen}"
+        );
         // a auto-groups the whole pool into one Formation.
         press(&mut app, KeyCode::Char('a'));
         assert_eq!(app.session.acs_element_assignment(0), Some((0, 0, 0, 0)));
@@ -4356,14 +5242,23 @@ mod tests {
         use super::app::Screen;
         // 4 elements auto-group into one Lance; the header row + card grid render at hex scale.
         let mut app = app_with_bf(4);
-        assert!(matches!(app.screen, Screen::BattleForce), "BF mode lands on the BF screen");
+        assert!(
+            matches!(app.screen, Screen::BattleForce),
+            "BF mode lands on the BF screen"
+        );
         assert_eq!(app.session.bf.units.len(), 1);
         assert_eq!(app.session.bf.units[0].elements.len(), 4);
         let screen = render(&mut app);
         assert!(screen.contains("Lance 1"), "unit header renders");
-        assert!(screen.contains("MV 3"), "hex-native unit MV (6\" = 3 hexes)");
+        assert!(
+            screen.contains("MV 3"),
+            "hex-native unit MV (6\" = 3 hexes)"
+        );
         assert!(screen.contains("E 1"), "ground Extreme derives as L−1");
-        assert!(screen.contains("S 0-1  M 2-4  L 5-8"), "hex range brackets, not AS inches");
+        assert!(
+            screen.contains("S 0-1  M 2-4  L 5-8"),
+            "hex range brackets, not AS inches"
+        );
         assert!(screen.contains("To-Hit"), "per-bracket to-hit row");
         insta::assert_snapshot!(screen);
     }
@@ -4395,9 +5290,18 @@ mod tests {
                         specials: vec!["PNT1".into()],
                         ..Default::default()
                     },
-                    left: FiringArc { std: ad("2", "2", "1", "0"), ..Default::default() },
-                    right: FiringArc { std: ad("2", "2", "1", "0"), ..Default::default() },
-                    rear: FiringArc { std: ad("1", "0", "0", "0"), ..Default::default() },
+                    left: FiringArc {
+                        std: ad("2", "2", "1", "0"),
+                        ..Default::default()
+                    },
+                    right: FiringArc {
+                        std: ad("2", "2", "1", "0"),
+                        ..Default::default()
+                    },
+                    rear: FiringArc {
+                        std: ad("1", "0", "0", "0"),
+                        ..Default::default()
+                    },
                 }),
                 ..Default::default()
             },
@@ -4413,11 +5317,17 @@ mod tests {
         let screen = render(&mut app);
         assert!(screen.contains("Union"), "DropShip name");
         assert!(screen.contains("Nose"), "nose arc label");
-        assert!(screen.contains("STD 4/3/2/0*"), "front STD damage preserves 0*");
+        assert!(
+            screen.contains("STD 4/3/2/0*"),
+            "front STD damage preserves 0*"
+        );
         assert!(screen.contains("MSL 1/1/1/1"), "front MSL line");
         assert!(screen.contains("PNT1"), "arc-level special");
         assert!(screen.contains("TH 1"), "aerospace threshold row");
-        assert!(screen.contains("Crits"), "crits row still visible after the compact layout");
+        assert!(
+            screen.contains("Crits"),
+            "crits row still visible after the compact layout"
+        );
         assert!(!screen.contains("Heat"), "large craft omit the heat row");
         insta::assert_snapshot!(screen);
     }
@@ -4435,14 +5345,20 @@ mod tests {
         // Default arc = Nose, class = STD, range = Short → standard BF to-hit + front STD short (4).
         assert!(screen.contains("Nose STD @ S:"), "per-arc STD preview");
         assert!(screen.contains("damage 4"), "front STD short-range damage");
-        assert!(screen.contains("TN"), "STD arc weapons resolve a standard to-hit");
+        assert!(
+            screen.contains("TN"),
+            "STD arc weapons resolve a standard to-hit"
+        );
 
         // Phase 2: a capital class (MSL) now RESOLVES its to-hit through the standard BF table —
         // no more "resolve at table" deferral. MSL takes no capital-vs-small modifier.
         app.bf_shot.weapon_class = WeaponClass::Msl;
         let screen = render(&mut app);
         assert!(screen.contains("Nose MSL @ S:"), "per-arc MSL preview");
-        assert!(screen.contains("TN"), "capital classes resolve a real to-hit in Phase 2");
+        assert!(
+            screen.contains("TN"),
+            "capital classes resolve a real to-hit in Phase 2"
+        );
         assert!(
             !screen.contains("resolve to-hit at table"),
             "capital to-hit is no longer deferred"
@@ -4456,8 +5372,16 @@ mod tests {
         let mut app = app_with_bf_mech(sample_dropship(), 1);
         press(&mut app, KeyCode::Char('c')); // open the crit modal
         press(&mut app, KeyCode::Enter); // row 0 = roll 2 = KF Boom on the DropShip column
-        assert!(app.status.contains("KF Boom"), "KF Boom effect described: {}", app.status);
-        assert!(app.status.contains("resolve at table"), "table-side flag: {}", app.status);
+        assert!(
+            app.status.contains("KF Boom"),
+            "KF Boom effect described: {}",
+            app.status
+        );
+        assert!(
+            app.status.contains("resolve at table"),
+            "table-side flag: {}",
+            app.status
+        );
         // The KF Boom flag persists (stateful in Phase 2), not just a status string.
         assert!(app.session.mechs[0].bf.kf_boom, "KF Boom flag set");
     }
@@ -4493,9 +5417,18 @@ mod tests {
                         msl: ad("2", "2", "2", "2"),
                         ..Default::default()
                     },
-                    left: FiringArc { cap: ad("85", "85", "0", "0"), ..Default::default() },
-                    right: FiringArc { cap: ad("85", "85", "0", "0"), ..Default::default() },
-                    rear: FiringArc { std: ad("4", "4", "2", "0"), ..Default::default() },
+                    left: FiringArc {
+                        cap: ad("85", "85", "0", "0"),
+                        ..Default::default()
+                    },
+                    right: FiringArc {
+                        cap: ad("85", "85", "0", "0"),
+                        ..Default::default()
+                    },
+                    rear: FiringArc {
+                        std: ad("4", "4", "2", "0"),
+                        ..Default::default()
+                    },
                 }),
                 ..Default::default()
             },
@@ -4509,14 +5442,21 @@ mod tests {
         let mut app = app_with_bf_mech(sample_warship(), 1);
         press(&mut app, KeyCode::Char('c'));
         let screen = render(&mut app);
-        assert!(screen.contains("JumpShip column"), "WarShip uses the JumpShip crit column");
+        assert!(
+            screen.contains("JumpShip column"),
+            "WarShip uses the JumpShip crit column"
+        );
 
         // Roll 10 (row 8) = K-F Drive: −2 integrity per hit, stateful.
         for _ in 0..8 {
             press(&mut app, KeyCode::Down);
         }
         press(&mut app, KeyCode::Enter);
-        assert!(app.status.contains("K-F Drive hit 1"), "K-F Drive status: {}", app.status);
+        assert!(
+            app.status.contains("K-F Drive hit 1"),
+            "K-F Drive status: {}",
+            app.status
+        );
         assert_eq!(app.session.mechs[0].bf.kf_drive, 1, "K-F Drive hit tracked");
 
         // Roll 3 (row 1) = Dock: −1 DT rating; the baked DT 4 → 3 remaining.
@@ -4524,8 +5464,16 @@ mod tests {
             press(&mut app, KeyCode::Up);
         }
         press(&mut app, KeyCode::Enter);
-        assert!(app.status.contains("Dock hit 1"), "Dock status: {}", app.status);
-        assert!(app.status.contains("3 capacity"), "DT decrement 4→3: {}", app.status);
+        assert!(
+            app.status.contains("Dock hit 1"),
+            "Dock status: {}",
+            app.status
+        );
+        assert!(
+            app.status.contains("3 capacity"),
+            "DT decrement 4→3: {}",
+            app.status
+        );
         assert_eq!(app.session.mechs[0].bf.dock_hits, 1);
     }
 
@@ -4545,7 +5493,10 @@ mod tests {
             "K-F Drive is inert on a station: {}",
             app.status
         );
-        assert_eq!(app.session.mechs[0].bf.kf_drive, 0, "no K-F integrity spent on a station");
+        assert_eq!(
+            app.session.mechs[0].bf.kf_drive, 0,
+            "no K-F integrity spent on a station"
+        );
     }
 
     #[test]
@@ -4557,13 +5508,31 @@ mod tests {
             press(&mut app, KeyCode::Down); // row 10 = roll 12 = Crew Hit
         }
         press(&mut app, KeyCode::Enter);
-        assert!(app.status.contains("Crew hit 1: +2"), "1st crew hit +2: {}", app.status);
+        assert!(
+            app.status.contains("Crew hit 1: +2"),
+            "1st crew hit +2: {}",
+            app.status
+        );
         press(&mut app, KeyCode::Enter);
-        assert!(app.status.contains("Crew hit 2: +4"), "2nd crew hit +4: {}", app.status);
-        assert!(app.session.mechs[0].bf.killed.is_none(), "still alive after 2 crew hits");
+        assert!(
+            app.status.contains("Crew hit 2: +4"),
+            "2nd crew hit +4: {}",
+            app.status
+        );
+        assert!(
+            app.session.mechs[0].bf.killed.is_none(),
+            "still alive after 2 crew hits"
+        );
         press(&mut app, KeyCode::Enter);
-        assert!(app.status.contains("crew eliminated"), "3rd crew hit kills: {}", app.status);
-        assert!(app.session.mechs[0].bf.killed.is_some(), "3rd crew hit destroys the WarShip");
+        assert!(
+            app.status.contains("crew eliminated"),
+            "3rd crew hit kills: {}",
+            app.status
+        );
+        assert!(
+            app.session.mechs[0].bf.killed.is_some(),
+            "3rd crew hit destroys the WarShip"
+        );
 
         // DropShip-column craft take a 2-stage ladder: +2 / eliminate.
         let mut ds = app_with_bf_mech(sample_dropship(), 1);
@@ -4572,10 +5541,21 @@ mod tests {
             press(&mut ds, KeyCode::Down); // row 10 = roll 12 = Crew Hit (DropShip column)
         }
         press(&mut ds, KeyCode::Enter);
-        assert!(ds.status.contains("Crew hit 1: +2"), "1st crew hit +2: {}", ds.status);
-        assert!(ds.session.mechs[0].bf.killed.is_none(), "DropShip alive after 1 crew hit");
+        assert!(
+            ds.status.contains("Crew hit 1: +2"),
+            "1st crew hit +2: {}",
+            ds.status
+        );
+        assert!(
+            ds.session.mechs[0].bf.killed.is_none(),
+            "DropShip alive after 1 crew hit"
+        );
         press(&mut ds, KeyCode::Enter);
-        assert!(ds.status.contains("crew eliminated"), "2nd crew hit kills a DropShip: {}", ds.status);
+        assert!(
+            ds.status.contains("crew eliminated"),
+            "2nd crew hit kills a DropShip: {}",
+            ds.status
+        );
     }
 
     #[test]
@@ -4589,11 +5569,16 @@ mod tests {
         }
         press(&mut app, KeyCode::Enter);
         assert!(
-            app.status.contains("halve one randomly-determined firing arc"),
+            app.status
+                .contains("halve one randomly-determined firing arc"),
             "table-side weapon effect: {}",
             app.status
         );
-        assert!(app.status.contains("resolve at table"), "flagged table-side: {}", app.status);
+        assert!(
+            app.status.contains("resolve at table"),
+            "flagged table-side: {}",
+            app.status
+        );
         assert_eq!(
             app.session.mechs[0].bf.weapon, 0,
             "large craft do NOT increment the standard −1/damage weapon counter"
@@ -4613,8 +5598,14 @@ mod tests {
         app.bf_shot.target_kind = BfTargetKind::AirborneAero(BfAeroAngle::Nose);
         app.bf_shot.weapon_class = WeaponClass::Cap;
         let screen = render(&mut app);
-        assert!(screen.contains("Nose CAP @ S:"), "per-arc CAP preview with a resolved TN");
-        assert!(screen.contains("CAP vs small target: +5"), "capital-vs-small +5 note: {screen}");
+        assert!(
+            screen.contains("Nose CAP @ S:"),
+            "per-arc CAP preview with a resolved TN"
+        );
+        assert!(
+            screen.contains("CAP vs small target: +5"),
+            "capital-vs-small +5 note: {screen}"
+        );
 
         // Vs a large-craft target the modifier is waived.
         app.bf_shot.target_kind = BfTargetKind::AirborneDropship;
@@ -4628,7 +5619,10 @@ mod tests {
         app.bf_shot.target_kind = BfTargetKind::AirborneAero(BfAeroAngle::Nose);
         app.bf_shot.weapon_class = WeaponClass::Std;
         let screen = render(&mut app);
-        assert!(!screen.contains("vs small target"), "STD takes no capital modifier");
+        assert!(
+            !screen.contains("vs small target"),
+            "STD takes no capital modifier"
+        );
     }
 
     #[test]
@@ -4636,15 +5630,28 @@ mod tests {
         // Damage, heat and a crit all react on the card AND in the unit-header live MV.
         let mut app = app_with_bf(4);
         press(&mut app, KeyCode::Char(' ')); // 1 damage
-        assert!(app.status.contains("Armor 9"), "damage status: {}", app.status);
-        assert_eq!(app.session.mechs[3].as_armor_hits, 1, "Space damages the active element");
+        assert!(
+            app.status.contains("Armor 9"),
+            "damage status: {}",
+            app.status
+        );
+        assert_eq!(
+            app.session.mechs[3].as_armor_hits, 1,
+            "Space damages the active element"
+        );
         press(&mut app, KeyCode::Char('u')); // repair
         assert_eq!(app.session.mechs[3].as_armor_hits, 0);
         press(&mut app, KeyCode::Char(' ')); // re-damage for the snapshot
         press(&mut app, KeyCode::Char('o')); // heat 1
         let screen = render(&mut app);
-        assert!(screen.contains("MV 3→2 (heat 1)"), "live MV degradation:\n{screen}");
-        assert!(screen.contains("TMM 1 (live 0)"), "live TMM from the bracket table");
+        assert!(
+            screen.contains("MV 3→2 (heat 1)"),
+            "live MV degradation:\n{screen}"
+        );
+        assert!(
+            screen.contains("TMM 1 (live 0)"),
+            "live TMM from the bracket table"
+        );
         assert!(screen.contains("MV 2"), "unit MV = slowest survivor");
         // Crit modal: roll 4 on the 'Mech column = Fire Control (+2 to-hit).
         press(&mut app, KeyCode::Char('c'));
@@ -4654,7 +5661,10 @@ mod tests {
         press(&mut app, KeyCode::Esc);
         assert_eq!(app.session.mechs[3].bf.fire_control, 1, "FC crit marked");
         let screen = render(&mut app);
-        assert!(screen.contains("FC1"), "BF crit vocabulary on the card:\n{screen}");
+        assert!(
+            screen.contains("FC1"),
+            "BF crit vocabulary on the card:\n{screen}"
+        );
         insta::assert_snapshot!(screen);
         // One undo unwinds the crit; heat stays (separate step).
         press(&mut app, KeyCode::Char('z'));
@@ -4669,24 +5679,40 @@ mod tests {
         let mut app = app_with_bf_mech(cased, 1);
         press(&mut app, KeyCode::Char('c'));
         let screen = render(&mut app);
-        assert!(screen.contains("'Mech column"), "column reference:\n{screen}");
+        assert!(
+            screen.contains("'Mech column"),
+            "column reference:\n{screen}"
+        );
         assert!(screen.contains("Head Blown Off"), "table rows render");
         insta::assert_snapshot!(screen);
         press(&mut app, KeyCode::Enter); // sel 0 = roll 2 = Ammo
-        assert!(app.status.contains("CASE"), "CASE outcome auto-selected: {}", app.status);
+        assert!(
+            app.status.contains("CASE"),
+            "CASE outcome auto-selected: {}",
+            app.status
+        );
         assert_eq!(app.session.mechs[0].bf.killed, None);
-        assert_eq!(app.session.mechs[0].as_armor_hits, 1, "CASE ammo = 1 damage");
+        assert_eq!(
+            app.session.mechs[0].as_armor_hits, 1,
+            "CASE ammo = 1 damage"
+        );
         press(&mut app, KeyCode::Esc);
 
         let mut app = app_with_bf(1); // no CASE
         press(&mut app, KeyCode::Char('c'));
         press(&mut app, KeyCode::Enter);
-        assert!(app.session.mechs[0].bf.killed.is_some(), "unprotected ammo destroys");
+        assert!(
+            app.session.mechs[0].bf.killed.is_some(),
+            "unprotected ammo destroys"
+        );
         assert!(app.session.mechs[0].bf_destroyed());
         press(&mut app, KeyCode::Esc);
         assert!(render(&mut app).contains("DESTROYED"));
         press(&mut app, KeyCode::Char('z'));
-        assert!(!app.session.mechs[0].bf_destroyed(), "one z undoes the crit");
+        assert!(
+            !app.session.mechs[0].bf_destroyed(),
+            "one z undoes the crit"
+        );
 
         // MP crit (roll 7): −half CURRENT MP, round normally, min 1 — multiplicative (spec §1.2).
         press(&mut app, KeyCode::Char('c'));
@@ -4714,7 +5740,10 @@ mod tests {
         press(&mut app, KeyCode::Char('y')); // 1-2: detonation
         assert!(app.session.mechs[0].bf_destroyed());
         press(&mut app, KeyCode::Char('z'));
-        assert!(!app.session.mechs[0].bf_destroyed(), "the detonation is one undo step");
+        assert!(
+            !app.session.mechs[0].bf_destroyed(),
+            "the detonation is one undo step"
+        );
     }
 
     #[test]
@@ -4725,18 +5754,30 @@ mod tests {
         assert_eq!(app.session.bf.units[0].name, "Air Lance 1");
         assert_eq!(app.session.bf.units[0].elements.len(), 2);
         let screen = render(&mut app);
-        assert!(screen.contains("TH 3 (crit if hit > 3)"), "aero threshold row:\n{screen}");
+        assert!(
+            screen.contains("TH 3 (crit if hit > 3)"),
+            "aero threshold row:\n{screen}"
+        );
         assert!(screen.contains("S 0-32  M 33-64"), "air-to-air brackets");
-        assert!(screen.contains("MV 7a"), "thrust passes through unconverted");
+        assert!(
+            screen.contains("MV 7a"),
+            "thrust passes through unconverted"
+        );
         press(&mut app, KeyCode::Char('c'));
-        assert!(render(&mut app).contains("Aerospace column"), "aero crit column");
+        assert!(
+            render(&mut app).contains("Aerospace column"),
+            "aero crit column"
+        );
         // Engine ×2 on aero: TP 0 + shutdown, NOT destruction (spec §1.4).
         press(&mut app, KeyCode::Down);
         press(&mut app, KeyCode::Down); // roll 4 = Engine on the aero column
         press(&mut app, KeyCode::Enter);
         press(&mut app, KeyCode::Enter);
         press(&mut app, KeyCode::Esc);
-        assert!(!app.session.mechs[1].bf_destroyed(), "aero survives 2 engine hits");
+        assert!(
+            !app.session.mechs[1].bf_destroyed(),
+            "aero survives 2 engine hits"
+        );
         assert_eq!(app.session.bf_current_mp(1), 0, "TP 0");
         assert!(render(&mut app).contains("TP 0 — SHUTDOWN (engine)"));
         // TP 0 derives live from the hit count (§1.4 as built): heat changes in either
@@ -4744,7 +5785,10 @@ mod tests {
         press(&mut app, KeyCode::Char('o')); // heat 1
         press(&mut app, KeyCode::Char('i')); // cool back to 0
         assert_eq!(app.session.bf_current_mp(1), 0, "TP 0 survives heat repair");
-        assert_eq!(app.session.mechs[1].bf.mp_lost, 0, "mp_lost stays MP-crits-only");
+        assert_eq!(
+            app.session.mechs[1].bf.mp_lost, 0,
+            "mp_lost stays MP-crits-only"
+        );
     }
 
     #[test]
@@ -4756,14 +5800,26 @@ mod tests {
         let mut app = app_with_bf_mech(sample_vehicle(), 1);
         press(&mut app, KeyCode::Char('c'));
         let screen = render(&mut app);
-        assert!(screen.contains("Vehicle column"), "column reference:\n{screen}");
-        assert!(screen.contains("Motive damage (p.44)"), "motive section renders");
-        assert!(screen.contains("−1 MV") && screen.contains("Immobilized"), "motive rows");
+        assert!(
+            screen.contains("Vehicle column"),
+            "column reference:\n{screen}"
+        );
+        assert!(
+            screen.contains("Motive damage (p.44)"),
+            "motive section renders"
+        );
+        assert!(
+            screen.contains("−1 MV") && screen.contains("Immobilized"),
+            "motive rows"
+        );
         insta::assert_snapshot!(screen);
         // Roll 3 (sel 1) = Crew Stunned on the Vehicle column.
         press(&mut app, KeyCode::Down);
         press(&mut app, KeyCode::Enter);
-        assert!(app.session.mechs[0].bf.crew_stunned, "modal sets the turn flag");
+        assert!(
+            app.session.mechs[0].bf.crew_stunned,
+            "modal sets the turn flag"
+        );
         assert!(app.status.contains("no attacks"), "status: {}", app.status);
         // Down to the −1 MV row (sel 11) and apply.
         for _ in 0..10 {
@@ -4772,28 +5828,55 @@ mod tests {
         press(&mut app, KeyCode::Enter);
         assert_eq!(
             app.session.mechs[0].bf.motive,
-            BfMotive { minus_one: true, half: false, immobile: false }
+            BfMotive {
+                minus_one: true,
+                half: false,
+                immobile: false
+            }
         );
         press(&mut app, KeyCode::Enter); // the same effect again: once per game (p.43)
-        assert!(app.status.contains("once per game"), "status: {}", app.status);
+        assert!(
+            app.status.contains("once per game"),
+            "status: {}",
+            app.status
+        );
         press(&mut app, KeyCode::Down); // ½ MV row (sel 12)
         press(&mut app, KeyCode::Enter);
         let m = app.session.mechs[0].bf.motive;
         assert!(m.minus_one && m.half, "different effects stack");
-        assert_eq!(app.session.bf_current_mp(0), 1, "MV 4: (4 − 1) / 2, round down");
+        assert_eq!(
+            app.session.bf_current_mp(0),
+            1,
+            "MV 4: (4 − 1) / 2, round down"
+        );
         let screen = render(&mut app);
-        assert!(screen.contains("MOT−1 MOT½"), "stacked flags in the live line:\n{screen}");
+        assert!(
+            screen.contains("MOT−1 MOT½"),
+            "stacked flags in the live line:\n{screen}"
+        );
         assert!(screen.contains("✓ spent"), "marked rungs show spent");
         press(&mut app, KeyCode::Esc);
         let screen = render(&mut app);
-        assert!(screen.contains("STUN"), "crew-stun mark on the card:\n{screen}");
+        assert!(
+            screen.contains("STUN"),
+            "crew-stun mark on the card:\n{screen}"
+        );
         assert!(screen.contains("MOT−1"), "motive mark on the card");
-        assert!(screen.contains("→1 (motive)"), "live MV degradation:\n{screen}");
+        assert!(
+            screen.contains("→1 (motive)"),
+            "live MV degradation:\n{screen}"
+        );
         // `n` clears the turn flag through the same app the modal set it in; the motive
         // spent-flags are permanent (p.42) and survive.
         press(&mut app, KeyCode::Char('n'));
-        assert!(!app.session.mechs[0].bf.crew_stunned, "crew-stunned is turn-scoped");
-        assert!(app.session.mechs[0].bf.motive.minus_one, "spent flags persist");
+        assert!(
+            !app.session.mechs[0].bf.crew_stunned,
+            "crew-stunned is turn-scoped"
+        );
+        assert!(
+            app.session.mechs[0].bf.motive.minus_one,
+            "spent flags persist"
+        );
     }
 
     #[test]
@@ -4811,12 +5894,21 @@ mod tests {
         assert_eq!(app.session.mechs[0].bf.mp_lost, 0, "no mp_lost snapshot");
         assert_eq!(app.session.bf_current_mp(0), 2, "MV 4 → 2 live");
         let screen = render(&mut app);
-        assert!(screen.contains("→2 (engine)"), "live MV names the engine crit:\n{screen}");
-        assert!(screen.contains("S 2"), "card damage halves (5 → 2):\n{screen}");
+        assert!(
+            screen.contains("→2 (engine)"),
+            "live MV names the engine crit:\n{screen}"
+        );
+        assert!(
+            screen.contains("S 2"),
+            "card damage halves (5 → 2):\n{screen}"
+        );
         // The t-modal preview routes through the same engine leg (default bracket Medium: the
         // card's 5 → 2) — the announced number can never disagree with the card.
         press(&mut app, KeyCode::Char('t'));
-        assert!(render(&mut app).contains("damage 2"), "modal preview matches the card");
+        assert!(
+            render(&mut app).contains("damage 2"),
+            "modal preview matches the card"
+        );
     }
 
     #[test]
@@ -4829,8 +5921,14 @@ mod tests {
         let mut app = app_with_bf_mech(bd, 1);
         press(&mut app, KeyCode::Char('c'));
         let screen = render(&mut app);
-        assert!(screen.contains("Vehicle column"), "BD rolls the Vehicle column:\n{screen}");
-        assert!(!screen.contains("Motive damage"), "no motive rows for an emplacement");
+        assert!(
+            screen.contains("Vehicle column"),
+            "BD rolls the Vehicle column:\n{screen}"
+        );
+        assert!(
+            !screen.contains("Motive damage"),
+            "no motive rows for an emplacement"
+        );
         assert!(
             screen.contains("Ammo Hit  (+1 damage instead, p.42)"),
             "substitute effect named:\n{screen}"
@@ -4839,13 +5937,20 @@ mod tests {
         press(&mut app, KeyCode::Enter); // roll 2 = Ammo: doesn't apply to a BD
         assert_eq!(app.session.mechs[0].bf.killed, None, "no ammo explosion");
         assert_eq!(app.session.mechs[0].as_armor_hits, 1, "+1 damage instead");
-        assert!(app.status.contains("+1 damage instead"), "status: {}", app.status);
+        assert!(
+            app.status.contains("+1 damage instead"),
+            "status: {}",
+            app.status
+        );
         // Weapon rows still apply normally (sel 7 = roll 9 = Weapon).
         for _ in 0..7 {
             press(&mut app, KeyCode::Down);
         }
         press(&mut app, KeyCode::Enter);
-        assert_eq!(app.session.mechs[0].bf.weapon, 1, "Weapon crits stay real effects");
+        assert_eq!(
+            app.session.mechs[0].bf.weapon, 1,
+            "Weapon crits stay real effects"
+        );
     }
 
     #[test]
@@ -4866,10 +5971,17 @@ mod tests {
             screen.contains("DFA may not target airborne aerospace"),
             "warning line:\n{screen}"
         );
-        assert_eq!(app.bf_shot_for(0).kind, BfAttackKind::Standard, "sanitized to Standard");
+        assert_eq!(
+            app.bf_shot_for(0).kind,
+            BfAttackKind::Standard,
+            "sanitized to Standard"
+        );
         // The same declaration against a ground target is legal (jump-capable attacker).
         app.bf_shot.target_kind = BfTargetKind::None;
-        assert_eq!(app.bf_shot_for(0).kind, BfAttackKind::Physical(BfPhysical::Dfa));
+        assert_eq!(
+            app.bf_shot_for(0).kind,
+            BfAttackKind::Physical(BfPhysical::Dfa)
+        );
         assert!(!render(&mut app).contains("DFA may not target"));
     }
 
@@ -4896,9 +6008,15 @@ mod tests {
         }
         press(&mut app, KeyCode::Char(' '));
         assert!(app.bf_shot.strike_rear, "toggle sticks for strafing");
-        assert!(render(&mut app).contains("strafing damage 4"), "(6+1)/2 = 3.5 → 4");
+        assert!(
+            render(&mut app).contains("strafing damage 4"),
+            "(6+1)/2 = 3.5 → 4"
+        );
         app.bf_shot.kind = BfAttackKind::AirToGround(BfA2G::Striking);
-        assert!(render(&mut app).contains("striking damage 7"), "S 6 + rear 1");
+        assert!(
+            render(&mut app).contains("striking damage 7"),
+            "S 6 + rear 1"
+        );
     }
 
     #[test]
@@ -4913,13 +6031,19 @@ mod tests {
         press(&mut app, KeyCode::Char(' '));
         press(&mut app, KeyCode::Char(' '));
         let screen = render(&mut app);
-        assert!(screen.contains("To-Hit   8+"), "4 skill + 2 medium + 2 TMM:\n{screen}");
+        assert!(
+            screen.contains("To-Hit   8+"),
+            "4 skill + 2 medium + 2 TMM:\n{screen}"
+        );
         insta::assert_snapshot!(screen);
         press(&mut app, KeyCode::Esc);
         // The card folds the persisted context in (`To-Hit*`): M bracket = 8+.
         let screen = render(&mut app);
         assert!(screen.contains("To-Hit*"), "shot-context tag:\n{screen}");
-        assert!(screen.contains("M 8+"), "context reaches every card bracket");
+        assert!(
+            screen.contains("M 8+"),
+            "context reaches every card bracket"
+        );
         // No floor: standstill −1 at Short with no other mods = 3+ (OQ 3/4).
         press(&mut app, KeyCode::Char('t'));
         press(&mut app, KeyCode::Left); // attacker move → stood still
@@ -4930,7 +6054,10 @@ mod tests {
         }
         press(&mut app, KeyCode::Left);
         press(&mut app, KeyCode::Left); // TMM back to 0
-        assert!(render(&mut app).contains("To-Hit   3+"), "attacker standstill −1, floorless");
+        assert!(
+            render(&mut app).contains("To-Hit   3+"),
+            "attacker standstill −1, floorless"
+        );
         press(&mut app, KeyCode::Esc);
     }
 
@@ -4941,7 +6068,10 @@ mod tests {
         app.session.mechs[0].bf.crew_stunned = true;
         press(&mut app, KeyCode::Char('n'));
         assert_eq!(app.session.bf.round, 1);
-        assert!(!app.session.mechs[0].bf.crew_stunned, "crew-stunned is turn-scoped");
+        assert!(
+            !app.session.mechs[0].bf.crew_stunned,
+            "crew-stunned is turn-scoped"
+        );
         assert!(app.status.contains("Round 1"), "status: {}", app.status);
     }
 
@@ -4958,14 +6088,22 @@ mod tests {
         insta::assert_snapshot!(screen);
         press(&mut app, KeyCode::Right); // Lance 2 → wraps onto Lance 1
         assert_eq!(app.session.bf_element_assignment(4), Some(0));
-        assert_eq!(app.session.bf.units.len(), 2, "emptied Lance 2 stays mid-edit");
+        assert_eq!(
+            app.session.bf.units.len(),
+            2,
+            "emptied Lance 2 stays mid-edit"
+        );
         press(&mut app, KeyCode::Char('n')); // split to a fresh Unit
         assert_eq!(app.session.bf_element_assignment(4), Some(2));
         press(&mut app, KeyCode::Char('u')); // unassign
         assert_eq!(app.session.bf_element_assignment(4), None);
         press(&mut app, KeyCode::Esc);
         assert!(app.modal.is_none());
-        assert_eq!(app.session.bf.units.len(), 1, "emptied units pruned on close");
+        assert_eq!(
+            app.session.bf.units.len(),
+            1,
+            "emptied units pruned on close"
+        );
         // The ungrouped element renders under the implicit Unassigned section.
         assert!(render(&mut app).contains("Unassigned"));
         // Membership edits restamp the static Unit Size (all Size-4 Atlases → 4).
@@ -4980,14 +6118,25 @@ mod tests {
         press(&mut app, KeyCode::Char('a'));
         let screen = render(&mut app);
         assert!(screen.contains("Stars of 5"));
-        assert!(screen.contains("element damage/heat/crits stay"), "loss scope named");
+        assert!(
+            screen.contains("element damage/heat/crits stay"),
+            "loss scope named"
+        );
         insta::assert_snapshot!(screen);
         press(&mut app, KeyCode::Down); // Clan
         press(&mut app, KeyCode::Enter);
-        assert!(app.modal.is_none(), "pristine grouping applies without a confirm");
+        assert!(
+            app.modal.is_none(),
+            "pristine grouping applies without a confirm"
+        );
         assert_eq!(app.session.bf.units[0].name, "Star 1");
-        let sizes: Vec<usize> =
-            app.session.bf.units.iter().map(|u| u.elements.len()).collect();
+        let sizes: Vec<usize> = app
+            .session
+            .bf
+            .units
+            .iter()
+            .map(|u| u.elements.len())
+            .collect();
         assert_eq!(sizes, vec![5, 3]);
         press(&mut app, KeyCode::Char('z'));
         assert_eq!(app.session.bf.units[0].name, "Lance 1", "one undo restores");
@@ -4995,7 +6144,10 @@ mod tests {
         // Hand-entered state (a morale rung) → the itemized destructive-regroup confirm.
         // `m` acts on the unit holding the ACTIVE element (index 7 → Lance 2 = units[1]).
         press(&mut app, KeyCode::Char('m')); // Broken
-        assert_eq!(app.session.bf.units[1].morale, neurohelmet_core::session::BfMorale::Broken);
+        assert_eq!(
+            app.session.bf.units[1].morale,
+            neurohelmet_core::session::BfMorale::Broken
+        );
         press(&mut app, KeyCode::Char('g'));
         press(&mut app, KeyCode::Char('a'));
         press(&mut app, KeyCode::Enter); // Inner Sphere — but a rung is at stake
@@ -5003,10 +6155,16 @@ mod tests {
             panic!("expected an itemized confirmation:\n{}", render(&mut app));
         };
         let screen = render(&mut app);
-        assert!(screen.contains("1 morale rung(s)"), "prompt itemizes:\n{screen}");
+        assert!(
+            screen.contains("1 morale rung(s)"),
+            "prompt itemizes:\n{screen}"
+        );
         assert!(screen.contains("z undoes"));
         press(&mut app, KeyCode::Char('n')); // cancel: nothing changed
-        assert_eq!(app.session.bf.units[1].morale, neurohelmet_core::session::BfMorale::Broken);
+        assert_eq!(
+            app.session.bf.units[1].morale,
+            neurohelmet_core::session::BfMorale::Broken
+        );
         press(&mut app, KeyCode::Char('g'));
         press(&mut app, KeyCode::Char('a'));
         press(&mut app, KeyCode::Enter);
@@ -5028,11 +6186,17 @@ mod tests {
         assert!(render(&mut app).contains("MV 3"), "full-health unit MV");
         press(&mut app, KeyCode::Char('o'));
         press(&mut app, KeyCode::Char('o')); // heat 2 on one member → its MP 1 pins the unit
-        assert!(render(&mut app).contains("MV 1"), "slowest survivor pins the Unit");
+        assert!(
+            render(&mut app).contains("MV 1"),
+            "slowest survivor pins the Unit"
+        );
         press(&mut app, KeyCode::Char('o'));
         press(&mut app, KeyCode::Char('o')); // heat 4 = shutdown
         let screen = render(&mut app);
-        assert!(screen.contains("CANNOT MOVE (shutdown)"), "p.49 shutdown pin:\n{screen}");
+        assert!(
+            screen.contains("CANNOT MOVE (shutdown)"),
+            "p.49 shutdown pin:\n{screen}"
+        );
     }
 
     #[test]
@@ -5121,17 +6285,30 @@ mod tests {
         press(&mut app, KeyCode::Char('o')); // heat 1
         press(&mut app, KeyCode::Char('m')); // Lance 2 → Broken
         press(&mut app, KeyCode::Char('L')); // snapshot
-        assert!(app.status.contains("Logged"), "snapshot recorded: {}", app.status);
+        assert!(
+            app.status.contains("Logged"),
+            "snapshot recorded: {}",
+            app.status
+        );
 
         let out = tempfile::tempdir().unwrap();
         let dir = crate::export::run(name, Some(out.path().to_path_buf())).unwrap();
         let transcript = std::fs::read_to_string(dir.join("transcript.txt")).unwrap();
-        assert!(transcript.contains("== Turn 1 — Lance 1 =="), "unit heading:\n{transcript}");
-        assert!(transcript.contains("== Turn 1 — Lance 2 =="), "one frame per Unit");
+        assert!(
+            transcript.contains("== Turn 1 — Lance 1 =="),
+            "unit heading:\n{transcript}"
+        );
+        assert!(
+            transcript.contains("== Turn 1 — Lance 2 =="),
+            "one frame per Unit"
+        );
         assert!(transcript.contains("Broken"), "morale rung exported");
         assert!(transcript.contains("9/10"), "armor mark exported");
         assert!(transcript.contains("MV 3→2 (heat 1)"), "live MV exported");
-        assert!(transcript.contains("S 0-1  M 2-4  L 5-8"), "BF sheet, not the AS fallback");
+        assert!(
+            transcript.contains("S 0-1  M 2-4  L 5-8"),
+            "BF sheet, not the AS fallback"
+        );
         assert!(dir.join("turn-01").join("01-Lance 1.ppm").exists());
         assert!(dir.join("turn-01").join("02-Lance 2.ppm").exists());
 
@@ -5150,7 +6327,10 @@ mod tests {
         );
         assert!(dir.join("turn-02").join("01-Unassigned.ppm").exists());
         let turn2 = transcript.split("== Turn 2").nth(1).unwrap();
-        assert!(turn2.contains("S 0-1  M 2-4  L 5-8"), "BF sheet, not AS cards:\n{turn2}");
+        assert!(
+            turn2.contains("S 0-1  M 2-4  L 5-8"),
+            "BF sheet, not AS cards:\n{turn2}"
+        );
         let _ = std::fs::remove_file(log::log_file(name));
     }
 }

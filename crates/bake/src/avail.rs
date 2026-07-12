@@ -47,20 +47,34 @@ const AVAIL_URL: &str = "https://mekbay.com/assets/mulized_availability_weighted
 
 /// Fetch + parse the era catalog, faction catalog, and availability table.
 pub fn fetch(fetcher: &Fetcher) -> Result<AvailCatalogs, String> {
-    let eras = parse_eras(&fetcher.get_text("eras.json").map_err(|e| format!("eras.json: {e}"))?)?;
-    let factions =
-        parse_factions(&fetcher.get_text("factions.json").map_err(|e| format!("factions.json: {e}"))?)?;
+    let eras = parse_eras(
+        &fetcher
+            .get_text("eras.json")
+            .map_err(|e| format!("eras.json: {e}"))?,
+    )?;
+    let factions = parse_factions(
+        &fetcher
+            .get_text("factions.json")
+            .map_err(|e| format!("factions.json: {e}"))?,
+    )?;
     let avail_text = fetcher
         .get_text_url(AVAIL_URL, "mulized_availability_weighted.json")
         .map_err(|e| format!("availability: {e}"))?;
     let known: HashSet<u16> = factions.iter().map(|f| f.id).collect();
     let by_name = parse_availability(&avail_text, &known)?;
-    Ok(AvailCatalogs { eras, factions, by_name })
+    Ok(AvailCatalogs {
+        eras,
+        factions,
+        by_name,
+    })
 }
 
 fn parse_eras(text: &str) -> Result<Vec<EraInfo>, String> {
     let v: Value = serde_json::from_str(text).map_err(|e| format!("eras.json: {e}"))?;
-    let arr = v.get("eras").and_then(Value::as_array).ok_or("eras.json: missing `eras`")?;
+    let arr = v
+        .get("eras")
+        .and_then(Value::as_array)
+        .ok_or("eras.json: missing `eras`")?;
     let mut eras: Vec<EraInfo> = arr
         .iter()
         .filter_map(|e| {
@@ -68,7 +82,12 @@ fn parse_eras(text: &str) -> Result<Vec<EraInfo>, String> {
                 id: u16::try_from(e.get("id")?.as_u64()?).ok()?,
                 name: e.get("name")?.as_str()?.to_string(),
                 from: e.get("years")?.get("from")?.as_u64()? as u16,
-                to: e.get("years")?.get("to")?.as_u64().unwrap_or(9999).min(9999) as u16,
+                to: e
+                    .get("years")?
+                    .get("to")?
+                    .as_u64()
+                    .unwrap_or(9999)
+                    .min(9999) as u16,
             })
         })
         .collect();
@@ -81,18 +100,26 @@ fn parse_eras(text: &str) -> Result<Vec<EraInfo>, String> {
 
 fn parse_factions(text: &str) -> Result<Vec<FactionInfo>, String> {
     let v: Value = serde_json::from_str(text).map_err(|e| format!("factions.json: {e}"))?;
-    let arr = v.get("factions").and_then(Value::as_array).ok_or("factions.json: missing `factions`")?;
+    let arr = v
+        .get("factions")
+        .and_then(Value::as_array)
+        .ok_or("factions.json: missing `factions`")?;
     let mut factions: Vec<FactionInfo> = arr
         .iter()
         .filter_map(|f| {
             Some(FactionInfo {
                 id: u16::try_from(f.get("id")?.as_u64()?).ok()?,
                 name: f.get("name")?.as_str()?.to_string(),
-                group: f.get("group").and_then(Value::as_str).unwrap_or("").to_string(),
+                group: f
+                    .get("group")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
             })
         })
         .collect();
-    factions.sort_by(|a, b| (a.group.clone(), a.name.clone()).cmp(&(b.group.clone(), b.name.clone())));
+    factions
+        .sort_by(|a, b| (a.group.clone(), a.name.clone()).cmp(&(b.group.clone(), b.name.clone())));
     if factions.is_empty() {
         return Err("factions.json: no factions parsed".into());
     }
@@ -101,20 +128,35 @@ fn parse_factions(text: &str) -> Result<Vec<FactionInfo>, String> {
 
 /// Parse the availability array into `name -> (era -> faction -> score)`, dropping zero scores and
 /// any faction id not present in `known` (e.g. the placeholder id 0).
-fn parse_availability(text: &str, known: &HashSet<u16>) -> Result<HashMap<String, UnitAvailability>, String> {
+fn parse_availability(
+    text: &str,
+    known: &HashSet<u16>,
+) -> Result<HashMap<String, UnitAvailability>, String> {
     let v: Value = serde_json::from_str(text).map_err(|e| format!("availability: {e}"))?;
-    let arr = v.as_array().ok_or("availability: expected a top-level array")?;
+    let arr = v
+        .as_array()
+        .ok_or("availability: expected a top-level array")?;
     let mut out = HashMap::with_capacity(arr.len());
     for rec in arr {
-        let Some(name) = rec.get("n").and_then(Value::as_str) else { continue };
-        let Some(eras) = rec.get("e").and_then(Value::as_object) else { continue };
+        let Some(name) = rec.get("n").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(eras) = rec.get("e").and_then(Value::as_object) else {
+            continue;
+        };
         let mut table: UnitAvailability = BTreeMap::new();
         for (era_key, fac_map) in eras {
-            let Ok(era_id) = era_key.parse::<u16>() else { continue };
-            let Some(fac_map) = fac_map.as_object() else { continue };
+            let Ok(era_id) = era_key.parse::<u16>() else {
+                continue;
+            };
+            let Some(fac_map) = fac_map.as_object() else {
+                continue;
+            };
             let mut row: BTreeMap<u16, u8> = BTreeMap::new();
             for (fac_key, pair) in fac_map {
-                let Ok(fac_id) = fac_key.parse::<u16>() else { continue };
+                let Ok(fac_id) = fac_key.parse::<u16>() else {
+                    continue;
+                };
                 if !known.contains(&fac_id) {
                     continue;
                 }
@@ -202,10 +244,18 @@ mod tests {
         ]}"#;
         let factions = parse_factions(json).unwrap();
         // Ordered by (group, name): "" (Davion) < "Clan" (Jade Falcon, Wolf) < "IS" (Steiner).
-        let order: Vec<_> = factions.iter().map(|f| (f.group.as_str(), f.name.as_str())).collect();
+        let order: Vec<_> = factions
+            .iter()
+            .map(|f| (f.group.as_str(), f.name.as_str()))
+            .collect();
         assert_eq!(
             order,
-            vec![("", "Davion"), ("Clan", "Jade Falcon"), ("Clan", "Wolf"), ("IS", "Steiner")],
+            vec![
+                ("", "Davion"),
+                ("Clan", "Jade Falcon"),
+                ("Clan", "Wolf"),
+                ("IS", "Steiner")
+            ],
         );
         // A missing `group` becomes an empty string, not a parse failure.
         assert_eq!(factions[0].group, "");

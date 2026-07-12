@@ -37,7 +37,10 @@ fn extra_emplacements_and_foot_point_are_baked() {
 
     // Gun emplacements: AS-only (no Classic armor), with the card's PV/damage.
     let heavy = find("Heavy Emplacement (AC/20)");
-    assert!(heavy.is_as_only(), "emplacement has no Classic record sheet");
+    assert!(
+        heavy.is_as_only(),
+        "emplacement has no Classic record sheet"
+    );
     assert_eq!(heavy.as_stats.pv, 15);
     assert_eq!(heavy.as_stats.tp, "BD");
     assert_eq!(heavy.as_stats.dmg_s, "2");

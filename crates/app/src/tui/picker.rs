@@ -49,7 +49,8 @@ impl Picker {
         self.filtered.clear();
         let passes = |i: usize| filters::matches(filters, &bundle.mechs[i]);
         if self.query.is_empty() {
-            self.filtered.extend((0..names.len()).filter(|&i| passes(i)));
+            self.filtered
+                .extend((0..names.len()).filter(|&i| passes(i)));
         } else {
             let pat = Pattern::parse(&self.query, CaseMatching::Ignore, Normalization::Smart);
             let mut buf = Vec::new();
@@ -72,8 +73,9 @@ impl Picker {
             if let Some((era, fac)) = filters.avail_context() {
                 // Cached key: compute each unit's rarity once, not on every comparison (the catalog
                 // is ~9k units, so an uncached key recomputes rarity O(n log n) times → visible lag).
-                self.filtered
-                    .sort_by_cached_key(|&i| std::cmp::Reverse(bundle.mechs[i].rarity(era, fac).rank()));
+                self.filtered.sort_by_cached_key(|&i| {
+                    std::cmp::Reverse(bundle.mechs[i].rarity(era, fac).rank())
+                });
             }
         }
         if self.selected >= self.filtered.len() {

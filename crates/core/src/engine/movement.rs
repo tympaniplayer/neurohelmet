@@ -33,8 +33,12 @@ pub enum MoveMode {
 
 impl MoveMode {
     /// Cycle order for the UI selector.
-    pub const ALL: [MoveMode; 4] =
-        [MoveMode::Stationary, MoveMode::Walked, MoveMode::Ran, MoveMode::Jumped];
+    pub const ALL: [MoveMode; 4] = [
+        MoveMode::Stationary,
+        MoveMode::Walked,
+        MoveMode::Ran,
+        MoveMode::Jumped,
+    ];
 
     /// UI label; vehicles move at Cruise/Flank instead of Walk/Run, and infantry have a single
     /// ground speed (no run) so any ground move just reads "moved".

@@ -46,7 +46,10 @@ const BIAS_FACTOR: u64 = 4;
 
 /// The formation name for a unit count, if one matches exactly.
 pub fn formation_name(count: usize) -> Option<&'static str> {
-    FORMATIONS.iter().find(|(n, _)| *n == count).map(|(_, s)| *s)
+    FORMATIONS
+        .iter()
+        .find(|(n, _)| *n == count)
+        .map(|(_, s)| *s)
 }
 
 /// Resolved generation parameters.
@@ -70,9 +73,10 @@ pub struct GenConfig<'a> {
 /// The BV (Classic/Override) or PV (Alpha Strike) cost of a unit at default skills.
 pub fn unit_cost(m: &Mech, mode: GameMode) -> u64 {
     match mode {
-        GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => {
-            u64::from(m.as_stats.pv)
-        }
+        GameMode::AlphaStrike
+        | GameMode::StrategicBattleForce
+        | GameMode::BattleForce
+        | GameMode::AbstractCombatSystem => u64::from(m.as_stats.pv),
         GameMode::Classic | GameMode::Override => u64::from(m.bv),
     }
 }
@@ -212,7 +216,12 @@ mod tests {
         m
     }
 
-    fn cfg(count: usize, budget: Option<u64>, allow_rare: bool, max_units: usize) -> GenConfig<'static> {
+    fn cfg(
+        count: usize,
+        budget: Option<u64>,
+        allow_rare: bool,
+        max_units: usize,
+    ) -> GenConfig<'static> {
         GenConfig {
             faction: Some(27),
             era_id: Some(13),
@@ -257,7 +266,12 @@ mod tests {
     fn budget_is_a_hard_ceiling_and_may_fall_short_of_count() {
         // Want 10 @ 1000 BV each under a 3500 budget -> only 3 fit (4th would hit 4000).
         let bundle = Bundle::new(vec![mech("A", "Heavy", 1000, Some(50))]);
-        let force = generate(&bundle, &Filters::default(), &cfg(10, Some(3500), false, 12), 7);
+        let force = generate(
+            &bundle,
+            &Filters::default(),
+            &cfg(10, Some(3500), false, 12),
+            7,
+        );
         assert_eq!(force.len(), 3, "stops short of count to stay within budget");
         let total: u64 = force.iter().map(|&i| u64::from(bundle.mechs[i].bv)).sum();
         assert!(total <= 3500, "never exceeds the budget (got {total})");
@@ -267,7 +281,12 @@ mod tests {
     fn count_caps_units_even_when_budget_is_generous() {
         // count 4 with a roomy budget -> exactly 4 (budget no longer pushes past count).
         let bundle = Bundle::new(vec![mech("A", "Heavy", 1000, Some(50))]);
-        let force = generate(&bundle, &Filters::default(), &cfg(4, Some(100_000), false, 12), 7);
+        let force = generate(
+            &bundle,
+            &Filters::default(),
+            &cfg(4, Some(100_000), false, 12),
+            7,
+        );
         assert_eq!(force.len(), 4);
     }
 
@@ -275,11 +294,19 @@ mod tests {
     fn no_unit_fits_the_budget_yields_empty() {
         // Cheapest candidate (1000) is over a 500 budget -> nothing fits.
         let bundle = Bundle::new(vec![mech("A", "Heavy", 1000, Some(50))]);
-        let force = generate(&bundle, &Filters::default(), &cfg(4, Some(500), false, 12), 7);
+        let force = generate(
+            &bundle,
+            &Filters::default(),
+            &cfg(4, Some(500), false, 12),
+            7,
+        );
         assert!(force.is_empty());
         // ...but the candidate pool itself is non-empty, so the UI can say "over budget" not
         // "no candidates".
-        assert_eq!(eligible_count(&bundle, &Filters::default(), &cfg(4, Some(500), false, 12)), 1);
+        assert_eq!(
+            eligible_count(&bundle, &Filters::default(), &cfg(4, Some(500), false, 12)),
+            1
+        );
     }
 
     #[test]
@@ -289,7 +316,12 @@ mod tests {
             mech("Cheap", "Light", 750, Some(50)),
             mech("Dear", "Assault", 2800, Some(50)),
         ]);
-        let force = generate(&bundle, &Filters::default(), &cfg(4, Some(3500), false, 12), 3);
+        let force = generate(
+            &bundle,
+            &Filters::default(),
+            &cfg(4, Some(3500), false, 12),
+            3,
+        );
         let total: u64 = force.iter().map(|&i| u64::from(bundle.mechs[i].bv)).sum();
         assert!(total <= 3500, "within budget (got {total})");
         assert!(!force.is_empty());
@@ -307,13 +339,20 @@ mod tests {
     /// faction/era resolution + the weighted draw line up on actual RATGenerator data.
     #[test]
     fn real_bundle_generates_an_available_lance() {
-        let path =
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/mechs.bin");
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data/mechs.bin");
         let Ok(bundle) = Bundle::load(&path) else {
             return; // not baked in this environment — skip
         };
-        let era = bundle.eras.iter().find(|e| e.name.contains("Early Succession")).unwrap();
-        let fac = bundle.factions.iter().find(|f| f.name == "Federated Suns").unwrap();
+        let era = bundle
+            .eras
+            .iter()
+            .find(|e| e.name.contains("Early Succession"))
+            .unwrap();
+        let fac = bundle
+            .factions
+            .iter()
+            .find(|f| f.name == "Federated Suns")
+            .unwrap();
         let cfg = GenConfig {
             faction: Some(fac.id),
             era_id: Some(era.id),

@@ -148,7 +148,10 @@ mod tests {
     fn absorbed_by_armor() {
         let m = max(10, 0, 5);
         let mut st = LocState::default();
-        assert_eq!(apply_damage(&m, &mut st, Facing::Front, 4), DamageOutcome::Absorbed);
+        assert_eq!(
+            apply_damage(&m, &mut st, Facing::Front, 4),
+            DamageOutcome::Absorbed
+        );
         assert_eq!(st.armor_hits, 4);
         assert_eq!(armor_remaining(&m, &st, Facing::Front), 6);
     }

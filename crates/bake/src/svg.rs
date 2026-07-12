@@ -73,8 +73,11 @@ pub fn parse_aero_heat(svg_text: &str) -> (u16, u16) {
         if node.attribute("id") == Some("hsCount") {
             // The text may sit on the node or in child <tspan>s; gather only the text nodes (the
             // element node also reports its child's text, which would double-count).
-            let txt: String =
-                node.descendants().filter(|n| n.is_text()).filter_map(|n| n.text()).collect();
+            let txt: String = node
+                .descendants()
+                .filter(|n| n.is_text())
+                .filter_map(|n| n.text())
+                .collect();
             let nums: Vec<u16> = txt
                 .split(|c: char| !c.is_ascii_digit())
                 .filter_map(|s| s.parse().ok())
@@ -94,7 +97,14 @@ pub fn parse_aero_heat(svg_text: &str) -> (u16, u16) {
 /// that name a transport or storage bay (Infantry Compartment, Cargo, Troop/Infantry Bay, …) with
 /// their tonnage, dropping non-storage features (Chassis Mods, etc.). Empty when the sheet has none.
 pub fn parse_transport(svg_text: &str) -> Vec<String> {
-    const KEYWORDS: [&str; 6] = ["Compartment", "Cargo", "Bay", "Troop", "Seating", "Quarters"];
+    const KEYWORDS: [&str; 6] = [
+        "Compartment",
+        "Cargo",
+        "Bay",
+        "Troop",
+        "Seating",
+        "Quarters",
+    ];
     let Ok(doc) = roxmltree::Document::parse(svg_text) else {
         return Vec::new();
     };
@@ -102,9 +112,14 @@ pub fn parse_transport(svg_text: &str) -> Vec<String> {
         if !node.is_element() || node.tag_name().name() != "text" {
             continue;
         }
-        let txt: String =
-            node.descendants().filter(|n| n.is_text()).filter_map(|n| n.text()).collect();
-        let Some(list) = txt.trim().strip_prefix("Features ") else { continue };
+        let txt: String = node
+            .descendants()
+            .filter(|n| n.is_text())
+            .filter_map(|n| n.text())
+            .collect();
+        let Some(list) = txt.trim().strip_prefix("Features ") else {
+            continue;
+        };
         let entries: Vec<String> = list
             .split(',')
             .map(str::trim)
@@ -181,7 +196,10 @@ pub fn parse_crit_slots(svg_text: &str) -> Result<BTreeMap<Location, Vec<CritSlo
         // where one item = one effect). `hs` is the dissipation per sink (0 otherwise).
         // Only sink slots keep their uid: that's all the runtime needs, and baking every
         // slot's uid would grow the bundle by ~50%.
-        let hs = node.attribute("hs").and_then(|s| s.parse::<u8>().ok()).unwrap_or(0);
+        let hs = node
+            .attribute("hs")
+            .and_then(|s| s.parse::<u8>().ok())
+            .unwrap_or(0);
         let uid = if hs > 0 {
             node.attribute("uid").unwrap_or("").to_string()
         } else {
@@ -209,9 +227,11 @@ mod tests {
 
     #[test]
     fn aero_heat_singles_and_doubles() {
-        let single = r#"<svg xmlns="http://www.w3.org/2000/svg"><text id="hsCount">10</text></svg>"#;
+        let single =
+            r#"<svg xmlns="http://www.w3.org/2000/svg"><text id="hsCount">10</text></svg>"#;
         assert_eq!(parse_aero_heat(single), (10, 10));
-        let double = r#"<svg xmlns="http://www.w3.org/2000/svg"><text id="hsCount">16 (32)</text></svg>"#;
+        let double =
+            r#"<svg xmlns="http://www.w3.org/2000/svg"><text id="hsCount">16 (32)</text></svg>"#;
         assert_eq!(parse_aero_heat(double), (16, 32));
         let none = r#"<svg xmlns="http://www.w3.org/2000/svg"></svg>"#;
         assert_eq!(parse_aero_heat(none), (0, 0));
@@ -275,7 +295,10 @@ mod tests {
         </svg>"##;
         assert_eq!(
             parse_transport(svg),
-            vec!["Cargo (8 tons)".to_string(), "Infantry Compartment (4 tons)".to_string()],
+            vec![
+                "Cargo (8 tons)".to_string(),
+                "Infantry Compartment (4 tons)".to_string()
+            ],
         );
         // No Features line, or only non-storage features → empty.
         let none = r##"<svg xmlns="http://www.w3.org/2000/svg">
@@ -346,14 +369,24 @@ mod tests {
         let hd: Vec<&str> = t[&Location::Head].iter().map(|c| c.name.as_str()).collect();
         assert_eq!(
             hd,
-            ["Life Support", "Sensors", "Cockpit", "Heat Sink", "Sensors", "Life Support"]
+            [
+                "Life Support",
+                "Sensors",
+                "Cockpit",
+                "Heat Sink",
+                "Sensors",
+                "Life Support"
+            ]
         );
         // Center torso leads with engine + gyro systems.
         let ct = &t[&Location::CenterTorso];
         assert!(ct.iter().any(|c| c.name == "Fusion Engine" && c.system));
         assert!(ct.iter().any(|c| c.name == "Gyro" && c.system));
         // The head heat sink carries its grouping uid + per-sink dissipation.
-        let hd_sink = t[&Location::Head].iter().find(|c| c.name == "Heat Sink").unwrap();
+        let hd_sink = t[&Location::Head]
+            .iter()
+            .find(|c| c.name == "Heat Sink")
+            .unwrap();
         assert_eq!(hd_sink.uid, "Heat Sink@HD#3");
         assert_eq!(hd_sink.hs, 1);
         // All eight biped locations carry crit tables.

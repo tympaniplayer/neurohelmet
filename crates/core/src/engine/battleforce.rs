@@ -133,9 +133,18 @@ impl BfMotive {
 pub fn bf_motive_effect(roll_2d6: i32) -> BfMotive {
     match roll_2d6 {
         i32::MIN..=7 => BfMotive::default(),
-        8 | 9 => BfMotive { minus_one: true, ..Default::default() },
-        10 | 11 => BfMotive { half: true, ..Default::default() },
-        _ => BfMotive { immobile: true, ..Default::default() },
+        8 | 9 => BfMotive {
+            minus_one: true,
+            ..Default::default()
+        },
+        10 | 11 => BfMotive {
+            half: true,
+            ..Default::default()
+        },
+        _ => BfMotive {
+            immobile: true,
+            ..Default::default()
+        },
     }
 }
 
@@ -323,7 +332,10 @@ pub enum BfAttackKind {
     Standard,
     /// Indirect fire: +1; +2 instead if the spotter also attacked this turn; a remote-sensor
     /// spotter adds a further +3 (fn4).
-    Indirect { spotter_also_attacked: bool, spotter_is_remote_sensor: bool },
+    Indirect {
+        spotter_also_attacked: bool,
+        spotter_is_remote_sensor: bool,
+    },
     /// REAR-weapons attack (§1.6): +1 TN, fires the REAR damage values ([`bf_rear_damage`]) —
     /// distinct from *being hit* in the rear, which is +1 damage and no TN row (p.41).
     RearWeapons,
@@ -433,13 +445,20 @@ pub fn bf_to_hit(el: &AsElement, skill: u8, heat: u8, fc_crits: u8, shot: &BfSho
     if shot.grounded && weapon && !target_airborne {
         // Grounded aerospace, ground-to-ground weapon attack (p.46): fighters/CF +2; grounded
         // DropShips −2 (OQ 1, DECIDED).
-        tn += if matches!(el.as_type.as_str(), "DS" | "DA") { -2 } else { 2 };
+        tn += if matches!(el.as_type.as_str(), "DS" | "DA") {
+            -2
+        } else {
+            2
+        };
     }
 
     // Attack rows.
     match shot.kind {
         BfAttackKind::Standard => {}
-        BfAttackKind::Indirect { spotter_also_attacked, spotter_is_remote_sensor } => {
+        BfAttackKind::Indirect {
+            spotter_also_attacked,
+            spotter_is_remote_sensor,
+        } => {
             tn += if spotter_also_attacked { 2 } else { 1 };
             if spotter_is_remote_sensor {
                 tn += 3; // fn4: an additional +3
@@ -821,9 +840,7 @@ pub fn bf_strafe_damage(el: &AsElement, weapon_crits: u8, ov_commit: u8, rear: b
 /// Striking damage (pp.47–48): the S value + the overheat commit, +1 if the attack strikes the
 /// rear (p.41); resolves at Short range (p.47). Weapon crits reduce the S value first (p.43).
 pub fn bf_strike_damage(el: &AsElement, weapon_crits: u8, ov_commit: u8, rear: bool) -> f32 {
-    (el.std_damage.s - f32::from(weapon_crits)).max(0.0)
-        + f32::from(ov_commit)
-        + f32::from(rear)
+    (el.std_damage.s - f32::from(weapon_crits)).max(0.0) + f32::from(ov_commit) + f32::from(rear)
 }
 
 /// HE/Cluster bomb damage to every element in the bombed hex, per bomb (p.48).
@@ -994,7 +1011,12 @@ mod tests {
             skill: 4,
             full_armor: 6,
             full_structure: 4,
-            std_damage: DamageVector { s: 3.0, m: 3.0, l: Some(2.0), e: Some(0.0) },
+            std_damage: DamageVector {
+                s: 3.0,
+                m: 3.0,
+                l: Some(2.0),
+                e: Some(0.0),
+            },
             overheat: 0,
             threshold: 0,
             suas: BTreeMap::new(),
@@ -1011,14 +1033,33 @@ mod tests {
 
     /// Baseline hand-entered shot at Short range: every other field is the +0 default.
     fn shot() -> BfShot {
-        BfShot { range: BfRange::Short, ..Default::default() }
+        BfShot {
+            range: BfRange::Short,
+            ..Default::default()
+        }
     }
 
     // Motive-flag shorthands (§1.2): none / −1 MV / ½ MV / immobile.
-    const M_NONE: BfMotive = BfMotive { minus_one: false, half: false, immobile: false };
-    const M_MINUS1: BfMotive = BfMotive { minus_one: true, half: false, immobile: false };
-    const M_HALF: BfMotive = BfMotive { minus_one: false, half: true, immobile: false };
-    const M_IMM: BfMotive = BfMotive { minus_one: false, half: false, immobile: true };
+    const M_NONE: BfMotive = BfMotive {
+        minus_one: false,
+        half: false,
+        immobile: false,
+    };
+    const M_MINUS1: BfMotive = BfMotive {
+        minus_one: true,
+        half: false,
+        immobile: false,
+    };
+    const M_HALF: BfMotive = BfMotive {
+        minus_one: false,
+        half: true,
+        immobile: false,
+    };
+    const M_IMM: BfMotive = BfMotive {
+        minus_one: false,
+        half: false,
+        immobile: true,
+    };
 
     /// [`bf_current_mp`] with the ground-'Mech default engine legs (no engine crits, no column).
     fn cur_mp(base: u32, heat: u8, mp_lost: u32, motive: BfMotive, tsm: bool) -> u32 {
@@ -1035,7 +1076,17 @@ mod tests {
     fn to_hit_worked_examples_p40() {
         let bm = el("BM");
         // Skill 3, medium range: 3 + 2 = 5.
-        assert_eq!(th(&bm, 3, &BfShot { range: BfRange::Medium, ..shot() }), 5);
+        assert_eq!(
+            th(
+                &bm,
+                3,
+                &BfShot {
+                    range: BfRange::Medium,
+                    ..shot()
+                }
+            ),
+            5
+        );
         // Skill 3, long range, TMM 2, Large target: 3 + 4 + 2 − 1 = 8.
         assert_eq!(
             th(
@@ -1069,14 +1120,64 @@ mod tests {
     #[test]
     fn to_hit_attacker_movement_and_infantry_exemption() {
         let bm = el("BM");
-        assert_eq!(th(&bm, 4, &BfShot { attacker_move: BfMove::StoodStill, ..shot() }), 3);
-        assert_eq!(th(&bm, 4, &BfShot { attacker_move: BfMove::Moved, ..shot() }), 4);
-        assert_eq!(th(&bm, 4, &BfShot { attacker_move: BfMove::Jumped, ..shot() }), 6);
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    attacker_move: BfMove::StoodStill,
+                    ..shot()
+                }
+            ),
+            3
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    attacker_move: BfMove::Moved,
+                    ..shot()
+                }
+            ),
+            4
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    attacker_move: BfMove::Jumped,
+                    ..shot()
+                }
+            ),
+            6
+        );
         // fn1: infantry/BA exempt from standstill and jumping.
         for tp in ["CI", "BA"] {
             let inf = el(tp);
-            assert_eq!(th(&inf, 4, &BfShot { attacker_move: BfMove::StoodStill, ..shot() }), 4);
-            assert_eq!(th(&inf, 4, &BfShot { attacker_move: BfMove::Jumped, ..shot() }), 4);
+            assert_eq!(
+                th(
+                    &inf,
+                    4,
+                    &BfShot {
+                        attacker_move: BfMove::StoodStill,
+                        ..shot()
+                    }
+                ),
+                4
+            );
+            assert_eq!(
+                th(
+                    &inf,
+                    4,
+                    &BfShot {
+                        attacker_move: BfMove::Jumped,
+                        ..shot()
+                    }
+                ),
+                4
+            );
         }
     }
 
@@ -1097,7 +1198,17 @@ mod tests {
         assert_eq!(th(&with_sua(el("IM"), "AFC"), 4, &shot()), 4);
         // Grounded fighter, ground-to-ground weapon attack: +2. Not applied when the target is
         // airborne (that is ground-to-air), and the DECIDED grounded-DropShip constant is −2 (OQ 1).
-        assert_eq!(th(&el("AF"), 4, &BfShot { grounded: true, ..shot() }), 6);
+        assert_eq!(
+            th(
+                &el("AF"),
+                4,
+                &BfShot {
+                    grounded: true,
+                    ..shot()
+                }
+            ),
+            6
+        );
         assert_eq!(
             th(
                 &el("AF"),
@@ -1110,7 +1221,17 @@ mod tests {
             ),
             6 // +2 airborne-side only; no grounded +2
         );
-        assert_eq!(th(&el("DS"), 4, &BfShot { grounded: true, ..shot() }), 2);
+        assert_eq!(
+            th(
+                &el("DS"),
+                4,
+                &BfShot {
+                    grounded: true,
+                    ..shot()
+                }
+            ),
+            2
+        );
     }
 
     #[test]
@@ -1120,31 +1241,147 @@ mod tests {
             spotter_also_attacked: spot,
             spotter_is_remote_sensor: remote,
         };
-        assert_eq!(th(&bm, 4, &BfShot { kind: indirect(false, false), ..shot() }), 5);
-        assert_eq!(th(&bm, 4, &BfShot { kind: indirect(true, false), ..shot() }), 6);
-        assert_eq!(th(&bm, 4, &BfShot { kind: indirect(false, true), ..shot() }), 8); // +1 +3
-        assert_eq!(th(&bm, 4, &BfShot { kind: BfAttackKind::RearWeapons, ..shot() }), 5);
-        assert_eq!(th(&bm, 4, &BfShot { area_effect: true, ..shot() }), 5);
-        assert_eq!(th(&bm, 4, &BfShot { secondary: true, ..shot() }), 5);
-        assert_eq!(th(&bm, 4, &BfShot { also_spotting: true, ..shot() }), 5);
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    kind: indirect(false, false),
+                    ..shot()
+                }
+            ),
+            5
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    kind: indirect(true, false),
+                    ..shot()
+                }
+            ),
+            6
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    kind: indirect(false, true),
+                    ..shot()
+                }
+            ),
+            8
+        ); // +1 +3
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    kind: BfAttackKind::RearWeapons,
+                    ..shot()
+                }
+            ),
+            5
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    area_effect: true,
+                    ..shot()
+                }
+            ),
+            5
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    secondary: true,
+                    ..shot()
+                }
+            ),
+            5
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    also_spotting: true,
+                    ..shot()
+                }
+            ),
+            5
+        );
         // Range ladder: S +0 / M +2 / L +4 / E +6.
-        assert_eq!(th(&bm, 4, &BfShot { range: BfRange::Short, ..shot() }), 4);
-        assert_eq!(th(&bm, 4, &BfShot { range: BfRange::Medium, ..shot() }), 6);
-        assert_eq!(th(&bm, 4, &BfShot { range: BfRange::Long, ..shot() }), 8);
-        assert_eq!(th(&bm, 4, &BfShot { range: BfRange::Extreme, ..shot() }), 10);
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    range: BfRange::Short,
+                    ..shot()
+                }
+            ),
+            4
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    range: BfRange::Medium,
+                    ..shot()
+                }
+            ),
+            6
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    range: BfRange::Long,
+                    ..shot()
+                }
+            ),
+            8
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    range: BfRange::Extreme,
+                    ..shot()
+                }
+            ),
+            10
+        );
     }
 
     #[test]
     fn to_hit_physical_rows_and_exclusions() {
         // fns 6–8: heat, FC crits and SHLD are ignored on physical attacks.
         let shld = with_sua(el("BM"), "SHLD");
-        let phys = BfShot { kind: BfAttackKind::Physical(BfPhysical::Standard), ..shot() };
+        let phys = BfShot {
+            kind: BfAttackKind::Physical(BfPhysical::Standard),
+            ..shot()
+        };
         assert_eq!(bf_to_hit(&shld, 4, 3, 2, &phys), 4);
         assert_eq!(bf_to_hit(&shld, 4, 3, 2, &shot()), 12); // same state, weapon attack
 
         // Standard-chapter physical rows (OQ 2): Standard/Melee +0, Charge/DFA/Anti-'Mech +1.
         let bm = el("BM");
-        let pk = |p| BfShot { kind: BfAttackKind::Physical(p), ..shot() };
+        let pk = |p| BfShot {
+            kind: BfAttackKind::Physical(p),
+            ..shot()
+        };
         assert_eq!(th(&bm, 4, &pk(BfPhysical::Standard)), 4);
         assert_eq!(th(&bm, 4, &pk(BfPhysical::Melee)), 4);
         assert_eq!(th(&bm, 4, &pk(BfPhysical::Charge)), 5);
@@ -1154,10 +1391,27 @@ mod tests {
         assert_eq!(th(&el("CI"), 4, &pk(BfPhysical::AntiMech)), 8);
         // Target carrying BA: +3, physicals only.
         assert_eq!(
-            th(&bm, 4, &BfShot { target_carrying_ba: true, ..pk(BfPhysical::Charge) }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_carrying_ba: true,
+                    ..pk(BfPhysical::Charge)
+                }
+            ),
             8
         );
-        assert_eq!(th(&bm, 4, &BfShot { target_carrying_ba: true, ..shot() }), 4);
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_carrying_ba: true,
+                    ..shot()
+                }
+            ),
+            4
+        );
         // I-TSM: +2 TN on physicals only (spec §1.5).
         let itsm = with_sua(el("BM"), "I-TSM");
         assert_eq!(th(&itsm, 4, &pk(BfPhysical::Standard)), 6);
@@ -1167,7 +1421,10 @@ mod tests {
     #[test]
     fn to_hit_a2g_rows_and_bombing_exclusions() {
         let af = el("AF");
-        let a2g = |a| BfShot { kind: BfAttackKind::AirToGround(a), ..shot() };
+        let a2g = |a| BfShot {
+            kind: BfAttackKind::AirToGround(a),
+            ..shot()
+        };
         assert_eq!(th(&af, 4, &a2g(BfA2G::AltitudeBombing)), 7);
         assert_eq!(th(&af, 4, &a2g(BfA2G::DiveBombing)), 6);
         assert_eq!(th(&af, 4, &a2g(BfA2G::Strafing)), 6);
@@ -1189,46 +1446,111 @@ mod tests {
     #[test]
     fn to_hit_target_movement_rows() {
         let bm = el("BM");
-        let mv = |m, tmm| BfShot { target_move: m, target_tmm: tmm, ..shot() };
+        let mv = |m, tmm| BfShot {
+            target_move: m,
+            target_tmm: tmm,
+            ..shot()
+        };
         assert_eq!(th(&bm, 4, &mv(BfTargetMove::StoodStill, 2)), 4); // standstill: +0, TMM ignored
         assert_eq!(th(&bm, 4, &mv(BfTargetMove::Ground, 2)), 6);
         assert_eq!(th(&bm, 4, &mv(BfTargetMove::Jumped, 2)), 7); // TMM + 1
         assert_eq!(th(&bm, 4, &mv(BfTargetMove::Submersible, 1)), 6); // TMM + 1
-        // ±JMPS/JMPW / ±SUBS/SUBW adjust the jump/submersible rows.
+                                                                      // ±JMPS/JMPW / ±SUBS/SUBW adjust the jump/submersible rows.
         assert_eq!(
-            th(&bm, 4, &BfShot { target_move_adj: -1, ..mv(BfTargetMove::Jumped, 2) }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_move_adj: -1,
+                    ..mv(BfTargetMove::Jumped, 2)
+                }
+            ),
             6
         );
         assert_eq!(
-            th(&bm, 4, &BfShot { target_move_adj: 1, ..mv(BfTargetMove::Submersible, 1) }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_move_adj: 1,
+                    ..mv(BfTargetMove::Submersible, 1)
+                }
+            ),
             7
         );
         // Dropped by an airborne Unit: flat +3, no TMM.
         assert_eq!(th(&bm, 4, &mv(BfTargetMove::Dropped, 2)), 7);
         // Immobile: flat −4, overriding TMM and the move row.
         assert_eq!(
-            th(&bm, 4, &BfShot { target_immobile: true, ..mv(BfTargetMove::Jumped, 3) }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_immobile: true,
+                    ..mv(BfTargetMove::Jumped, 3)
+                }
+            ),
             0
         );
         // MAS +3 / LMAS +2 against a target that stood still OR is immobile — weapon attacks
         // only (p.148; spec §Data-fidelity 5).
         assert_eq!(
-            th(&bm, 4, &BfShot { target_mas: true, ..mv(BfTargetMove::StoodStill, 0) }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_mas: true,
+                    ..mv(BfTargetMove::StoodStill, 0)
+                }
+            ),
             7
         );
         assert_eq!(
-            th(&bm, 4, &BfShot { target_lmas: true, ..mv(BfTargetMove::StoodStill, 0) }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_lmas: true,
+                    ..mv(BfTargetMove::StoodStill, 0)
+                }
+            ),
             6
         );
-        assert_eq!(th(&bm, 4, &BfShot { target_mas: true, ..mv(BfTargetMove::Ground, 2) }), 6);
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_mas: true,
+                    ..mv(BfTargetMove::Ground, 2)
+                }
+            ),
+            6
+        );
         // Immobile MAS target: −4 immobile + 3 MAS = 3 (the book's "immobile or remained at a
         // standstill", p.148).
         assert_eq!(
-            th(&bm, 4, &BfShot { target_immobile: true, target_mas: true, ..shot() }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_immobile: true,
+                    target_mas: true,
+                    ..shot()
+                }
+            ),
             3
         );
         assert_eq!(
-            th(&bm, 4, &BfShot { target_immobile: true, target_lmas: true, ..shot() }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_immobile: true,
+                    target_lmas: true,
+                    ..shot()
+                }
+            ),
             2
         );
         // Physical attacks never take the MAS bonus ("but not physical attacks", p.148).
@@ -1239,7 +1561,14 @@ mod tests {
         };
         assert_eq!(th(&bm, 4, &phys_mas), 4);
         assert_eq!(
-            th(&bm, 4, &BfShot { target_immobile: true, ..phys_mas }),
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_immobile: true,
+                    ..phys_mas
+                }
+            ),
             0 // −4 immobile only, no +3
         );
     }
@@ -1257,44 +1586,77 @@ mod tests {
         };
         assert_eq!(th(&bm, 4, &phys(BfRange::Medium)), 6); // +2 range only, no +1 STL
         assert_eq!(th(&bm, 4, &phys(BfRange::Long)), 8); // +4 range only, no +2 STL
-        // BA-target stealth at Short is likewise weapon-only.
-        let ba_phys = BfShot { target_kind: BfTargetKind::BattleArmor, ..phys(BfRange::Short) };
+                                                         // BA-target stealth at Short is likewise weapon-only.
+        let ba_phys = BfShot {
+            target_kind: BfTargetKind::BattleArmor,
+            ..phys(BfRange::Short)
+        };
         assert_eq!(th(&bm, 4, &ba_phys), 5); // +1 BA type only, no +1 STL
     }
 
     #[test]
     fn to_hit_target_type_terrain_and_flak() {
         let bm = el("BM");
-        let kind = |k| BfShot { target_kind: k, ..shot() };
+        let kind = |k| BfShot {
+            target_kind: k,
+            ..shot()
+        };
         assert_eq!(th(&bm, 4, &kind(BfTargetKind::BattleArmor)), 5);
         assert_eq!(th(&bm, 4, &kind(BfTargetKind::ProtoMech)), 5);
         assert_eq!(th(&bm, 4, &kind(BfTargetKind::Large)), 3);
         // Airborne aerospace: the 3-way angle of attack (p.86 fn10) — side is the table default.
-        assert_eq!(th(&bm, 4, &kind(BfTargetKind::AirborneAero(BfAeroAngle::Nose))), 5);
-        assert_eq!(th(&bm, 4, &kind(BfTargetKind::AirborneAero(BfAeroAngle::Side))), 6);
-        assert_eq!(th(&bm, 4, &kind(BfTargetKind::AirborneAero(BfAeroAngle::Aft))), 4);
+        assert_eq!(
+            th(&bm, 4, &kind(BfTargetKind::AirborneAero(BfAeroAngle::Nose))),
+            5
+        );
+        assert_eq!(
+            th(&bm, 4, &kind(BfTargetKind::AirborneAero(BfAeroAngle::Side))),
+            6
+        );
+        assert_eq!(
+            th(&bm, 4, &kind(BfTargetKind::AirborneAero(BfAeroAngle::Aft))),
+            4
+        );
         assert_eq!(th(&bm, 4, &kind(BfTargetKind::AirborneDropship)), 2);
         assert_eq!(th(&bm, 4, &kind(BfTargetKind::AirborneVtolWige)), 5);
         // STL (fn11): +0/+1/+2 by S/M/L (E reads as L); BA targets +1/+1/+2.
-        let stl = |r, k| BfShot { range: r, target_stealth: true, target_kind: k, ..shot() };
+        let stl = |r, k| BfShot {
+            range: r,
+            target_stealth: true,
+            target_kind: k,
+            ..shot()
+        };
         assert_eq!(th(&bm, 4, &stl(BfRange::Short, BfTargetKind::None)), 4);
         assert_eq!(th(&bm, 4, &stl(BfRange::Medium, BfTargetKind::None)), 7); // +2 range +1 STL
         assert_eq!(th(&bm, 4, &stl(BfRange::Long, BfTargetKind::None)), 10); // +4 range +2 STL
         assert_eq!(th(&bm, 4, &stl(BfRange::Extreme, BfTargetKind::None)), 12);
-        assert_eq!(th(&bm, 4, &stl(BfRange::Short, BfTargetKind::BattleArmor)), 6); // +1 BA +1 STL
-        // Ground-to-air Flak: FLK attacker, Standard weapon attack vs an airborne target: −2.
+        assert_eq!(
+            th(&bm, 4, &stl(BfRange::Short, BfTargetKind::BattleArmor)),
+            6
+        ); // +1 BA +1 STL
+           // Ground-to-air Flak: FLK attacker, Standard weapon attack vs an airborne target: −2.
         let mut flk = el("BM");
         flk.suas.insert(
             "FLK".into(),
-            SuaVal::Dmg(DamageVector { s: 1.0, m: 1.0, l: Some(1.0), e: None }),
+            SuaVal::Dmg(DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: Some(1.0),
+                e: None,
+            }),
         );
         assert_eq!(th(&flk, 4, &kind(BfTargetKind::AirborneVtolWige)), 3); // +1 − 2
         assert_eq!(th(&flk, 4, &shot()), 4); // no airborne target, no Flak row
-        // Never on REAR attacks ("REAR attacks cannot make use of … flak", p.152).
+                                             // Never on REAR attacks ("REAR attacks cannot make use of … flak", p.152).
         let mut rear_flk = flk.clone();
         rear_flk.suas.insert(
             "REAR".into(),
-            SuaVal::Dmg(DamageVector { s: 1.0, m: 1.0, l: None, e: None }),
+            SuaVal::Dmg(DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: None,
+                e: None,
+            }),
         );
         assert_eq!(
             th(
@@ -1313,7 +1675,12 @@ mod tests {
         let mut flk_af = el("AF");
         flk_af.suas.insert(
             "FLK".into(),
-            SuaVal::Dmg(DamageVector { s: 1.0, m: 1.0, l: Some(1.0), e: None }),
+            SuaVal::Dmg(DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: Some(1.0),
+                e: None,
+            }),
         );
         let vs_air = BfShot {
             target_kind: BfTargetKind::AirborneAero(BfAeroAngle::Aft),
@@ -1321,13 +1688,50 @@ mod tests {
         };
         assert_eq!(th(&flk_af, 4, &vs_air), 4); // airborne attacker: +0 aft, no −2
         assert_eq!(
-            th(&flk_af, 4, &BfShot { grounded: true, ..vs_air }),
+            th(
+                &flk_af,
+                4,
+                &BfShot {
+                    grounded: true,
+                    ..vs_air
+                }
+            ),
             2 // grounded fighter, ground-to-air: −2 (no grounded +2 vs airborne, p.46)
         );
         // Terrain rows.
-        assert_eq!(th(&bm, 4, &BfShot { target_woods: true, ..shot() }), 5);
-        assert_eq!(th(&bm, 4, &BfShot { target_partial_cover: true, ..shot() }), 5);
-        assert_eq!(th(&bm, 4, &BfShot { target_underwater: true, ..shot() }), 5);
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_woods: true,
+                    ..shot()
+                }
+            ),
+            5
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_partial_cover: true,
+                    ..shot()
+                }
+            ),
+            5
+        );
+        assert_eq!(
+            th(
+                &bm,
+                4,
+                &BfShot {
+                    target_underwater: true,
+                    ..shot()
+                }
+            ),
+            5
+        );
     }
 
     #[test]
@@ -1360,13 +1764,23 @@ mod tests {
     fn damage_ground_extreme_is_derived_and_aero_is_baked() {
         // Ground E = max(L − 1, 0), computed — never the baked dmg_e.
         let mut g = el("BM");
-        g.std_damage = DamageVector { s: 3.0, m: 3.0, l: Some(2.0), e: Some(4.0) };
+        g.std_damage = DamageVector {
+            s: 3.0,
+            m: 3.0,
+            l: Some(2.0),
+            e: Some(4.0),
+        };
         assert_eq!(bf_damage(&g, BfRange::Extreme, 0), Some(1.0)); // L 2 → E 1, ignores baked 4
         g.std_damage.l = Some(0.5); // L 0* → E max(−0.5, 0) = 0 → no attack
         assert_eq!(bf_damage(&g, BfRange::Extreme, 0), None);
         // Aerospace E = the baked value.
         let mut a = el("AF");
-        a.std_damage = DamageVector { s: 3.0, m: 3.0, l: Some(2.0), e: Some(1.0) };
+        a.std_damage = DamageVector {
+            s: 3.0,
+            m: 3.0,
+            l: Some(2.0),
+            e: Some(1.0),
+        };
         assert_eq!(bf_damage(&a, BfRange::Extreme, 0), Some(1.0));
         a.std_damage.e = Some(0.0);
         assert_eq!(bf_damage(&a, BfRange::Extreme, 0), None);
@@ -1375,7 +1789,12 @@ mod tests {
     #[test]
     fn damage_weapon_crits_and_minimal() {
         let mut e = el("BM");
-        e.std_damage = DamageVector { s: 3.0, m: 0.5, l: None, e: None };
+        e.std_damage = DamageVector {
+            s: 3.0,
+            m: 0.5,
+            l: None,
+            e: None,
+        };
         assert_eq!(bf_damage(&e, BfRange::Short, 0), Some(3.0));
         assert_eq!(bf_damage(&e, BfRange::Short, 1), Some(2.0)); // −1 per Weapon crit
         assert_eq!(bf_damage(&e, BfRange::Short, 3), None); // reduced to nothing
@@ -1413,11 +1832,11 @@ mod tests {
         assert_eq!(cur_mp(4, 2, 0, M_NONE, false), 2);
         assert_eq!(cur_mp(4, 4, 0, M_NONE, false), 0);
         assert_eq!(cur_mp(2, 4, 0, M_NONE, false), 0); // saturates
-        // TSM (p.154): heat 1 → +1 MP and the heat loss is ignored; heat 2+ subtracts normally.
+                                                       // TSM (p.154): heat 1 → +1 MP and the heat loss is ignored; heat 2+ subtracts normally.
         assert_eq!(cur_mp(4, 1, 0, M_NONE, true), 5);
         assert_eq!(cur_mp(4, 2, 0, M_NONE, true), 3); // 4 + 1 − 2
         assert_eq!(cur_mp(4, 0, 0, M_NONE, true), 4); // no heat, no bonus
-        // Motive flags (p.44): −1 / half round down / immobile.
+                                                      // Motive flags (p.44): −1 / half round down / immobile.
         assert_eq!(cur_mp(7, 0, 0, M_MINUS1, false), 6);
         assert_eq!(cur_mp(7, 0, 0, M_HALF, false), 3);
         assert_eq!(cur_mp(7, 0, 0, M_IMM, false), 0);
@@ -1428,11 +1847,19 @@ mod tests {
         // The effects are independent once-per-game flags that STACK (p.43 limits repeats of
         // the same effect, not combinations): −1 applies before the halving, so base 8 with
         // both marked = (8 − 1) / 2 = 3, not 8/2 = 4.
-        let both = BfMotive { minus_one: true, half: true, immobile: false };
+        let both = BfMotive {
+            minus_one: true,
+            half: true,
+            immobile: false,
+        };
         assert_eq!(cur_mp(8, 0, 0, both, false), 3);
         assert_eq!(cur_mp(7, 0, 0, both, false), 3); // (7−1)/2, round down
-        // Immobile zeroes regardless of what else is marked.
-        let all = BfMotive { minus_one: true, half: true, immobile: true };
+                                                     // Immobile zeroes regardless of what else is marked.
+        let all = BfMotive {
+            minus_one: true,
+            half: true,
+            immobile: true,
+        };
         assert_eq!(cur_mp(8, 0, 0, all, false), 0);
         assert!(all.any() && !M_NONE.any());
         // §1.2 live order: mp_lost comes off BEFORE the motive halving — base 6, MP-crit loss
@@ -1481,12 +1908,15 @@ mod tests {
         let v = Some(BfCritCol::Vehicle);
         assert_eq!(bf_current_mp(6, 0, 0, M_NONE, false, 1, v), 3);
         assert_eq!(bf_current_mp(7, 0, 0, M_NONE, false, 1, v), 3); // round down
-        // Chronology-independence: Engine crit + motive ½ MV are both live halvings, so
-        // whichever landed first the derived MV is ⌊⌊8/2⌋/2⌋ = 2 — the sequential table value
-        // (8 → 4 → 2) in either order.
+                                                                    // Chronology-independence: Engine crit + motive ½ MV are both live halvings, so
+                                                                    // whichever landed first the derived MV is ⌊⌊8/2⌋/2⌋ = 2 — the sequential table value
+                                                                    // (8 → 4 → 2) in either order.
         assert_eq!(bf_current_mp(8, 0, 0, M_HALF, false, 1, v), 2);
         // The column gates the effect: a 'Mech's Engine hits never touch MV.
-        assert_eq!(bf_current_mp(6, 0, 0, M_NONE, false, 1, Some(BfCritCol::Mech)), 6);
+        assert_eq!(
+            bf_current_mp(6, 0, 0, M_NONE, false, 1, Some(BfCritCol::Mech)),
+            6
+        );
         assert_eq!(bf_current_mp(6, 0, 0, M_NONE, false, 1, None), 6);
         assert_eq!(BF_ENGINE_HITS_DESTROY, 2);
     }
@@ -1496,14 +1926,18 @@ mod tests {
         assert_eq!(bf_aero_engine_tp_loss(7), 3); // −50% round down
         assert_eq!(bf_aero_engine_tp_loss(2), 1);
         assert_eq!(bf_aero_engine_tp_loss(1), 1); // min 1 lost
-        // Live derivation on the Aerospace column: 1st hit halves the CURRENT (post-heat) TP;
-        // 2nd hit is TP 0 + shutdown — permanent (p.42), so cooling heat afterwards cannot
-        // resurrect thrust (the old mp_lost snapshot could).
+                                                  // Live derivation on the Aerospace column: 1st hit halves the CURRENT (post-heat) TP;
+                                                  // 2nd hit is TP 0 + shutdown — permanent (p.42), so cooling heat afterwards cannot
+                                                  // resurrect thrust (the old mp_lost snapshot could).
         let a = Some(BfCritCol::Aerospace);
         assert_eq!(bf_current_mp(7, 2, 0, M_NONE, false, 1, a), 3); // 5 − max(1, 5/2)
         assert_eq!(bf_current_mp(7, 0, 0, M_NONE, false, 1, a), 4); // 7 − 3
         assert_eq!(bf_current_mp(7, 2, 0, M_NONE, false, 2, a), 0); // TP 0
-        assert_eq!(bf_current_mp(7, 0, 0, M_NONE, false, 2, a), 0, "TP 0 survives cooling");
+        assert_eq!(
+            bf_current_mp(7, 0, 0, M_NONE, false, 2, a),
+            0,
+            "TP 0 survives cooling"
+        );
         assert_eq!(bf_current_mp(1, 0, 0, M_NONE, false, 1, a), 0); // min 1 lost
     }
 
@@ -1519,16 +1953,45 @@ mod tests {
         // Collar), 4 FCS, 10 K-F Drive; 5/9 No Crit.
         let rows: [(i32, [BfCrit; 6]); 11] = [
             (2, [Ammo, Weapon, Ammo, Fuel, KfBoom, Door]),
-            (3, [Engine, Weapon, CrewStunned, FireControl, DockingCollar, Dock]),
-            (4, [FireControl, FireControl, FireControl, Engine, NoCrit, FireControl]),
+            (
+                3,
+                [
+                    Engine,
+                    Weapon,
+                    CrewStunned,
+                    FireControl,
+                    DockingCollar,
+                    Dock,
+                ],
+            ),
+            (
+                4,
+                [
+                    FireControl,
+                    FireControl,
+                    FireControl,
+                    Engine,
+                    NoCrit,
+                    FireControl,
+                ],
+            ),
             (5, [NoCrit, Mp, FireControl, Weapon, FireControl, NoCrit]),
             (6, [Weapon, NoCrit, NoCrit, NoCrit, Weapon, Weapon]),
             (7, [Mp, Mp, NoCrit, NoCrit, Thruster, Weapon]),
             (8, [Weapon, NoCrit, NoCrit, NoCrit, Weapon, Thruster]),
             (9, [NoCrit, Mp, Weapon, Weapon, Door, NoCrit]),
-            (10, [FireControl, ProtoDestroyed, Weapon, Engine, NoCrit, KfDrive]),
-            (11, [Engine, Weapon, CrewKilled, FireControl, Engine, Engine]),
-            (12, [HeadBlownOff, Weapon, Engine, CrewKilled, CrewHit, CrewHit]),
+            (
+                10,
+                [FireControl, ProtoDestroyed, Weapon, Engine, NoCrit, KfDrive],
+            ),
+            (
+                11,
+                [Engine, Weapon, CrewKilled, FireControl, Engine, Engine],
+            ),
+            (
+                12,
+                [HeadBlownOff, Weapon, Engine, CrewKilled, CrewHit, CrewHit],
+            ),
         ];
         for (roll, want) in rows {
             for (col, w) in [Mech, ProtoMech, Vehicle, Aerospace, DropShip, JumpShip]
@@ -1564,7 +2027,10 @@ mod tests {
         assert_eq!(bf_crit_roll_mod(&with_sua(el("BM"), "CR")), -2);
         assert_eq!(bf_crit_roll_mod(&with_sua(el("BM"), "IRA")), 1);
         assert_eq!(bf_crit_roll_mod(&with_sua(el("CV"), "RFA")), 2);
-        assert_eq!(bf_crit_roll_mod(&with_sua(with_sua(el("CV"), "RFA"), "CR")), 0);
+        assert_eq!(
+            bf_crit_roll_mod(&with_sua(with_sua(el("CV"), "RFA"), "CR")),
+            0
+        );
     }
 
     #[test]
@@ -1609,7 +2075,10 @@ mod tests {
         assert!(bf_physical_eligible(Charge, &bm));
         assert!(!bf_physical_eligible(Dfa, &bm)); // no jump
         assert!(!bf_physical_eligible(AntiMech, &bm));
-        let jumper = AsElement { jump_move: 4, ..el("BM") };
+        let jumper = AsElement {
+            jump_move: 4,
+            ..el("BM")
+        };
         assert!(bf_physical_eligible(Dfa, &jumper));
         // MEL elements may not choose Standard instead (p.44).
         let mel = with_sua(el("BM"), "MEL");
@@ -1621,7 +2090,10 @@ mod tests {
         assert!(!bf_physical_eligible(Charge, &el("PM")));
         assert!(bf_physical_eligible(Charge, &el("CV")));
         assert!(!bf_physical_eligible(Standard, &el("CV")));
-        assert!(!bf_physical_eligible(AntiMech, &el("CI")), "CI without AM: ineligible");
+        assert!(
+            !bf_physical_eligible(AntiMech, &el("CI")),
+            "CI without AM: ineligible"
+        );
         assert!(bf_physical_eligible(AntiMech, &with_sua(el("CI"), "AM")));
         assert!(bf_physical_eligible(AntiMech, &el("BA")));
         assert!(!bf_physical_eligible(Standard, &el("BA")));
@@ -1635,14 +2107,26 @@ mod tests {
         // Size 2, MV 6: 6 × 0.50 = 3. Size 3, MV 5: 5 × 0.75 = 3.75 → 4 (round normally).
         let s2 = el("BM");
         assert_eq!(bf_physical_damage(BfPhysical::Charge, &s2, 6, 0), 3.0);
-        let s3 = AsElement { size: 3, ..el("BM") };
+        let s3 = AsElement {
+            size: 3,
+            ..el("BM")
+        };
         assert_eq!(bf_physical_damage(BfPhysical::Charge, &s3, 5, 0), 4.0);
         // DFA = charge damage + 1 (p.45).
         assert_eq!(bf_physical_damage(BfPhysical::Dfa, &s3, 5, 0), 5.0);
         // ENG/SAW round up instead: Size 1, MV 5 → 1.25 → 1 normally, 2 with ENG.
-        let s1 = AsElement { size: 1, ..el("CV") };
+        let s1 = AsElement {
+            size: 1,
+            ..el("CV")
+        };
         assert_eq!(bf_physical_damage(BfPhysical::Charge, &s1, 5, 0), 1.0);
-        let eng = with_sua(AsElement { size: 1, ..el("CV") }, "ENG");
+        let eng = with_sua(
+            AsElement {
+                size: 1,
+                ..el("CV")
+            },
+            "ENG",
+        );
         assert_eq!(bf_physical_damage(BfPhysical::Charge, &eng, 5, 0), 2.0);
     }
 
@@ -1656,8 +2140,14 @@ mod tests {
         let tsm = with_sua(el("BM"), "TSM");
         assert_eq!(bf_physical_damage(BfPhysical::Standard, &tsm, 6, 0), 2.0); // cold: no bonus
         assert_eq!(bf_physical_damage(BfPhysical::Standard, &tsm, 6, 1), 3.0); // hot: +1
-        assert_eq!(bf_physical_damage(BfPhysical::Standard, &with_sua(el("BM"), "TSMX"), 6, 0), 3.0);
-        assert_eq!(bf_physical_damage(BfPhysical::Standard, &with_sua(el("BM"), "I-TSM"), 6, 0), 3.0);
+        assert_eq!(
+            bf_physical_damage(BfPhysical::Standard, &with_sua(el("BM"), "TSMX"), 6, 0),
+            3.0
+        );
+        assert_eq!(
+            bf_physical_damage(BfPhysical::Standard, &with_sua(el("BM"), "I-TSM"), 6, 0),
+            3.0
+        );
         // Anti-'Mech: the element's normal (Short) damage.
         let mut ci = el("CI");
         ci.std_damage.s = 1.0;
@@ -1674,7 +2164,7 @@ mod tests {
         assert_eq!(bf_strafe_damage(&e, 0, 0, true), 3.0); // (5+1)/2 = 3
         e.std_damage.s = 1.0;
         assert_eq!(bf_strafe_damage(&e, 0, 0, false), 1.0); // jround(0.5) = 1, min 1 anyway
-        // Striking: S + OV, +1 rear; weapon crits reduce S first.
+                                                            // Striking: S + OV, +1 rear; weapon crits reduce S first.
         e.std_damage.s = 5.0;
         assert_eq!(bf_strike_damage(&e, 0, 2, false), 7.0);
         assert_eq!(bf_strike_damage(&e, 0, 2, true), 8.0);
@@ -1690,7 +2180,12 @@ mod tests {
     fn overheat_commit_and_ovl_gate() {
         let mut e = el("BM");
         e.overheat = 3;
-        e.std_damage = DamageVector { s: 4.0, m: 4.0, l: None, e: None };
+        e.std_damage = DamageVector {
+            s: 4.0,
+            m: 4.0,
+            l: None,
+            e: None,
+        };
         // Max commit: min(OV, heat room); the scale tops out at 4.
         assert_eq!(bf_max_ov_commit(&e, 0), 3);
         assert_eq!(bf_max_ov_commit(&e, 2), 2); // heat-room cap
@@ -1702,7 +2197,12 @@ mod tests {
         // Without OVL the commit applies at S/M only; OVL extends it to L.
         let mut l = el("BM");
         l.overheat = 2;
-        l.std_damage = DamageVector { s: 4.0, m: 4.0, l: Some(2.0), e: None };
+        l.std_damage = DamageVector {
+            s: 4.0,
+            m: 4.0,
+            l: Some(2.0),
+            e: None,
+        };
         assert_eq!(bf_shot_damage(&l, BfRange::Long, 0, 2, 0), Some(2.0));
         let ovl = with_sua(l, "OVL");
         assert_eq!(bf_shot_damage(&ovl, BfRange::Long, 0, 2, 0), Some(4.0));
@@ -1718,16 +2218,26 @@ mod tests {
         // Weapon-crit subtraction and before the OV add, on every weapon-damage readout.
         let mut v = el("CV");
         v.overheat = 1;
-        v.std_damage = DamageVector { s: 5.0, m: 3.0, l: Some(1.0), e: None };
+        v.std_damage = DamageVector {
+            s: 5.0,
+            m: 3.0,
+            l: Some(1.0),
+            e: None,
+        };
         assert_eq!(bf_shot_damage(&v, BfRange::Short, 0, 0, 1), Some(2.0)); // 5 → 2
         assert_eq!(bf_shot_damage(&v, BfRange::Long, 0, 0, 1), None); // 1 → 0 = no attack
         assert_eq!(bf_shot_damage(&v, BfRange::Short, 1, 0, 1), Some(2.0)); // (5−1)/2
         assert_eq!(bf_shot_damage(&v, BfRange::Short, 0, 1, 1), Some(3.0)); // halve, THEN +OV
-        // IF and REAR are damage values too (p.43 halves them all).
+                                                                            // IF and REAR are damage values too (p.43 halves them all).
         v.suas.insert("IF".into(), SuaVal::Num(2.0));
         v.suas.insert(
             "REAR".into(),
-            SuaVal::Dmg(DamageVector { s: 3.0, m: 1.0, l: None, e: None }),
+            SuaVal::Dmg(DamageVector {
+                s: 3.0,
+                m: 1.0,
+                l: None,
+                e: None,
+            }),
         );
         assert_eq!(bf_indirect_damage(&v, 0, 1), Some(1.0));
         assert_eq!(bf_indirect_damage(&v, 0, 0), Some(2.0));
@@ -1741,13 +2251,18 @@ mod tests {
         let mut e = el("BM");
         e.suas.insert(
             "REAR".into(),
-            SuaVal::Dmg(DamageVector { s: 1.0, m: 1.0, l: None, e: None }),
+            SuaVal::Dmg(DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: None,
+                e: None,
+            }),
         );
         assert_eq!(bf_rear_damage(&e, BfRange::Short, 0, 0), Some(1.0));
         assert_eq!(bf_rear_damage(&e, BfRange::Long, 0, 0), None);
         assert_eq!(bf_rear_damage(&e, BfRange::Short, 1, 0), None); // weapon crit reduces
         assert_eq!(bf_rear_damage(&el("BM"), BfRange::Short, 0, 0), None); // no REAR ability
-        // Indirect fire deals the IF value, bracket-independent, weapon-crit reduced.
+                                                                           // Indirect fire deals the IF value, bracket-independent, weapon-crit reduced.
         let mut f = el("BM");
         f.suas.insert("IF".into(), SuaVal::Num(2.0));
         assert_eq!(bf_indirect_damage(&f, 0, 0), Some(2.0));
@@ -1897,6 +2412,10 @@ mod tests {
         for s in &odd {
             eprintln!("odd MV: {s}");
         }
-        assert!(odd.is_empty(), "{} odd-inch MV entries (OQ 6 fires)", odd.len());
+        assert!(
+            odd.is_empty(),
+            "{} odd-inch MV entries (OQ 6 fires)",
+            odd.len()
+        );
     }
 }

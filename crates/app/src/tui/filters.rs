@@ -187,20 +187,30 @@ impl Filters {
     /// The current value of a facet for display: the value, or `"(any)"` when unset.
     pub fn value_label(&self, facet: Facet) -> String {
         match facet {
-            Facet::Type => self.unit_type.map(type_filter_label).unwrap_or("(any)").to_string(),
+            Facet::Type => self
+                .unit_type
+                .map(type_filter_label)
+                .unwrap_or("(any)")
+                .to_string(),
             Facet::Tech => self.tech.clone().unwrap_or_else(|| "(any)".into()),
             Facet::Class => self.class.clone().unwrap_or_else(|| "(any)".into()),
             Facet::Role => self.role.clone().unwrap_or_else(|| "(any)".into()),
             Facet::Era => self.era.unwrap_or("(any)").to_string(),
-            Facet::YearMin => self.year_min.map_or_else(|| "(any)".into(), |y| y.to_string()),
-            Facet::YearMax => self.year_max.map_or_else(|| "(any)".into(), |y| y.to_string()),
+            Facet::YearMin => self
+                .year_min
+                .map_or_else(|| "(any)".into(), |y| y.to_string()),
+            Facet::YearMax => self
+                .year_max
+                .map_or_else(|| "(any)".into(), |y| y.to_string()),
             Facet::Family => self.family.clone().unwrap_or_else(|| "(any)".into()),
-            Facet::AvailEra => {
-                self.avail_era.as_ref().map_or_else(|| "(any)".into(), |(_, n)| n.clone())
-            }
-            Facet::Faction => {
-                self.faction.as_ref().map_or_else(|| "(any)".into(), |(_, n)| n.clone())
-            }
+            Facet::AvailEra => self
+                .avail_era
+                .as_ref()
+                .map_or_else(|| "(any)".into(), |(_, n)| n.clone()),
+            Facet::Faction => self
+                .faction
+                .as_ref()
+                .map_or_else(|| "(any)".into(), |(_, n)| n.clone()),
         }
     }
 
@@ -210,7 +220,10 @@ impl Filters {
         if self.faction.is_none() && self.avail_era.is_none() {
             return None;
         }
-        Some((self.avail_era.as_ref().map(|(id, _)| *id), self.faction.as_ref().map(|(id, _)| *id)))
+        Some((
+            self.avail_era.as_ref().map(|(id, _)| *id),
+            self.faction.as_ref().map(|(id, _)| *id),
+        ))
     }
 
     /// The mutable year bound a year facet edits (`None` for non-year facets).
@@ -408,7 +421,10 @@ pub fn cycle_opt<T: Clone + PartialEq>(cur: &Option<T>, values: &[T], dir: i32) 
     let len = values.len() as i32;
     let cur_idx = match cur {
         None => 0,
-        Some(v) => values.iter().position(|x| x == v).map_or(0, |p| p as i32 + 1),
+        Some(v) => values
+            .iter()
+            .position(|x| x == v)
+            .map_or(0, |p| p as i32 + 1),
     };
     let next = (cur_idx + dir).rem_euclid(len + 1);
     if next == 0 {
@@ -454,7 +470,10 @@ mod tests {
         assert!(matches(&Filters::default(), &clan_heavy));
 
         // Single facet.
-        let mut f = Filters { tech: Some("Clan".into()), ..Default::default() };
+        let mut f = Filters {
+            tech: Some("Clan".into()),
+            ..Default::default()
+        };
         assert!(matches(&f, &clan_heavy));
         assert!(!matches(&f, &is_light));
 
@@ -466,7 +485,10 @@ mod tests {
 
         // Era excludes unknown-year units.
         let unknown = mech("Clan", "Heavy", 0, UnitType::Mech);
-        let f = Filters { era: Some("Clan Invasion"), ..Default::default() };
+        let f = Filters {
+            era: Some("Clan Invasion"),
+            ..Default::default()
+        };
         assert!(matches(&f, &clan_heavy)); // 3055
         assert!(!matches(&f, &unknown));
     }
@@ -483,20 +505,29 @@ mod tests {
         tank.subtype = "Combat Vehicle".into();
 
         // BattleMech: both tech bases, standard and omni chassis alike; no Industrials/vehicles.
-        let f = Filters { unit_type: Some(TypeFilter::BattleMech), ..Default::default() };
+        let f = Filters {
+            unit_type: Some(TypeFilter::BattleMech),
+            ..Default::default()
+        };
         assert!(matches(&f, &is_bm));
         assert!(matches(&f, &clan_omni));
         assert!(!matches(&f, &industrial));
         assert!(!matches(&f, &tank));
 
         // OmniMech: omni chassis only.
-        let f = Filters { unit_type: Some(TypeFilter::OmniMech), ..Default::default() };
+        let f = Filters {
+            unit_type: Some(TypeFilter::OmniMech),
+            ..Default::default()
+        };
         assert!(!matches(&f, &is_bm));
         assert!(matches(&f, &clan_omni));
         assert!(!matches(&f, &industrial));
 
         // The coarse Mech pick keeps IndustrialMechs (unchanged behavior).
-        let f = Filters { unit_type: Some(TypeFilter::Unit(UnitType::Mech)), ..Default::default() };
+        let f = Filters {
+            unit_type: Some(TypeFilter::Unit(UnitType::Mech)),
+            ..Default::default()
+        };
         assert!(matches(&f, &is_bm) && matches(&f, &clan_omni) && matches(&f, &industrial));
         assert!(!matches(&f, &tank));
 
@@ -589,13 +620,21 @@ mod tests {
         // refilter sorts most-available first; unknown sorts last.
         let mut p = Picker::new(bundle.mechs.len());
         p.refilter(&names, &bundle, &f);
-        let order: Vec<&str> = p.filtered.iter().map(|&i| bundle.mechs[i].chassis.as_str()).collect();
+        let order: Vec<&str> = p
+            .filtered
+            .iter()
+            .map(|&i| bundle.mechs[i].chassis.as_str())
+            .collect();
         assert_eq!(order, vec!["Common", "Rare", "NoData"]);
 
         // With no lens, order is bundle order (no rarity sort).
         let mut p2 = Picker::new(bundle.mechs.len());
         p2.refilter(&names, &bundle, &Filters::default());
-        let order2: Vec<&str> = p2.filtered.iter().map(|&i| bundle.mechs[i].chassis.as_str()).collect();
+        let order2: Vec<&str> = p2
+            .filtered
+            .iter()
+            .map(|&i| bundle.mechs[i].chassis.as_str())
+            .collect();
         assert_eq!(order2, vec!["Rare", "NoData", "Common"]);
     }
 
@@ -615,7 +654,7 @@ mod tests {
         p.page_jump(-1);
         p.page_jump(-1);
         assert_eq!(p.selected, 0); // clamps at the top
-        // Empty list is a no-op.
+                                   // Empty list is a no-op.
         let mut empty = Picker::new(0);
         empty.page_jump(1);
         assert_eq!(empty.selected, 0);

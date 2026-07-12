@@ -18,21 +18,21 @@
 
 use super::filters::{self, Facet, FacetValues, Filters};
 use super::forcegen;
-use super::picker::Picker;
 use super::icons::{icons, set_icons, IconSet};
+use super::picker::Picker;
 use super::profile::{profile, set_profile, DisplayProfile};
 use super::theme::{set_theme, theme, Theme, THEMES};
 use neurohelmet_core::data::bundle::Bundle;
 use neurohelmet_core::domain::{Facing, GameMode, Location, Mech, UnitType};
 use neurohelmet_core::engine::as_element::{self, AsElement};
 use neurohelmet_core::engine::battleforce::{
-    self, BfA2G, BfAeroAngle, BfAttackKind, BfMove, BfMotive, BfPhysical, BfRange, BfShot,
+    self, BfA2G, BfAeroAngle, BfAttackKind, BfMotive, BfMove, BfPhysical, BfRange, BfShot,
     BfTargetKind, BfTargetMove,
 };
-use neurohelmet_core::engine::sbf::{self, SbfAeroTarget, SbfRange};
-use neurohelmet_core::session::SbfDoctrine;
-use neurohelmet_core::engine::{inches_to_hexes, override_conv, ClusterProfile, PILOT_MAX};
 use neurohelmet_core::engine::large_craft;
+use neurohelmet_core::engine::sbf::{self, SbfAeroTarget, SbfRange};
+use neurohelmet_core::engine::{inches_to_hexes, override_conv, ClusterProfile, PILOT_MAX};
+use neurohelmet_core::session::SbfDoctrine;
 use neurohelmet_core::session::{
     self, AsCritKind, BfAssign, BfKill, CritRow, MotiveLevel, Session, SessionMeta, CREW_MAX,
     DEFAULT_GUNNERY, DEFAULT_PILOTING, OV_TARGET_TMM_MAX, SKILL_MAX,
@@ -109,14 +109,26 @@ pub enum PendingAction {
 
 /// A modal overlay on top of the current screen.
 pub enum Modal {
-    Confirm { prompt: String, action: PendingAction },
-    Input { prompt: String, buffer: String, action: PendingAction },
+    Confirm {
+        prompt: String,
+        action: PendingAction,
+    },
+    Input {
+        prompt: String,
+        buffer: String,
+        action: PendingAction,
+    },
     /// Critical-slot marker for one location. `sel` indexes into that location's
     /// `spec.crit_slots` list (every listed slot is occupied and hittable).
     Crit { loc: Location, sel: usize },
     /// Munition picker for one ammo bin, opened from the crit popup with `t`. `crit_sel` is the
     /// crit-slot index to restore when closing; `sel` indexes the bin's munition catalog list.
-    Munition { loc: Location, crit_sel: usize, bin: u32, sel: usize },
+    Munition {
+        loc: Location,
+        crit_sel: usize,
+        bin: u32,
+        sel: usize,
+    },
     /// Alpha Strike crit popup; `sel` indexes [`AsCritKind::ALL`].
     AsCrit { sel: usize },
     /// Pilot skills editor; `sel` 0 = Gunnery, 1 = Piloting.
@@ -126,7 +138,12 @@ pub enum Modal {
     /// first skill (Gunnery / the AS Skill), 1 = the second (Piloting; unused in Alpha Strike).
     /// Shows the skill-adjusted point cost and whether adding busts the session's budget; Enter
     /// commits the add at the chosen skills.
-    AddUnit { idx: usize, gunnery: u8, piloting: u8, sel: usize },
+    AddUnit {
+        idx: usize,
+        gunnery: u8,
+        piloting: u8,
+        sel: usize,
+    },
     /// This turn's movement editor; `sel` 0 = mode (stationary/walked/ran/jumped), 1 = hexes.
     Move { sel: usize },
     /// Alpha Strike to-hit shot context (§33 Phase 2). `sel` indexes the rows: 0 = attacker jumped,
@@ -233,8 +250,14 @@ pub struct ForceGen {
 
 impl ForceGen {
     /// Config rows, in display order (also the `field` cursor range).
-    pub const ROWS: [&'static str; 6] =
-        ["Faction", "Era", "Size", "Budget", "Allow rare", "Class bias"];
+    pub const ROWS: [&'static str; 6] = [
+        "Faction",
+        "Era",
+        "Size",
+        "Budget",
+        "Allow rare",
+        "Class bias",
+    ];
 }
 
 /// Which page of the dice-reference popup ([`Modal::Dice`]) is showing.
@@ -412,10 +435,21 @@ impl SbfAeroUiKind {
     /// One step along the cycle, clamped at the ends (the range-row convention).
     fn cycled(self, fwd: bool) -> Self {
         use SbfAeroUiKind::*;
-        const ORDER: [SbfAeroUiKind; 7] =
-            [Off, AirToAir, GroundToAir, AltitudeBombing, DiveBombing, Strafing, Striking];
+        const ORDER: [SbfAeroUiKind; 7] = [
+            Off,
+            AirToAir,
+            GroundToAir,
+            AltitudeBombing,
+            DiveBombing,
+            Strafing,
+            Striking,
+        ];
         let i = ORDER.iter().position(|&k| k == self).unwrap_or(0);
-        let j = if fwd { (i + 1).min(ORDER.len() - 1) } else { i.saturating_sub(1) };
+        let j = if fwd {
+            (i + 1).min(ORDER.len() - 1)
+        } else {
+            i.saturating_sub(1)
+        };
         ORDER[j]
     }
 
@@ -425,7 +459,9 @@ impl SbfAeroUiKind {
             Self::Off => return None,
             Self::AirToAir => sbf::SbfAeroKind::AirToAir,
             Self::GroundToAir => sbf::SbfAeroKind::GroundToAir,
-            Self::AltitudeBombing => sbf::SbfAeroKind::A2G(sbf::SbfA2G::AltitudeBombing { cluster }),
+            Self::AltitudeBombing => {
+                sbf::SbfAeroKind::A2G(sbf::SbfA2G::AltitudeBombing { cluster })
+            }
             Self::DiveBombing => sbf::SbfAeroKind::A2G(sbf::SbfA2G::DiveBombing { cluster }),
             Self::Strafing => sbf::SbfAeroKind::A2G(sbf::SbfA2G::Strafing),
             Self::Striking => sbf::SbfAeroKind::A2G(sbf::SbfA2G::Striking),
@@ -501,7 +537,10 @@ pub(crate) fn bf_kind_eligible(el: &AsElement, kind: BfAttackKind) -> bool {
 /// The attack-kind cycle order for the BF shot modal (Indirect's spotter legs are separate rows).
 pub(crate) const BF_KIND_CYCLE: [BfAttackKind; 12] = [
     BfAttackKind::Standard,
-    BfAttackKind::Indirect { spotter_also_attacked: false, spotter_is_remote_sensor: false },
+    BfAttackKind::Indirect {
+        spotter_also_attacked: false,
+        spotter_is_remote_sensor: false,
+    },
     BfAttackKind::RearWeapons,
     BfAttackKind::Physical(BfPhysical::Standard),
     BfAttackKind::Physical(BfPhysical::Melee),
@@ -549,7 +588,9 @@ pub(crate) fn bf_kind_label(kind: BfAttackKind) -> &'static str {
 /// than hand-entered. Used to itemize what a doctrine rebuild would discard; a false negative
 /// (user typed "Lance 1" by hand) merely skips one line of warning.
 fn sbf_default_name(name: &str) -> bool {
-    let base = name.trim_end_matches(|c: char| c.is_ascii_digit()).trim_end();
+    let base = name
+        .trim_end_matches(|c: char| c.is_ascii_digit())
+        .trim_end();
     matches!(
         base,
         "Formation"
@@ -583,7 +624,8 @@ fn fresh_seed() -> u64 {
 
 /// Derive the next seed for a reroll (a plain LCG step — reproducible, unlike the wall clock).
 fn next_seed(s: u64) -> u64 {
-    s.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407)
+    s.wrapping_mul(6_364_136_223_846_793_005)
+        .wrapping_add(1_442_695_040_888_963_407)
 }
 
 impl App {
@@ -609,7 +651,10 @@ impl App {
                 } else {
                     String::new()
                 };
-                format!("{}{}  {}t{}{}  {}", s.chassis, model, s.tonnage, year, bv, s.role)
+                format!(
+                    "{}{}  {}t{}{}  {}",
+                    s.chassis, model, s.tonnage, year, bv, s.role
+                )
             })
             .collect::<Vec<_>>();
         let total = names.len();
@@ -774,8 +819,13 @@ impl App {
         }
         // SBF selection is session state; keep it in range after undo/regroup/removal.
         let sbf = &mut self.session.sbf;
-        sbf.active_formation = sbf.active_formation.min(sbf.formations.len().saturating_sub(1));
-        let units = sbf.formations.get(sbf.active_formation).map_or(0, |f| f.units.len());
+        sbf.active_formation = sbf
+            .active_formation
+            .min(sbf.formations.len().saturating_sub(1));
+        let units = sbf
+            .formations
+            .get(sbf.active_formation)
+            .map_or(0, |f| f.units.len());
         sbf.active_unit = sbf.active_unit.min(units.saturating_sub(1));
         // Same for the Standard BF Unit cursor.
         let bf = &mut self.session.bf;
@@ -837,23 +887,43 @@ impl App {
                 KeyCode::Esc => self.status = "Cancelled".into(),
                 KeyCode::Backspace => {
                     buffer.pop();
-                    self.modal = Some(Modal::Input { prompt, buffer, action });
+                    self.modal = Some(Modal::Input {
+                        prompt,
+                        buffer,
+                        action,
+                    });
                 }
                 KeyCode::Char(c) => {
                     buffer.push(c);
-                    self.modal = Some(Modal::Input { prompt, buffer, action });
+                    self.modal = Some(Modal::Input {
+                        prompt,
+                        buffer,
+                        action,
+                    });
                 }
-                _ => self.modal = Some(Modal::Input { prompt, buffer, action }),
+                _ => {
+                    self.modal = Some(Modal::Input {
+                        prompt,
+                        buffer,
+                        action,
+                    })
+                }
             },
             Some(Modal::Crit { loc, sel }) => self.crit_modal_key(loc, sel, key),
-            Some(Modal::Munition { loc, crit_sel, bin, sel }) => {
-                self.munition_modal_key(loc, crit_sel, bin, sel, key)
-            }
+            Some(Modal::Munition {
+                loc,
+                crit_sel,
+                bin,
+                sel,
+            }) => self.munition_modal_key(loc, crit_sel, bin, sel, key),
             Some(Modal::AsCrit { sel }) => self.as_crit_modal_key(sel, key),
             Some(Modal::Skills { sel }) => self.skills_modal_key(sel, key),
-            Some(Modal::AddUnit { idx, gunnery, piloting, sel }) => {
-                self.add_unit_modal_key(idx, gunnery, piloting, sel, key)
-            }
+            Some(Modal::AddUnit {
+                idx,
+                gunnery,
+                piloting,
+                sel,
+            }) => self.add_unit_modal_key(idx, gunnery, piloting, sel, key),
             Some(Modal::Move { sel }) => self.move_modal_key(sel, key),
             Some(Modal::Shot { sel }) => self.shot_modal_key(sel, key),
             Some(Modal::Gator { sel }) => self.gator_modal_key(sel, key),
@@ -874,9 +944,12 @@ impl App {
             Some(Modal::Filters { sel }) => self.filters_modal_key(sel, key),
             Some(Modal::FactionPick { query, sel }) => self.faction_pick_key(query, sel, key),
             Some(Modal::GenerateForce(fg)) => self.force_gen_modal_key(fg, key),
-            Some(Modal::ThemePicker { sel, original, original_profile, original_icons }) => {
-                self.theme_picker_key(sel, original, original_profile, original_icons, key)
-            }
+            Some(Modal::ThemePicker {
+                sel,
+                original,
+                original_profile,
+                original_icons,
+            }) => self.theme_picker_key(sel, original, original_profile, original_icons, key),
             Some(Modal::Help) => {} // any key dismisses (modal already taken)
             None => {}
         }
@@ -892,11 +965,17 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('c') => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Crit { loc, sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Crit {
+                    loc,
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 let max = count.saturating_sub(1);
-                self.modal = Some(Modal::Crit { loc, sel: (sel + 1).min(max) });
+                self.modal = Some(Modal::Crit {
+                    loc,
+                    sel: (sel + 1).min(max),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
                 let before = self.session.clone();
@@ -956,9 +1035,12 @@ impl App {
                     Some((bin, msel))
                 });
                 self.modal = match target {
-                    Some((bin, msel)) => {
-                        Some(Modal::Munition { loc, crit_sel: sel, bin, sel: msel })
-                    }
+                    Some((bin, msel)) => Some(Modal::Munition {
+                        loc,
+                        crit_sel: sel,
+                        bin,
+                        sel: msel,
+                    }),
                     None => {
                         self.status = "No munition options".into();
                         Some(Modal::Crit { loc, sel })
@@ -991,10 +1073,20 @@ impl App {
                 self.modal = Some(Modal::Crit { loc, sel: crit_sel });
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Munition { loc, crit_sel, bin, sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Munition {
+                    loc,
+                    crit_sel,
+                    bin,
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::Munition { loc, crit_sel, bin, sel: (sel + 1).min(max) });
+                self.modal = Some(Modal::Munition {
+                    loc,
+                    crit_sel,
+                    bin,
+                    sel: (sel + 1).min(max),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
                 if let Some(m) = list.get(sel).cloned() {
@@ -1010,15 +1102,24 @@ impl App {
                 }
                 self.modal = Some(Modal::Crit { loc, sel: crit_sel });
             }
-            _ => self.modal = Some(Modal::Munition { loc, crit_sel, bin, sel }),
+            _ => {
+                self.modal = Some(Modal::Munition {
+                    loc,
+                    crit_sel,
+                    bin,
+                    sel,
+                })
+            }
         }
     }
 
     /// Drive the Alpha Strike crit popup: select one of the unit's crit types and adjust its count.
     /// The type set varies by unit (aerospace has no MP), so index into the active unit's list.
     fn as_crit_modal_key(&mut self, sel: usize, key: KeyEvent) {
-        let kinds: &'static [AsCritKind] =
-            self.session.active_mech().map_or(&AsCritKind::ALL, |tm| tm.as_crit_kinds());
+        let kinds: &'static [AsCritKind] = self
+            .session
+            .active_mech()
+            .map_or(&AsCritKind::ALL, |tm| tm.as_crit_kinds());
         let max = kinds.len().saturating_sub(1);
         let kind = kinds.get(sel).copied();
         let adjust = |app: &mut App, delta: i32| {
@@ -1039,10 +1140,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('c') => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::AsCrit { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::AsCrit {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::AsCrit { sel: (sel + 1).min(max) });
+                self.modal = Some(Modal::AsCrit {
+                    sel: (sel + 1).min(max),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Right | KeyCode::Enter => {
                 adjust(self, 1);
@@ -1076,7 +1181,9 @@ impl App {
             // `g` opens (and closes) the modal in AS/Classic; `s` is the BF binding (spec §3.3).
             KeyCode::Esc | KeyCode::Char('g') | KeyCode::Char('s') | KeyCode::Enter => {} // close
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Skills { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Skills {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 // AS and BF have a single Skill (row 0 only); Classic has Gunnery + Piloting.
@@ -1088,7 +1195,9 @@ impl App {
                 } else {
                     1
                 };
-                self.modal = Some(Modal::Skills { sel: (sel + 1).min(max_sel) });
+                self.modal = Some(Modal::Skills {
+                    sel: (sel + 1).min(max_sel),
+                });
             }
             // Lower is better, so right *improves* the skill (decrements the number).
             KeyCode::Right => {
@@ -1121,7 +1230,12 @@ impl App {
         let profile_row = sel == n_theme;
         let icon_row = sel == n_theme + 1;
         let reopen = |app: &mut App, sel: usize| {
-            app.modal = Some(Modal::ThemePicker { sel, original, original_profile, original_icons });
+            app.modal = Some(Modal::ThemePicker {
+                sel,
+                original,
+                original_profile,
+                original_icons,
+            });
         };
         // Selecting a theme row previews it; the toggle rows leave the theme as-is.
         let preview = |sel: usize| {
@@ -1202,28 +1316,58 @@ impl App {
         // AS, SBF and BF use a single Skill (the gunnery field); Classic has Gunnery + Piloting.
         // Must match the rendered rows (add_unit_modal_lines) or the selection can vanish.
         let rows = match self.session.mode {
-            GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => 1,
+            GameMode::AlphaStrike
+            | GameMode::StrategicBattleForce
+            | GameMode::BattleForce
+            | GameMode::AbstractCombatSystem => 1,
             GameMode::Classic | GameMode::Override => 2,
         };
         match key.code {
             KeyCode::Esc => self.status = "Cancelled".into(), // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::AddUnit { idx, gunnery, piloting, sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::AddUnit {
+                    idx,
+                    gunnery,
+                    piloting,
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal =
-                    Some(Modal::AddUnit { idx, gunnery, piloting, sel: (sel + 1).min(rows - 1) });
+                self.modal = Some(Modal::AddUnit {
+                    idx,
+                    gunnery,
+                    piloting,
+                    sel: (sel + 1).min(rows - 1),
+                });
             }
             // Lower is better, so right *improves* the selected skill (decrements the number).
             KeyCode::Right => {
-                let target = if sel == 0 { &mut gunnery } else { &mut piloting };
+                let target = if sel == 0 {
+                    &mut gunnery
+                } else {
+                    &mut piloting
+                };
                 *target = (*target as i32 - 1).clamp(0, SKILL_MAX as i32) as u8;
-                self.modal = Some(Modal::AddUnit { idx, gunnery, piloting, sel });
+                self.modal = Some(Modal::AddUnit {
+                    idx,
+                    gunnery,
+                    piloting,
+                    sel,
+                });
             }
             KeyCode::Left => {
-                let target = if sel == 0 { &mut gunnery } else { &mut piloting };
+                let target = if sel == 0 {
+                    &mut gunnery
+                } else {
+                    &mut piloting
+                };
                 *target = (*target as i32 + 1).clamp(0, SKILL_MAX as i32) as u8;
-                self.modal = Some(Modal::AddUnit { idx, gunnery, piloting, sel });
+                self.modal = Some(Modal::AddUnit {
+                    idx,
+                    gunnery,
+                    piloting,
+                    sel,
+                });
             }
             KeyCode::Enter => {
                 if let Some(mech) = self.bundle.get(idx).cloned() {
@@ -1237,7 +1381,14 @@ impl App {
                     }
                 }
             }
-            _ => self.modal = Some(Modal::AddUnit { idx, gunnery, piloting, sel }),
+            _ => {
+                self.modal = Some(Modal::AddUnit {
+                    idx,
+                    gunnery,
+                    piloting,
+                    sel,
+                })
+            }
         }
     }
 
@@ -1268,10 +1419,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('v') | KeyCode::Enter => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Move { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Move {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::Move { sel: (sel + 1).min(1) });
+                self.modal = Some(Modal::Move {
+                    sel: (sel + 1).min(1),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -1306,10 +1461,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('t') | KeyCode::Enter => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Shot { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Shot {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::Shot { sel: (sel + 1).min(3) });
+                self.modal = Some(Modal::Shot {
+                    sel: (sel + 1).min(3),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -1345,10 +1504,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('t') | KeyCode::Enter => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Gator { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Gator {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::Gator { sel: (sel + 1).min(3) });
+                self.modal = Some(Modal::Gator {
+                    sel: (sel + 1).min(3),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -1366,22 +1529,32 @@ impl App {
     /// for aero) and toggle hits.
     fn vehicle_crit_modal_key(&mut self, sel: usize, key: KeyEvent) {
         // Rows are the active unit's system crits, plus aero weapon rows.
-        let rows = self.session.active_mech().map(|tm| tm.crit_rows()).unwrap_or_default();
+        let rows = self
+            .session
+            .active_mech()
+            .map(|tm| tm.crit_rows())
+            .unwrap_or_default();
         let max = rows.len().saturating_sub(1);
         match key.code {
             KeyCode::Esc | KeyCode::Char('c') => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::VehicleCrit { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::VehicleCrit {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::VehicleCrit { sel: (sel + 1).min(max) });
+                self.modal = Some(Modal::VehicleCrit {
+                    sel: (sel + 1).min(max),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
                 let before = self.session.clone();
                 let msg = rows.get(sel).and_then(|row| {
                     let row = row.clone();
                     self.session.active_mech_mut().map(|tm| match row {
-                        CritRow::System { idx, label, max, .. } => {
+                        CritRow::System {
+                            idx, label, max, ..
+                        } => {
                             let hits = tm.bump_crit(idx);
                             if hits == 0 {
                                 format!("{label} cleared")
@@ -1422,10 +1595,16 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('c') => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::OvCrit { loc, sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::OvCrit {
+                    loc,
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::OvCrit { loc, sel: (sel + 1).min(max) });
+                self.modal = Some(Modal::OvCrit {
+                    loc,
+                    sel: (sel + 1).min(max),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
                 if let Some(tm) = self.session.active_mech_mut() {
@@ -1449,8 +1628,7 @@ impl App {
                 if let Some(tm) = self.session.active_mech_mut() {
                     if tm.ov_region_has_ammo(loc) {
                         let spent = tm.ov_toggle_ammo_spent(loc);
-                        self.status =
-                            format!("Ammo {}", if spent { "spent" } else { "live" });
+                        self.status = format!("Ammo {}", if spent { "spent" } else { "live" });
                         self.dirty = true;
                     } else {
                         self.status = "No ammo in this location".into();
@@ -1484,10 +1662,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('t') | KeyCode::Enter => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::OvShot { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::OvShot {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::OvShot { sel: (sel + 1).min(4) });
+                self.modal = Some(Modal::OvShot {
+                    sel: (sel + 1).min(4),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -1507,17 +1689,29 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('m') => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::Motive { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::Motive {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::Motive { sel: (sel + 1).min(max) });
+                self.modal = Some(Modal::Motive {
+                    sel: (sel + 1).min(max),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
                 let before = self.session.clone();
                 let level = MotiveLevel::ALL[sel];
-                if let Some(tm) = self.session.active_mech_mut().filter(|t| t.spec.is_vehicle()) {
+                if let Some(tm) = self
+                    .session
+                    .active_mech_mut()
+                    .filter(|t| t.spec.is_vehicle())
+                {
                     tm.add_motive(level);
-                    self.status = format!("Motive: {} ({:+} MP)", level.label(), -(tm.motive_mp_lost() as i32));
+                    self.status = format!(
+                        "Motive: {} ({:+} MP)",
+                        level.label(),
+                        -(tm.motive_mp_lost() as i32)
+                    );
                 }
                 if self.session != before {
                     self.push_undo(before);
@@ -1528,7 +1722,11 @@ impl App {
             // r / Backspace: repair the most recent result without leaving the popup.
             KeyCode::Char('r') | KeyCode::Backspace => {
                 let before = self.session.clone();
-                if let Some(tm) = self.session.active_mech_mut().filter(|t| t.spec.is_vehicle()) {
+                if let Some(tm) = self
+                    .session
+                    .active_mech_mut()
+                    .filter(|t| t.spec.is_vehicle())
+                {
                     self.status = match tm.repair_motive() {
                         Some(lvl) => format!("Motive repaired ({})", lvl.label()),
                         None => "No motive damage".into(),
@@ -1558,19 +1756,21 @@ impl App {
                     if self.session.mechs.is_empty() {
                         self.screen = Screen::Picker;
                         self.picker.reset();
-                        self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                        self.picker
+                            .refilter(&self.names, &self.bundle, &self.filters);
                     }
                 }
             }
             PendingAction::DeleteActiveFormation => {
                 let fi = self.session.sbf.active_formation;
-                if let Some((name, mut idxs)) =
-                    self.session.sbf.formations.get(fi).map(|f| {
-                        let idxs: Vec<usize> =
-                            f.units.iter().flat_map(|u| u.elements.iter().copied()).collect();
-                        (f.name.clone(), idxs)
-                    })
-                {
+                if let Some((name, mut idxs)) = self.session.sbf.formations.get(fi).map(|f| {
+                    let idxs: Vec<usize> = f
+                        .units
+                        .iter()
+                        .flat_map(|u| u.elements.iter().copied())
+                        .collect();
+                    (f.name.clone(), idxs)
+                }) {
                     self.snapshot_undo();
                     // Remove the formation's pool elements highest-first so each removal's
                     // index remap can't shift a later target.
@@ -1589,7 +1789,8 @@ impl App {
                     if self.session.mechs.is_empty() && self.session.sbf.formations.is_empty() {
                         self.screen = Screen::Picker;
                         self.picker.reset();
-                        self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                        self.picker
+                            .refilter(&self.names, &self.bundle, &self.filters);
                     }
                 }
             }
@@ -1645,7 +1846,8 @@ impl App {
                 self.dirty = true;
                 self.screen = Screen::Picker;
                 self.picker.reset();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
                 let kind = match mode {
                     GameMode::AlphaStrike => "Alpha Strike ",
                     GameMode::Override => "Override ",
@@ -1697,17 +1899,18 @@ impl App {
                     self.status = format!("Renamed to '{new}'");
                 }
             }
-            PendingAction::AcsDamage => {
-                match name.trim().parse::<i64>() {
-                    Ok(dmg) if dmg > 0 => {
-                        self.snapshot_undo();
-                        self.acs_apply_damage(dmg);
-                    }
-                    _ => self.status = "Damage must be a positive number".into(),
+            PendingAction::AcsDamage => match name.trim().parse::<i64>() {
+                Ok(dmg) if dmg > 0 => {
+                    self.snapshot_undo();
+                    self.acs_apply_damage(dmg);
                 }
-            }
+                _ => self.status = "Damage must be a positive number".into(),
+            },
             PendingAction::RenameUnit => {
-                let (fi, ui) = (self.session.sbf.active_formation, self.session.sbf.active_unit);
+                let (fi, ui) = (
+                    self.session.sbf.active_formation,
+                    self.session.sbf.active_unit,
+                );
                 let new = name.trim();
                 if new.is_empty() {
                     self.status = "Name unchanged".into();
@@ -1760,7 +1963,10 @@ impl App {
     /// The point-system label for the current session ("BV" for Classic, "PV" for Alpha Strike).
     fn limit_unit(&self) -> &'static str {
         match self.session.mode {
-            GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => "PV",
+            GameMode::AlphaStrike
+            | GameMode::StrategicBattleForce
+            | GameMode::BattleForce
+            | GameMode::AbstractCombatSystem => "PV",
             GameMode::Classic | GameMode::Override => "BV",
         }
     }
@@ -1770,7 +1976,11 @@ impl App {
         let unit = self.limit_unit();
         self.modal = Some(Modal::Input {
             prompt: format!("Force {unit} limit (blank = none):"),
-            buffer: self.session.limit.map(|l| l.to_string()).unwrap_or_default(),
+            buffer: self
+                .session
+                .limit
+                .map(|l| l.to_string())
+                .unwrap_or_default(),
             action: PendingAction::SetSessionLimit,
         });
     }
@@ -1973,11 +2183,13 @@ impl App {
             KeyCode::PageDown => self.picker.page_jump(1),
             KeyCode::Backspace => {
                 self.picker.query.pop();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             KeyCode::Char(c) => {
                 self.picker.query.push(c);
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             _ => {}
         }
@@ -2052,7 +2264,11 @@ impl App {
             era_id: fg.era.as_ref().map(|(id, _)| *id),
             era_to,
             count: fg.count,
-            budget: if fg.use_budget { self.session.limit } else { None },
+            budget: if fg.use_budget {
+                self.session.limit
+            } else {
+                None
+            },
             allow_rare: fg.allow_rare,
             class_bias: fg.class_bias.as_deref(),
             mode: self.session.mode,
@@ -2061,7 +2277,10 @@ impl App {
         fg.preview = forcegen::generate(&self.bundle, &hard, &cfg, fg.seed);
         fg.rolled = true;
         let pt = match self.session.mode {
-            GameMode::AlphaStrike | GameMode::StrategicBattleForce | GameMode::BattleForce | GameMode::AbstractCombatSystem => "PV",
+            GameMode::AlphaStrike
+            | GameMode::StrategicBattleForce
+            | GameMode::BattleForce
+            | GameMode::AbstractCombatSystem => "PV",
             GameMode::Classic | GameMode::Override => "BV",
         };
         // Distinguish "no candidates" from "candidates exist but the budget is too tight".
@@ -2079,7 +2298,11 @@ impl App {
             "No canon 'Mechs for this faction/era. Try “Allow rare”, or widen the era.".into()
         } else if budget_capped {
             let l = cfg.budget.unwrap_or(0);
-            format!("Budget {l} {pt} fit {} of {} units.", fg.preview.len(), fg.count)
+            format!(
+                "Budget {l} {pt} fit {} of {} units.",
+                fg.preview.len(),
+                fg.count
+            )
         } else {
             String::new()
         };
@@ -2094,7 +2317,9 @@ impl App {
         self.push_undo(self.session.clone());
         let mut added = 0usize;
         for &idx in &fg.preview {
-            let Some(spec) = self.bundle.get(idx).cloned() else { continue };
+            let Some(spec) = self.bundle.get(idx).cloned() else {
+                continue;
+            };
             if !self.session.add_mech(spec) {
                 break; // roster full
             }
@@ -2160,7 +2385,10 @@ impl App {
             3 => fg.use_budget = !fg.use_budget,
             4 => fg.allow_rare = !fg.allow_rare,
             5 => {
-                let bias: Vec<String> = forcegen::CLASS_BIAS.iter().map(|s| (*s).to_string()).collect();
+                let bias: Vec<String> = forcegen::CLASS_BIAS
+                    .iter()
+                    .map(|s| (*s).to_string())
+                    .collect();
                 fg.class_bias = filters::cycle_opt(&fg.class_bias, &bias, dir);
             }
             _ => {}
@@ -2175,13 +2403,17 @@ impl App {
             KeyCode::Char('a') => {
                 self.screen = Screen::Picker;
                 self.picker.reset();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('D') => {
                 if let Some(tm) = self.session.active_mech() {
                     self.modal = Some(Modal::Confirm {
-                        prompt: format!("Remove {} from this session? (y/n)", tm.spec.display_name()),
+                        prompt: format!(
+                            "Remove {} from this session? (y/n)",
+                            tm.spec.display_name()
+                        ),
                         action: PendingAction::DeleteActiveMech,
                     });
                 }
@@ -2220,7 +2452,11 @@ impl App {
             KeyCode::Char(' ') | KeyCode::Enter => {
                 if let Some(tm) = self.session.active_mech_mut() {
                     tm.as_damage();
-                    self.status = format!("Armor {} / Struct {}", tm.as_armor_remaining(), tm.as_struct_remaining());
+                    self.status = format!(
+                        "Armor {} / Struct {}",
+                        tm.as_armor_remaining(),
+                        tm.as_struct_remaining()
+                    );
                     self.dirty = true;
                 }
             }
@@ -2265,13 +2501,17 @@ impl App {
             KeyCode::Char('a') => {
                 self.screen = Screen::Picker;
                 self.picker.reset();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('D') => {
                 if let Some(tm) = self.session.active_mech() {
                     self.modal = Some(Modal::Confirm {
-                        prompt: format!("Remove {} from this session? (y/n)", tm.spec.display_name()),
+                        prompt: format!(
+                            "Remove {} from this session? (y/n)",
+                            tm.spec.display_name()
+                        ),
                         action: PendingAction::DeleteActiveMech,
                     });
                 }
@@ -2368,14 +2608,22 @@ impl App {
             }
             // m: open the Motive System Damage table (roll a result, pick its severity).
             KeyCode::Char('m') => {
-                if self.session.active_mech().is_some_and(|t| t.spec.is_vehicle()) {
+                if self
+                    .session
+                    .active_mech()
+                    .is_some_and(|t| t.spec.is_vehicle())
+                {
                     self.modal = Some(Modal::Motive { sel: 0 });
                 }
             }
             // M: quick-repair the most recent motive result.
             KeyCode::Char('M') => {
                 let before = self.session.clone();
-                if let Some(tm) = self.session.active_mech_mut().filter(|t| t.spec.is_vehicle()) {
+                if let Some(tm) = self
+                    .session
+                    .active_mech_mut()
+                    .filter(|t| t.spec.is_vehicle())
+                {
                     self.status = match tm.repair_motive() {
                         Some(lvl) => format!("Motive repaired ({})", lvl.label()),
                         None => "No motive damage".into(),
@@ -2405,13 +2653,17 @@ impl App {
             KeyCode::Char('a') => {
                 self.screen = Screen::Picker;
                 self.picker.reset();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('D') => {
                 if let Some(tm) = self.session.active_mech() {
                     self.modal = Some(Modal::Confirm {
-                        prompt: format!("Remove {} from this session? (y/n)", tm.spec.display_name()),
+                        prompt: format!(
+                            "Remove {} from this session? (y/n)",
+                            tm.spec.display_name()
+                        ),
                         action: PendingAction::DeleteActiveMech,
                     });
                 }
@@ -2447,7 +2699,11 @@ impl App {
             KeyCode::Char('x') => {
                 if let Some(tm) = self.session.active_mech_mut() {
                     tm.toggle_shutdown();
-                    self.status = if tm.shutdown { "Shutdown".into() } else { "Restarted".into() };
+                    self.status = if tm.shutdown {
+                        "Shutdown".into()
+                    } else {
+                        "Restarted".into()
+                    };
                     self.dirty = true;
                 }
             }
@@ -2504,8 +2760,11 @@ impl App {
     fn ov_navigate(&mut self, dir: Dir) {
         match self.focus {
             Focus::Doll => {
-                let locs =
-                    self.session.active_mech().map(|tm| tm.ov_region_locs()).unwrap_or_default();
+                let locs = self
+                    .session
+                    .active_mech()
+                    .map(|tm| tm.ov_region_locs())
+                    .unwrap_or_default();
                 if let Some(next) = move_cursor(self.cursor, dir, &locs) {
                     self.cursor = next;
                     // A region without rear armor can't show the rear face.
@@ -2520,7 +2779,10 @@ impl App {
                 }
             }
             Focus::Equipment => {
-                let n = self.session.active_mech().map_or(0, |tm| tm.ov_card().tics.len());
+                let n = self
+                    .session
+                    .active_mech()
+                    .map_or(0, |tm| tm.ov_card().tics.len());
                 if n == 0 {
                     return;
                 }
@@ -2564,12 +2826,18 @@ impl App {
         let facing = self.facing;
         let loc = self.ov_cursor_loc();
         let tic = self.ov_tic;
-        let Some(tm) = self.session.active_mech_mut() else { return };
+        let Some(tm) = self.session.active_mech_mut() else {
+            return;
+        };
         match self.focus {
             Focus::Doll => {
                 let Some(loc) = loc else { return };
                 let rear = facing == Facing::Rear
-                    && tm.ov_regions().iter().find(|r| r.loc == loc).is_some_and(|r| r.rear.is_some());
+                    && tm
+                        .ov_regions()
+                        .iter()
+                        .find(|r| r.loc == loc)
+                        .is_some_and(|r| r.rear.is_some());
                 tm.ov_damage(loc, rear);
                 let layer = if rear { "rear" } else { "front" };
                 self.status = format!(
@@ -2581,7 +2849,9 @@ impl App {
             }
             Focus::Equipment => {
                 let card = tm.ov_card();
-                let Some(row) = card.tics.get(tic) else { return };
+                let Some(row) = card.tics.get(tic) else {
+                    return;
+                };
                 let heat = if tm.ov_has_heat() { row.heat } else { 0 };
                 let name = row.name.clone();
                 tm.ov_fire_tic(tic, heat);
@@ -2596,18 +2866,26 @@ impl App {
         let facing = self.facing;
         let loc = self.ov_cursor_loc();
         let tic = self.ov_tic;
-        let Some(tm) = self.session.active_mech_mut() else { return };
+        let Some(tm) = self.session.active_mech_mut() else {
+            return;
+        };
         match self.focus {
             Focus::Doll => {
                 let Some(loc) = loc else { return };
                 let rear = facing == Facing::Rear
-                    && tm.ov_regions().iter().find(|r| r.loc == loc).is_some_and(|r| r.rear.is_some());
+                    && tm
+                        .ov_regions()
+                        .iter()
+                        .find(|r| r.loc == loc)
+                        .is_some_and(|r| r.rear.is_some());
                 tm.ov_repair(loc, rear);
                 self.status = format!("Repaired {}", loc.code());
             }
             Focus::Equipment => {
                 let card = tm.ov_card();
-                let Some(row) = card.tics.get(tic) else { return };
+                let Some(row) = card.tics.get(tic) else {
+                    return;
+                };
                 let heat = if tm.ov_has_heat() { row.heat } else { 0 };
                 tm.ov_unfire_tic(tic, heat);
                 self.status = "Un-fired".into();
@@ -2618,8 +2896,12 @@ impl App {
 
     /// Open the Override crit popup for the cursored armor region (if it has a crit table).
     fn ov_open_crit(&mut self) {
-        let Some(loc) = self.ov_cursor_loc() else { return };
-        let Some(tm) = self.session.active_mech() else { return };
+        let Some(loc) = self.ov_cursor_loc() else {
+            return;
+        };
+        let Some(tm) = self.session.active_mech() else {
+            return;
+        };
         if override_conv::crit_table(&tm.spec, loc).is_some() {
             self.modal = Some(Modal::OvCrit { loc, sel: 0 });
         } else {
@@ -2654,19 +2936,20 @@ impl App {
             KeyCode::Char('a') => {
                 self.screen = Screen::Picker;
                 self.picker.reset();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('P') => self.export_pdf(),
             KeyCode::Char('D') => {
-                if let Some(f) =
-                    self.session.sbf.formations.get(self.session.sbf.active_formation)
+                if let Some(f) = self
+                    .session
+                    .sbf
+                    .formations
+                    .get(self.session.sbf.active_formation)
                 {
                     self.modal = Some(Modal::Confirm {
-                        prompt: format!(
-                            "Remove formation {} and its elements? (y/n)",
-                            f.name
-                        ),
+                        prompt: format!("Remove formation {} and its elements? (y/n)", f.name),
                         action: PendingAction::DeleteActiveFormation,
                     });
                 }
@@ -2718,8 +3001,11 @@ impl App {
                 }
             }
             KeyCode::Char('r') => {
-                if let Some(f) =
-                    self.session.sbf.formations.get(self.session.sbf.active_formation)
+                if let Some(f) = self
+                    .session
+                    .sbf
+                    .formations
+                    .get(self.session.sbf.active_formation)
                 {
                     self.modal = Some(Modal::Input {
                         prompt: format!("Rename formation '{}':", f.name),
@@ -2796,7 +3082,9 @@ impl App {
     }
 
     fn sbf_cycle_unit(&mut self, delta: i32) {
-        let Some((fi, _)) = self.sbf_active_unit() else { return };
+        let Some((fi, _)) = self.sbf_active_unit() else {
+            return;
+        };
         let n = self.session.sbf.formations[fi].units.len();
         let cur = self.session.sbf.active_unit as i32;
         self.session.sbf.active_unit = (cur + delta).rem_euclid(n as i32) as usize;
@@ -2805,36 +3093,64 @@ impl App {
     /// Mark one point of SBF damage on the active unit. Overflow past its armor is reported for
     /// the player to spill onto another unit (§4.2 — damage carries over, never discarded).
     fn sbf_damage(&mut self) {
-        let Some((fi, ui)) = self.sbf_active_unit() else { return };
-        if self.session.sbf.formations[fi].units[ui].elements.is_empty() {
+        let Some((fi, ui)) = self.sbf_active_unit() else {
+            return;
+        };
+        if self.session.sbf.formations[fi].units[ui]
+            .elements
+            .is_empty()
+        {
             self.status = "Empty unit — [g] assigns elements".into();
             return;
         }
-        let derived = self.session.sbf_unit(&self.session.sbf.formations[fi].units[ui]);
-        let overflow =
-            self.session.sbf.formations[fi].units[ui].apply_damage(&derived, 1);
+        let derived = self
+            .session
+            .sbf_unit(&self.session.sbf.formations[fi].units[ui]);
+        let overflow = self.session.sbf.formations[fi].units[ui].apply_damage(&derived, 1);
         let u = &self.session.sbf.formations[fi].units[ui];
         self.dirty = true;
         self.status = if overflow > 0 {
             "Destroyed — spill remaining damage onto another unit (j/k to select)".into()
         } else if u.is_destroyed(&derived) {
-            if self.session.sbf_formation_eliminated(&self.session.sbf.formations[fi]) {
+            if self
+                .session
+                .sbf_formation_eliminated(&self.session.sbf.formations[fi])
+            {
                 format!("{} destroyed — formation eliminated", derived.name)
             } else {
-                format!("{} destroyed — spillover goes to another unit", derived.name)
+                format!(
+                    "{} destroyed — spillover goes to another unit",
+                    derived.name
+                )
             }
         } else {
-            let due = if u.crit_check_due(&derived) { "  ⚠ crit check (2d6, c)" } else { "" };
-            format!("Armor {}/{}{}", u.armor_remaining(&derived), derived.armor, due)
+            let due = if u.crit_check_due(&derived) {
+                "  ⚠ crit check (2d6, c)"
+            } else {
+                ""
+            };
+            format!(
+                "Armor {}/{}{}",
+                u.armor_remaining(&derived),
+                derived.armor,
+                due
+            )
         };
     }
 
     fn sbf_repair(&mut self) {
-        let Some((fi, ui)) = self.sbf_active_unit() else { return };
-        if self.session.sbf.formations[fi].units[ui].elements.is_empty() {
+        let Some((fi, ui)) = self.sbf_active_unit() else {
+            return;
+        };
+        if self.session.sbf.formations[fi].units[ui]
+            .elements
+            .is_empty()
+        {
             return;
         }
-        let derived = self.session.sbf_unit(&self.session.sbf.formations[fi].units[ui]);
+        let derived = self
+            .session
+            .sbf_unit(&self.session.sbf.formations[fi].units[ui]);
         let u = &mut self.session.sbf.formations[fi].units[ui];
         u.repair(1);
         self.dirty = true;
@@ -2890,10 +3206,14 @@ impl App {
                 }
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::SbfGroup { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::SbfGroup {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::SbfGroup { sel: (sel + 1).min(n - 1) });
+                self.modal = Some(Modal::SbfGroup {
+                    sel: (sel + 1).min(n - 1),
+                });
             }
             KeyCode::Left | KeyCode::Right | KeyCode::Char(' ') => {
                 // Cycle the element through every grouping stop, in formation/unit order.
@@ -2909,7 +3229,9 @@ impl App {
                         if f.units.is_empty() {
                             vec![SbfAssign::NewUnit(fi)]
                         } else {
-                            (0..f.units.len()).map(|ui| SbfAssign::Unit(fi, ui)).collect()
+                            (0..f.units.len())
+                                .map(|ui| SbfAssign::Unit(fi, ui))
+                                .collect()
                         }
                     })
                     .collect();
@@ -2962,7 +3284,11 @@ impl App {
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 // Adjust the element's Skill (gunnery drives unit/formation skill and PV).
-                let delta: i32 = if key.code == KeyCode::Char('s') { 1 } else { -1 };
+                let delta: i32 = if key.code == KeyCode::Char('s') {
+                    1
+                } else {
+                    -1
+                };
                 let before = self.session.clone();
                 if let Some(tm) = self.session.mechs.get_mut(sel) {
                     tm.gunnery = (tm.gunnery as i32 + delta).clamp(0, SKILL_MAX as i32) as u8;
@@ -2975,8 +3301,7 @@ impl App {
             }
             KeyCode::Char('x') => {
                 // Remove the element from the force entirely (indices remap; emptied groups go).
-                let name =
-                    self.session.mechs.get(sel).map(|m| m.spec.display_name());
+                let name = self.session.mechs.get(sel).map(|m| m.spec.display_name());
                 let before = self.session.clone();
                 self.session.remove_mech(sel);
                 if self.session != before {
@@ -2988,7 +3313,9 @@ impl App {
                 }
                 let n = self.session.mechs.len();
                 if n > 0 {
-                    self.modal = Some(Modal::SbfGroup { sel: sel.min(n - 1) });
+                    self.modal = Some(Modal::SbfGroup {
+                        sel: sel.min(n - 1),
+                    });
                 } // pool empty → editor closes (modal already taken)
             }
             KeyCode::Char('a') => self.modal = Some(Modal::SbfDoctrine { sel: 0 }),
@@ -3001,14 +3328,21 @@ impl App {
     fn sbf_doctrine_modal_key(&mut self, sel: usize, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
-                let el = self.session.active.min(self.session.mechs.len().saturating_sub(1));
+                let el = self
+                    .session
+                    .active
+                    .min(self.session.mechs.len().saturating_sub(1));
                 self.modal = Some(Modal::SbfGroup { sel: el });
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::SbfDoctrine { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::SbfDoctrine {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::SbfDoctrine { sel: (sel + 1).min(2) });
+                self.modal = Some(Modal::SbfDoctrine {
+                    sel: (sel + 1).min(2),
+                });
             }
             KeyCode::Enter | KeyCode::Char(' ') => {
                 let doctrine = match sel {
@@ -3042,7 +3376,9 @@ impl App {
         let mut out = Vec::new();
         let custom_names = fs
             .iter()
-            .flat_map(|f| std::iter::once(f.name.as_str()).chain(f.units.iter().map(|u| u.name.as_str())))
+            .flat_map(|f| {
+                std::iter::once(f.name.as_str()).chain(f.units.iter().map(|u| u.name.as_str()))
+            })
             .filter(|n| !sbf_default_name(n))
             .count();
         if custom_names > 0 {
@@ -3071,10 +3407,18 @@ impl App {
         if morale > 0 {
             out.push(format!("{morale} morale rung(s)"));
         }
-        if fs.iter().flat_map(|f| f.units.iter()).any(|u| u.is_commander) {
+        if fs
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .any(|u| u.is_commander)
+        {
             out.push("the COM mark".into());
         }
-        let leads = fs.iter().flat_map(|f| f.units.iter()).filter(|u| u.is_leader).count();
+        let leads = fs
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .filter(|u| u.is_leader)
+            .count();
         if leads > 0 {
             out.push(format!("{leads} LEAD mark(s)"));
         }
@@ -3168,11 +3512,17 @@ impl App {
     /// active unit (←→ adjust; the player rolls the 2d6 and reads the §4.2 table shown below).
     fn sbf_crit_modal_key(&mut self, sel: usize, key: KeyEvent) {
         let adjust = |app: &mut App, delta: i32| {
-            let Some((fi, ui)) = app.sbf_active_unit() else { return };
+            let Some((fi, ui)) = app.sbf_active_unit() else {
+                return;
+            };
             let before = app.session.clone();
             let u = &mut app.session.sbf.formations[fi].units[ui];
             let bump = |c: &mut u8| {
-                *c = if delta > 0 { c.saturating_add(1) } else { c.saturating_sub(1) };
+                *c = if delta > 0 {
+                    c.saturating_add(1)
+                } else {
+                    c.saturating_sub(1)
+                };
             };
             match sel {
                 0 => bump(&mut u.damage_crits),
@@ -3187,10 +3537,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('c') | KeyCode::Enter => {} // close (modal taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::SbfCrit { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::SbfCrit {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::SbfCrit { sel: (sel + 1).min(2) });
+                self.modal = Some(Modal::SbfCrit {
+                    sel: (sel + 1).min(2),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -3261,8 +3615,7 @@ impl App {
             }
             3 => {
                 let cap = self_units_cap(app);
-                app.sbf_shot.withheld =
-                    (app.sbf_shot.withheld as i32 + delta).clamp(0, cap) as u8;
+                app.sbf_shot.withheld = (app.sbf_shot.withheld as i32 + delta).clamp(0, cap) as u8;
             }
             4 => app.sbf_shot.spotting = !app.sbf_shot.spotting,
             5 => app.sbf_shot.secondary = !app.sbf_shot.secondary,
@@ -3284,8 +3637,15 @@ impl App {
                     GroundedSquadron,
                     GroundFormation,
                 ];
-                let i = ORDER.iter().position(|&t| t == app.sbf_shot.aero_target).unwrap_or(0);
-                let j = if delta > 0 { (i + 1).min(ORDER.len() - 1) } else { i.saturating_sub(1) };
+                let i = ORDER
+                    .iter()
+                    .position(|&t| t == app.sbf_shot.aero_target)
+                    .unwrap_or(0);
+                let j = if delta > 0 {
+                    (i + 1).min(ORDER.len() - 1)
+                } else {
+                    i.saturating_sub(1)
+                };
                 app.sbf_shot.aero_target = ORDER[j];
             }
             12 => app.sbf_shot.behind_target = !app.sbf_shot.behind_target,
@@ -3293,13 +3653,18 @@ impl App {
             // ---- Large-Aerospace capital-scale rows (IO:BF p.191), only shown for a large craft.
             14 => {
                 let all = large_craft::Arc::ALL;
-                let i = all.iter().position(|&a| a == app.sbf_shot.firing_arc).unwrap_or(0) as i32;
+                let i = all
+                    .iter()
+                    .position(|&a| a == app.sbf_shot.firing_arc)
+                    .unwrap_or(0) as i32;
                 app.sbf_shot.firing_arc = all[(i + delta).rem_euclid(all.len() as i32) as usize];
             }
             15 => {
                 let all = large_craft::WeaponClass::ALL;
-                let i =
-                    all.iter().position(|&c| c == app.sbf_shot.weapon_class).unwrap_or(0) as i32;
+                let i = all
+                    .iter()
+                    .position(|&c| c == app.sbf_shot.weapon_class)
+                    .unwrap_or(0) as i32;
                 app.sbf_shot.weapon_class = all[(i + delta).rem_euclid(all.len() as i32) as usize];
             }
             16 => app.sbf_shot.target_large_craft = !app.sbf_shot.target_large_craft,
@@ -3336,11 +3701,15 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('t') | KeyCode::Enter => {} // close (modal taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::SbfShot { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::SbfShot {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 let last = self.sbf_shot_row_count().saturating_sub(1);
-                self.modal = Some(Modal::SbfShot { sel: (sel + 1).min(last) });
+                self.modal = Some(Modal::SbfShot {
+                    sel: (sel + 1).min(last),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -3435,10 +3804,13 @@ impl App {
                     use neurohelmet_core::engine::sbf::SbfRange::*;
                     const ORDER: [neurohelmet_core::engine::sbf::SbfRange; 4] =
                         [Short, Medium, Long, Extreme];
-                    let i = ORDER.iter().position(|&r| r == self.acs_shot.aero_range).unwrap_or(1)
-                        as i32;
+                    let i = ORDER
+                        .iter()
+                        .position(|&r| r == self.acs_shot.aero_range)
+                        .unwrap_or(1) as i32;
                     let n = ORDER.len() as i32;
-                    self.acs_shot.aero_range = ORDER[(i + if fwd { 1 } else { -1 }).rem_euclid(n) as usize];
+                    self.acs_shot.aero_range =
+                        ORDER[(i + if fwd { 1 } else { -1 }).rem_euclid(n) as usize];
                 } else {
                     self.acs_shot.range = match (self.acs_shot.range, fwd) {
                         (AcsRange::Short, true) => AcsRange::Medium,
@@ -3460,12 +3832,18 @@ impl App {
             // Aero-only cycles: weapon class, cross-type matchup, Ground-Support mission.
             KeyCode::Char('w') if self.acs_active_formation_is_aero() => {
                 let all = large_craft::WeaponClass::ALL;
-                let i = all.iter().position(|&c| c == self.acs_shot.weapon_class).unwrap_or(0);
+                let i = all
+                    .iter()
+                    .position(|&c| c == self.acs_shot.weapon_class)
+                    .unwrap_or(0);
                 self.acs_shot.weapon_class = all[(i + 1) % all.len()];
             }
             KeyCode::Char('v') if self.acs_active_formation_is_aero() => {
                 let all = large_craft::Arc::ALL;
-                let i = all.iter().position(|&a| a == self.acs_shot.firing_arc).unwrap_or(0);
+                let i = all
+                    .iter()
+                    .position(|&a| a == self.acs_shot.firing_arc)
+                    .unwrap_or(0);
                 self.acs_shot.firing_arc = all[(i + 1) % all.len()];
             }
             KeyCode::Char('L') if self.acs_active_formation_is_aero() => {
@@ -3473,14 +3851,23 @@ impl App {
             }
             KeyCode::Char('x') if self.acs_active_formation_is_aero() => {
                 let all = neurohelmet_core::engine::acs::AcsAeroMatchup::ALL;
-                let i = all.iter().position(|&m| m == self.acs_shot.matchup).unwrap_or(0);
+                let i = all
+                    .iter()
+                    .position(|&m| m == self.acs_shot.matchup)
+                    .unwrap_or(0);
                 self.acs_shot.matchup = all[(i + 1) % all.len()];
             }
             KeyCode::Char('y') if self.acs_active_formation_is_aero() => {
                 let all = AcsAeroMission::ALL;
-                let i = all.iter().position(|&m| m == self.acs_shot.aero_mission).unwrap_or(0);
+                let i = all
+                    .iter()
+                    .position(|&m| m == self.acs_shot.aero_mission)
+                    .unwrap_or(0);
                 self.acs_shot.aero_mission = all[(i + 1) % all.len()];
-                self.status = format!("Ground-Support mission: {}", self.acs_shot.aero_mission.label());
+                self.status = format!(
+                    "Ground-Support mission: {}",
+                    self.acs_shot.aero_mission.label()
+                );
             }
             _ => {}
         }
@@ -3548,7 +3935,9 @@ impl App {
         let Some((fi, ui)) = self.acs_active_unit() else {
             return;
         };
-        let derived = self.session.acs_combat_unit(&self.session.acs.formations[fi].units[ui]);
+        let derived = self
+            .session
+            .acs_combat_unit(&self.session.acs.formations[fi].units[ui]);
         let crossed = self.session.acs.formations[fi].units[ui].apply_damage(&derived, dmg);
         let st = &self.session.acs.formations[fi].units[ui];
         self.dirty = true;
@@ -3569,7 +3958,9 @@ impl App {
         let Some((fi, ui)) = self.acs_active_unit() else {
             return;
         };
-        let derived = self.session.acs_combat_unit(&self.session.acs.formations[fi].units[ui]);
+        let derived = self
+            .session
+            .acs_combat_unit(&self.session.acs.formations[fi].units[ui]);
         let st = &mut self.session.acs.formations[fi].units[ui];
         st.repair(1);
         self.dirty = true;
@@ -3600,12 +3991,18 @@ impl App {
         let Some((fi, ui)) = self.acs_active_unit() else {
             return;
         };
-        let derived = self.session.acs_combat_unit(&self.session.acs.formations[fi].units[ui]);
+        let derived = self
+            .session
+            .acs_combat_unit(&self.session.acs.formations[fi].units[ui]);
         let fp = AcsExperience::from_skill(derived.skill).fatigue_earned();
         let st = &mut self.session.acs.formations[fi].units[ui];
         st.add_fatigue(fp);
         self.dirty = true;
-        self.status = format!("{}: {:.1} FP (fought this turn)", st.name, st.fatigue_points());
+        self.status = format!(
+            "{}: {:.1} FP (fought this turn)",
+            st.name,
+            st.fatigue_points()
+        );
     }
 
     fn acs_rest_fatigue(&mut self) {
@@ -3681,10 +4078,14 @@ impl App {
                 self.modal = None;
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::AcsGroup { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::AcsGroup {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::AcsGroup { sel: (sel + 1).min(n - 1) });
+                self.modal = Some(Modal::AcsGroup {
+                    sel: (sel + 1).min(n - 1),
+                });
             }
             KeyCode::Left | KeyCode::Right | KeyCode::Char(' ') => {
                 let stops = self.session.acs_unit_stops();
@@ -3695,7 +4096,9 @@ impl App {
                 }
                 let step: i32 = if key.code == KeyCode::Left { -1 } else { 1 };
                 let cur_pos = cur.and_then(|(fi, cui, ti, ui)| {
-                    stops.iter().position(|&s| s == AcsAssign::Unit(fi, cui, ti, ui))
+                    stops
+                        .iter()
+                        .position(|&s| s == AcsAssign::Unit(fi, cui, ti, ui))
                 });
                 let next = match cur_pos {
                     Some(p) => (p as i32 + step).rem_euclid(stops.len() as i32) as usize,
@@ -3714,7 +4117,9 @@ impl App {
                     Some((fi, cui, ti)) => AcsAssign::NewUnit(fi, cui, ti),
                     None => match ctx_cu {
                         Some((fi, cui)) => AcsAssign::NewTeam(fi, cui),
-                        None => ctx_form.map(AcsAssign::NewCombatUnit).unwrap_or(AcsAssign::NewFormation),
+                        None => ctx_form
+                            .map(AcsAssign::NewCombatUnit)
+                            .unwrap_or(AcsAssign::NewFormation),
                     },
                 };
                 assign(self, t);
@@ -3722,12 +4127,16 @@ impl App {
             KeyCode::Char('t') => {
                 let t = match ctx_cu {
                     Some((fi, cui)) => AcsAssign::NewTeam(fi, cui),
-                    None => ctx_form.map(AcsAssign::NewCombatUnit).unwrap_or(AcsAssign::NewFormation),
+                    None => ctx_form
+                        .map(AcsAssign::NewCombatUnit)
+                        .unwrap_or(AcsAssign::NewFormation),
                 };
                 assign(self, t);
             }
             KeyCode::Char('c') => {
-                let t = ctx_form.map(AcsAssign::NewCombatUnit).unwrap_or(AcsAssign::NewFormation);
+                let t = ctx_form
+                    .map(AcsAssign::NewCombatUnit)
+                    .unwrap_or(AcsAssign::NewFormation);
                 assign(self, t);
             }
             KeyCode::Char('F') => assign(self, AcsAssign::NewFormation),
@@ -3763,7 +4172,9 @@ impl App {
     /// the aero range ladder + the cross-type matchup + the shared capital leg (built only for a
     /// large craft carrying an arc card). Mirror of [`Self::acs_to_hit_ctx`] for aero Formations.
     pub fn acs_aero_to_hit_ctx(&self) -> Option<neurohelmet_core::engine::acs::AcsAeroToHitCtx> {
-        use neurohelmet_core::engine::acs::{acs_fatigue_band, AcsAeroMatchup, AcsAeroToHitCtx, AcsExperience};
+        use neurohelmet_core::engine::acs::{
+            acs_fatigue_band, AcsAeroMatchup, AcsAeroToHitCtx, AcsExperience,
+        };
         use neurohelmet_core::engine::sbf::{SbfAcm, SbfCapital};
         let (fi, ui) = self.acs_active_unit()?;
         let st = &self.session.acs.formations[fi].units[ui];
@@ -3819,13 +4230,17 @@ impl App {
             KeyCode::Char('a') => {
                 self.screen = Screen::Picker;
                 self.picker.reset();
-                self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
             }
             KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('D') => {
                 if let Some(tm) = self.session.active_mech() {
                     self.modal = Some(Modal::Confirm {
-                        prompt: format!("Remove {} from this session? (y/n)", tm.spec.display_name()),
+                        prompt: format!(
+                            "Remove {} from this session? (y/n)",
+                            tm.spec.display_name()
+                        ),
                         action: PendingAction::DeleteActiveMech,
                     });
                 }
@@ -3865,7 +4280,11 @@ impl App {
                         "Armor {} / Struct {}{}",
                         tm.as_armor_remaining(),
                         tm.as_struct_remaining(),
-                        if crit_due { "  ⚠ crit check (2D6, c)" } else { "" }
+                        if crit_due {
+                            "  ⚠ crit check (2D6, c)"
+                        } else {
+                            ""
+                        }
                     );
                     self.dirty = true;
                 }
@@ -3915,11 +4334,15 @@ impl App {
             KeyCode::Char('n') => {
                 self.session.bf_begin_round();
                 self.dirty = true;
-                self.status = format!("Round {} begun (crew-stunned cleared)", self.session.bf.round);
+                self.status = format!(
+                    "Round {} begun (crew-stunned cleared)",
+                    self.session.bf.round
+                );
             }
             KeyCode::Char('r') => {
-                if let Some(u) =
-                    self.bf_active_unit().and_then(|ui| self.session.bf.units.get(ui))
+                if let Some(u) = self
+                    .bf_active_unit()
+                    .and_then(|ui| self.session.bf.units.get(ui))
                 {
                     self.modal = Some(Modal::Input {
                         prompt: format!("Rename unit '{}':", u.name),
@@ -3936,13 +4359,20 @@ impl App {
     /// The Unit the BF verbs (`m` morale, `r` rename) act on: the one holding the active element,
     /// else the Unit cursor (so a fresh sheet's seeded empty Unit is still reachable).
     pub(crate) fn bf_active_unit(&self) -> Option<usize> {
-        self.session.bf_element_assignment(self.session.active).or_else(|| {
-            if self.session.bf.units.is_empty() {
-                None
-            } else {
-                Some(self.session.bf.active_unit.min(self.session.bf.units.len() - 1))
-            }
-        })
+        self.session
+            .bf_element_assignment(self.session.active)
+            .or_else(|| {
+                if self.session.bf.units.is_empty() {
+                    None
+                } else {
+                    Some(
+                        self.session
+                            .bf
+                            .active_unit
+                            .min(self.session.bf.units.len() - 1),
+                    )
+                }
+            })
     }
 
     /// Cycle the active Unit's manual morale rung: Normal → Broken → Routed → Normal (spec §3.3).
@@ -3968,8 +4398,11 @@ impl App {
         let (kind, grounded) = match self.session.mechs.get(i) {
             Some(tm) => {
                 let el = bf_element_of(tm);
-                let mut kind =
-                    if bf_kind_eligible(&el, s.kind) { s.kind } else { BfAttackKind::Standard };
+                let mut kind = if bf_kind_eligible(&el, s.kind) {
+                    s.kind
+                } else {
+                    BfAttackKind::Standard
+                };
                 if kind == BfAttackKind::Physical(BfPhysical::Dfa)
                     && matches!(
                         s.target_kind,
@@ -4040,7 +4473,9 @@ impl App {
     /// emplacements, which are immobile with a weapons-only crit vocabulary (spec
     /// §Data-fidelity 8): no motive rows.
     pub(crate) fn bf_crit_row_count(&self) -> usize {
-        let Some(tm) = self.session.active_mech() else { return 0 };
+        let Some(tm) = self.session.active_mech() else {
+            return 0;
+        };
         let el = bf_element_of(tm);
         match battleforce::bf_crit_col(&el) {
             None => 0,
@@ -4054,18 +4489,31 @@ impl App {
     /// the caller must not re-open the crit modal over it.
     fn bf_apply_crit_row(&mut self, sel: usize) -> bool {
         let i = self.session.active;
-        let Some(tm) = self.session.active_mech() else { return true };
+        let Some(tm) = self.session.active_mech() else {
+            return true;
+        };
         let el = bf_element_of(tm);
-        let Some(col) = battleforce::bf_crit_col(&el) else { return true };
+        let Some(col) = battleforce::bf_crit_col(&el) else {
+            return true;
+        };
         use battleforce::{BfCrit, BfCritCol};
 
         // Vehicle motive rows (11–13): independent once-per-game spent-flags (p.43) — marking
         // an already-marked effect is a no-op; different effects stack.
         if sel >= 11 {
             let effect = match sel {
-                11 => BfMotive { minus_one: true, ..Default::default() },
-                12 => BfMotive { half: true, ..Default::default() },
-                _ => BfMotive { immobile: true, ..Default::default() },
+                11 => BfMotive {
+                    minus_one: true,
+                    ..Default::default()
+                },
+                12 => BfMotive {
+                    half: true,
+                    ..Default::default()
+                },
+                _ => BfMotive {
+                    immobile: true,
+                    ..Default::default()
+                },
             };
             let before = self.session.clone();
             if let Some(tm) = self.session.active_mech_mut() {
@@ -4110,10 +4558,7 @@ impl App {
             return true;
         }
         // CASEP ammo (p.151) needs the player's 1D6 — hand off to a confirm prompt.
-        if crit == BfCrit::Ammo
-            && !el.has_any_sua(&["CASEII", "ENE"])
-            && el.has_sua("CASEP")
-        {
+        if crit == BfCrit::Ammo && !el.has_any_sua(&["CASEII", "ENE"]) && el.has_sua("CASEP") {
             self.modal = Some(Modal::Confirm {
                 prompt: "CASEP (p.151): roll 1D6 — on 3+ the ammo crit is ignored.\nDid it come up 1-2 (detonation)? (y/n)".into(),
                 action: PendingAction::BfAmmoDetonate,
@@ -4184,7 +4629,10 @@ impl App {
                 }
                 BfCrit::FireControl => {
                     tm.bf.fire_control += 1;
-                    format!("Fire Control: +{} to-hit (never on physicals)", 2 * tm.bf.fire_control)
+                    format!(
+                        "Fire Control: +{} to-hit (never on physicals)",
+                        2 * tm.bf.fire_control
+                    )
                 }
                 BfCrit::Mp => {
                     mp_crit = true; // applied below via bf_apply_mp_crit (needs &mut Session)
@@ -4274,7 +4722,10 @@ impl App {
                     let stages = if col == BfCritCol::JumpShip { 3 } else { 2 };
                     if tm.bf.crew_hit >= stages {
                         tm.bf.killed = Some(BfKill::CrewKilled);
-                        format!("Crew hit {}: crew eliminated — element destroyed (p.85)", tm.bf.crew_hit)
+                        format!(
+                            "Crew hit {}: crew eliminated — element destroyed (p.85)",
+                            tm.bf.crew_hit
+                        )
                     } else {
                         format!(
                             "Crew hit {}: +{} to-hit to all this element's shots (p.85)",
@@ -4287,8 +4738,10 @@ impl App {
         }
         if mp_crit {
             self.session.bf_apply_mp_crit(i);
-            self.status =
-                format!("MP crit: −half current MP — now {}", self.session.bf_current_mp(i));
+            self.status = format!(
+                "MP crit: −half current MP — now {}",
+                self.session.bf_current_mp(i)
+            );
         }
         if self.session != before {
             self.push_undo(before);
@@ -4307,10 +4760,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('c') => {} // close (modal already taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::BfCrit { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::BfCrit {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::BfCrit { sel: (sel + 1).min(rows - 1) });
+                self.modal = Some(Modal::BfCrit {
+                    sel: (sel + 1).min(rows - 1),
+                });
             }
             KeyCode::Char(' ') | KeyCode::Enter => {
                 if self.bf_apply_crit_row(sel) {
@@ -4326,7 +4783,8 @@ impl App {
                 if let Some(tm) = self.session.active_mech_mut().filter(|_| has_arm) {
                     tm.bf.arm_spent = !tm.bf.arm_spent;
                     self.status = if tm.bf.arm_spent {
-                        "ARM spent — this crit chance is ignored, later ones resolve normally".into()
+                        "ARM spent — this crit chance is ignored, later ones resolve normally"
+                            .into()
                     } else {
                         "ARM restored (first crit chance of the scenario is ignored)".into()
                     };
@@ -4349,7 +4807,11 @@ impl App {
     /// Row count of the BF shot editor for the active unit: large craft add the firing-arc +
     /// weapon-class picker (24 rows); ground units stop before them (22).
     fn bf_shot_row_count(&self) -> usize {
-        if self.session.active_mech().is_some_and(|tm| tm.spec.as_stats.arcs.is_some()) {
+        if self
+            .session
+            .active_mech()
+            .is_some_and(|tm| tm.spec.as_stats.arcs.is_some())
+        {
             Self::BF_SHOT_ROWS
         } else {
             Self::BF_SHOT_ROWS - 2
@@ -4394,21 +4856,30 @@ impl App {
                     for _ in 0..n {
                         p = (p + delta.signum()).rem_euclid(n);
                         let k = BF_KIND_CYCLE[p as usize];
-                        if el.as_ref().map_or(k == BfAttackKind::Standard, |e| {
-                            bf_kind_eligible(e, k)
-                        }) {
+                        if el
+                            .as_ref()
+                            .map_or(k == BfAttackKind::Standard, |e| bf_kind_eligible(e, k))
+                        {
                             break;
                         }
                     }
                     s.kind = BF_KIND_CYCLE[p as usize];
                 }
                 3 => {
-                    if let BfAttackKind::Indirect { spotter_also_attacked, .. } = &mut s.kind {
+                    if let BfAttackKind::Indirect {
+                        spotter_also_attacked,
+                        ..
+                    } = &mut s.kind
+                    {
                         *spotter_also_attacked = !*spotter_also_attacked;
                     }
                 }
                 4 => {
-                    if let BfAttackKind::Indirect { spotter_is_remote_sensor, .. } = &mut s.kind {
+                    if let BfAttackKind::Indirect {
+                        spotter_is_remote_sensor,
+                        ..
+                    } = &mut s.kind
+                    {
                         *spotter_is_remote_sensor = !*spotter_is_remote_sensor;
                     }
                 }
@@ -4503,10 +4974,14 @@ impl App {
         match key.code {
             KeyCode::Esc | KeyCode::Char('t') | KeyCode::Enter => {} // close (modal taken)
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::BfShot { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::BfShot {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::BfShot { sel: (sel + 1).min(self.bf_shot_row_count() - 1) });
+                self.modal = Some(Modal::BfShot {
+                    sel: (sel + 1).min(self.bf_shot_row_count() - 1),
+                });
             }
             KeyCode::Right | KeyCode::Char(' ') => {
                 adjust(self, 1);
@@ -4549,22 +5024,27 @@ impl App {
                 }
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::BfGroup { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::BfGroup {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::BfGroup { sel: (sel + 1).min(n - 1) });
+                self.modal = Some(Modal::BfGroup {
+                    sel: (sel + 1).min(n - 1),
+                });
             }
             KeyCode::Left | KeyCode::Right | KeyCode::Char(' ') => {
                 // Cycle the element through every Unit, in sheet order.
-                let stops: Vec<BfAssign> =
-                    (0..self.session.bf.units.len()).map(BfAssign::Unit).collect();
+                let stops: Vec<BfAssign> = (0..self.session.bf.units.len())
+                    .map(BfAssign::Unit)
+                    .collect();
                 if stops.is_empty() {
                     self.status = "No units yet — [n] starts one".into();
                 } else {
                     let step: i32 = if key.code == KeyCode::Left { -1 } else { 1 };
                     let cur = self.session.bf_element_assignment(sel);
-                    let cur_pos = cur
-                        .and_then(|ui| stops.iter().position(|&s| s == BfAssign::Unit(ui)));
+                    let cur_pos =
+                        cur.and_then(|ui| stops.iter().position(|&s| s == BfAssign::Unit(ui)));
                     let target = match cur_pos {
                         Some(pos) => {
                             stops[(pos as i32 + step).rem_euclid(stops.len() as i32) as usize]
@@ -4593,7 +5073,11 @@ impl App {
             }
             KeyCode::Char('s') | KeyCode::Char('S') => {
                 // Adjust the element's Skill (gunnery drives BF to-hit and skill-adjusted PV).
-                let delta: i32 = if key.code == KeyCode::Char('s') { 1 } else { -1 };
+                let delta: i32 = if key.code == KeyCode::Char('s') {
+                    1
+                } else {
+                    -1
+                };
                 let before = self.session.clone();
                 if let Some(tm) = self.session.mechs.get_mut(sel) {
                     tm.gunnery = (i32::from(tm.gunnery) + delta).clamp(0, SKILL_MAX as i32) as u8;
@@ -4618,7 +5102,9 @@ impl App {
                 }
                 let n = self.session.mechs.len();
                 if n > 0 {
-                    self.modal = Some(Modal::BfGroup { sel: sel.min(n - 1) });
+                    self.modal = Some(Modal::BfGroup {
+                        sel: sel.min(n - 1),
+                    });
                 } // pool empty → editor closes (modal already taken)
             }
             KeyCode::Char('a') => self.modal = Some(Modal::BfDoctrine { sel: 0 }),
@@ -4632,14 +5118,21 @@ impl App {
     fn bf_doctrine_modal_key(&mut self, sel: usize, key: KeyEvent) {
         match key.code {
             KeyCode::Esc => {
-                let el = self.session.active.min(self.session.mechs.len().saturating_sub(1));
+                let el = self
+                    .session
+                    .active
+                    .min(self.session.mechs.len().saturating_sub(1));
                 self.modal = Some(Modal::BfGroup { sel: el });
             }
             KeyCode::Up | KeyCode::Char('k') => {
-                self.modal = Some(Modal::BfDoctrine { sel: sel.saturating_sub(1) });
+                self.modal = Some(Modal::BfDoctrine {
+                    sel: sel.saturating_sub(1),
+                });
             }
             KeyCode::Down | KeyCode::Char('j') => {
-                self.modal = Some(Modal::BfDoctrine { sel: (sel + 1).min(2) });
+                self.modal = Some(Modal::BfDoctrine {
+                    sel: (sel + 1).min(2),
+                });
             }
             KeyCode::Enter | KeyCode::Char(' ') => {
                 let doctrine = match sel {
@@ -4736,11 +5229,20 @@ impl App {
         if self.focus != Focus::Equipment {
             return;
         }
-        let Some(row) = self.equip_rows().get(self.equip_sel).copied() else { return };
-        let Some(tm) = self.session.active_mech_mut() else { return };
+        let Some(row) = self.equip_rows().get(self.equip_sel).copied() else {
+            return;
+        };
+        let Some(tm) = self.session.active_mech_mut() else {
+            return;
+        };
         match row {
             EquipRow::Weapon(id) => {
-                let name = tm.spec.weapons.iter().find(|w| w.id == id).map(|w| w.name.clone());
+                let name = tm
+                    .spec
+                    .weapons
+                    .iter()
+                    .find(|w| w.id == id)
+                    .map(|w| w.name.clone());
                 let can_jam = tm.spec.weapons.iter().any(|w| w.id == id && w.can_jam());
                 if !can_jam {
                     self.status = "Only Ultra/Rotary ACs can jam".into();
@@ -4755,7 +5257,9 @@ impl App {
                 self.dirty = true;
             }
             EquipRow::Equip(idx) => {
-                let Some(e) = tm.spec.equipment.get(idx).cloned() else { return };
+                let Some(e) = tm.spec.equipment.get(idx).cloned() else {
+                    return;
+                };
                 // Classify with the same core helper the renderer uses, then flip the right field.
                 let Some((label, _)) = tm.equip_toggle(&e) else {
                     self.status = format!("{} — no toggle-able state", e.name);
@@ -4806,7 +5310,11 @@ impl App {
     fn open_dice(&mut self) {
         let rolls_cluster = self
             .selected_weapon_id()
-            .and_then(|id| self.session.active_mech().and_then(|tm| tm.weapon_cluster_profile(id)))
+            .and_then(|id| {
+                self.session
+                    .active_mech()
+                    .and_then(|tm| tm.weapon_cluster_profile(id))
+            })
             .is_some_and(|p| !matches!(p, ClusterProfile::Single));
         let tab = if rolls_cluster {
             DiceTab::Cluster
@@ -4842,7 +5350,10 @@ impl App {
         match key.code {
             // The Faction lens has 82 values — too many to cycle. Enter opens a type-to-filter picker.
             KeyCode::Enter if Facet::ALL[sel] == Facet::Faction => {
-                self.modal = Some(Modal::FactionPick { query: String::new(), sel: 0 });
+                self.modal = Some(Modal::FactionPick {
+                    query: String::new(),
+                    sel: 0,
+                });
                 return;
             }
             KeyCode::Esc | KeyCode::Enter => return, // close (modal already taken)
@@ -4879,7 +5390,8 @@ impl App {
         }
         if changed {
             self.picker.selected = 0;
-            self.picker.refilter(&self.names, &self.bundle, &self.filters);
+            self.picker
+                .refilter(&self.names, &self.bundle, &self.filters);
         }
         self.modal = Some(Modal::Filters { sel: new_sel });
     }
@@ -4908,7 +5420,10 @@ impl App {
     /// used to navigate here — arrows do); Enter commits the highlighted faction and returns to the
     /// Filters modal; Esc returns without changing the lens.
     fn faction_pick_key(&mut self, mut query: String, mut sel: usize, key: KeyEvent) {
-        let faction_facet = Facet::ALL.iter().position(|f| *f == Facet::Faction).unwrap_or(0);
+        let faction_facet = Facet::ALL
+            .iter()
+            .position(|f| *f == Facet::Faction)
+            .unwrap_or(0);
         match key.code {
             KeyCode::Esc => {
                 self.modal = Some(Modal::Filters { sel: faction_facet });
@@ -4919,7 +5434,8 @@ impl App {
                 if let Some(choice) = list.get(sel) {
                     self.filters.faction = choice.clone();
                     self.picker.selected = 0;
-                    self.picker.refilter(&self.names, &self.bundle, &self.filters);
+                    self.picker
+                        .refilter(&self.names, &self.bundle, &self.filters);
                 }
                 self.modal = Some(Modal::Filters { sel: faction_facet });
                 return;
@@ -5044,7 +5560,11 @@ impl App {
             tm.prone = !tm.prone;
             let now = tm.prone;
             self.dirty = true;
-            self.status = if now { "Prone (knocked down)".into() } else { "Stood up".into() };
+            self.status = if now {
+                "Prone (knocked down)".into()
+            } else {
+                "Stood up".into()
+            };
         }
     }
 
@@ -5065,8 +5585,10 @@ impl App {
                 };
                 // Battle Armor fires one suit at a time (the cursor trooper); a dead suit can't.
                 if let Some(tm) = self.session.active_mech() {
-                    if tm.spec.unit_type == UnitType::BattleArmor && !tm.suit_alive(tm.active_suit) {
-                        self.status = format!("{} destroyed — pick a living suit", self.cursor.code());
+                    if tm.spec.unit_type == UnitType::BattleArmor && !tm.suit_alive(tm.active_suit)
+                    {
+                        self.status =
+                            format!("{} destroyed — pick a living suit", self.cursor.code());
                         return;
                     }
                 }
@@ -5083,8 +5605,12 @@ impl App {
                             // suit); everything else fires once a turn (Ultra ACs twice, Rotary up
                             // to six).
                             let ba = tm.spec.unit_type == UnitType::BattleArmor;
-                            let max =
-                                tm.spec.weapons.iter().find(|w| w.id == id).map_or(1, |w| w.max_shots());
+                            let max = tm
+                                .spec
+                                .weapons
+                                .iter()
+                                .find(|w| w.id == id)
+                                .map_or(1, |w| w.max_shots());
                             let blocked = if ba {
                                 tm.active_suit_fired(id)
                             } else {
@@ -5124,8 +5650,12 @@ impl App {
                             self.status = "Spent 1 shot".into();
                         }
                         EquipRow::Equip(idx) => {
-                            let name =
-                                tm.spec.equipment.get(idx).map(|e| e.name.clone()).unwrap_or_default();
+                            let name = tm
+                                .spec
+                                .equipment
+                                .get(idx)
+                                .map(|e| e.name.clone())
+                                .unwrap_or_default();
                             self.status = format!("{name} — no action");
                         }
                     }
@@ -5175,8 +5705,12 @@ impl App {
                             self.status = "Refilled 1 shot".into();
                         }
                         EquipRow::Equip(idx) => {
-                            let name =
-                                tm.spec.equipment.get(idx).map(|e| e.name.clone()).unwrap_or_default();
+                            let name = tm
+                                .spec
+                                .equipment
+                                .get(idx)
+                                .map(|e| e.name.clone())
+                                .unwrap_or_default();
                             self.status = format!("{name} — no action");
                         }
                     }

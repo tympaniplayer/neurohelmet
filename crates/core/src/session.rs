@@ -21,16 +21,16 @@ use crate::data::bundle::Bundle;
 use crate::domain::{
     AmmoBin, Equipment, Facing, GameMode, Location, Mech, MechConfig, UnitType, WeaponMount,
 };
+use crate::engine::acs::{self, AcsCombatTeam, AcsCombatUnit, AcsFormation, AcsMorale};
+use crate::engine::alpha_strike::inches_to_hexes;
+use crate::engine::as_element::{self, AsElement, DamageVector, SbfElementType};
+use crate::engine::battleforce::{self, BfCritCol, BfMotive, BfRange};
 use crate::engine::damage::{self, DamageOutcome, LocState};
 use crate::engine::dice::{cluster_profile, ClusterProfile};
 use crate::engine::heat::{aero_heat_effects, heat_effects, AeroHeatEffects, HeatEffects};
 use crate::engine::movement::{attacker_movement_modifier, target_movement_modifier, MoveMode};
-use crate::engine::alpha_strike::inches_to_hexes;
-use crate::engine::as_element::{self, AsElement, DamageVector, SbfElementType};
-use crate::engine::battleforce::{self, BfCritCol, BfMotive, BfRange};
-use crate::engine::override_conv::{self, ArmorRegion, OverrideCard, OvCritKind};
+use crate::engine::override_conv::{self, ArmorRegion, OvCritKind, OverrideCard};
 use crate::engine::pilot;
-use crate::engine::acs::{self, AcsCombatTeam, AcsCombatUnit, AcsFormation, AcsMorale};
 use crate::engine::sbf::{self, SbfFormation, SbfUnit};
 use crate::engine::skill;
 use crate::error::Result;
@@ -123,7 +123,14 @@ impl MotiveLevel {
 /// here, so the "two engine hits = destroyed" rule isn't auto-applied — mark the wreck by hand.
 /// Indices here are what `TrackedMech::vehicle_crits` stores.
 pub const VEHICLE_CRITS: [&str; 8] = [
-    "Engine", "Weapon", "Sensors", "Stabilizer", "Turret", "Fuel Tank", "Ammo", "Cargo",
+    "Engine",
+    "Weapon",
+    "Sensors",
+    "Stabilizer",
+    "Turret",
+    "Fuel Tank",
+    "Ammo",
+    "Cargo",
 ];
 
 /// Aerospace-fighter critical-damage results, from the sheet's CRITICAL DAMAGE track. Unlike a
@@ -178,7 +185,10 @@ impl CritRow {
 
 /// Number of Battle Armor suits a spec has (trooper armor tracks present on the record sheet).
 fn ba_suit_count(spec: &Mech) -> usize {
-    Location::TROOPERS.iter().filter(|l| spec.armor.contains_key(l)).count()
+    Location::TROOPERS
+        .iter()
+        .filter(|l| spec.armor.contains_key(l))
+        .count()
 }
 
 fn default_gunnery() -> u8 {
@@ -502,13 +512,20 @@ impl AsCritKind {
 
     /// Aerospace-fighter crit set — Engine / Fire Control / Weapon. Unlike 'Mechs, AS aerospace has
     /// **no MP crit** (movement loss comes from Engine crits halving thrust). Per AS:CE.
-    pub const AEROSPACE: [AsCritKind; 3] =
-        [AsCritKind::Engine, AsCritKind::FireControl, AsCritKind::Weapon];
+    pub const AEROSPACE: [AsCritKind; 3] = [
+        AsCritKind::Engine,
+        AsCritKind::FireControl,
+        AsCritKind::Weapon,
+    ];
 
     /// Combat-vehicle crit set — Engine / Fire Control / Weapon / Motive. Vehicles take **Motive**
     /// hits (MV loss) rather than the 'Mech MP crit. Per AS:CE.
-    pub const VEHICLE: [AsCritKind; 4] =
-        [AsCritKind::Engine, AsCritKind::FireControl, AsCritKind::Weapon, AsCritKind::Motive];
+    pub const VEHICLE: [AsCritKind; 4] = [
+        AsCritKind::Engine,
+        AsCritKind::FireControl,
+        AsCritKind::Weapon,
+        AsCritKind::Motive,
+    ];
 
     /// Gun emplacements / Battlefield Support (AS type `BD`): immobile, so only Weapons crits apply.
     pub const WEAPON_ONLY: [AsCritKind; 1] = [AsCritKind::Weapon];
@@ -648,7 +665,10 @@ impl TrackedMech {
         // Battle Armor: each suit gets its own copy of every ammo bin (fired one suit at a time).
         let suit_ammo = if spec.unit_type == UnitType::BattleArmor {
             let suits = ba_suit_count(&spec);
-            spec.ammo.iter().map(|b| (b.id, vec![b.shots_max(); suits])).collect()
+            spec.ammo
+                .iter()
+                .map(|b| (b.id, vec![b.shots_max(); suits]))
+                .collect()
         } else {
             BTreeMap::new()
         };
@@ -738,7 +758,10 @@ impl TrackedMech {
     }
 
     pub fn as_struct_remaining(&self) -> u8 {
-        self.spec.as_stats.structure.saturating_sub(self.as_struct_hits)
+        self.spec
+            .as_stats
+            .structure
+            .saturating_sub(self.as_struct_hits)
     }
 
     /// Apply one point of Alpha Strike damage: armor first, then structure.
@@ -869,7 +892,10 @@ impl TrackedMech {
         match &mut self.ct_target {
             None => {
                 if delta > 0 {
-                    self.ct_target = Some(CtTarget { distance: 1, ..CtTarget::default() });
+                    self.ct_target = Some(CtTarget {
+                        distance: 1,
+                        ..CtTarget::default()
+                    });
                 }
             }
             Some(t) => {
@@ -887,7 +913,8 @@ impl TrackedMech {
     /// No-op when no target is set.
     pub fn ct_adjust_hexes(&mut self, delta: i32) {
         if let Some(t) = &mut self.ct_target {
-            t.hexes_moved = (t.hexes_moved as i32 + delta).clamp(0, CT_TARGET_HEXES_MAX as i32) as u8;
+            t.hexes_moved =
+                (t.hexes_moved as i32 + delta).clamp(0, CT_TARGET_HEXES_MAX as i32) as u8;
         }
     }
 
@@ -1020,7 +1047,11 @@ impl TrackedMech {
             *n -= 1;
             return;
         }
-        let layer = if rear { &mut self.ov_rear_hits } else { &mut self.ov_armor_hits };
+        let layer = if rear {
+            &mut self.ov_rear_hits
+        } else {
+            &mut self.ov_armor_hits
+        };
         if let Some(n) = layer.get_mut(&loc).filter(|n| **n > 0) {
             *n -= 1;
         }
@@ -1064,7 +1095,9 @@ impl TrackedMech {
     /// How many times a region's crit-table row has been marked (results stack — e.g. two actuator
     /// hits, or a second engine hit). Each `Vec` entry is one recorded hit of that row index.
     pub fn ov_crit_count(&self, loc: Location, row: u8) -> u8 {
-        self.ov_crits.get(&loc).map_or(0, |v| v.iter().filter(|&&r| r == row).count() as u8)
+        self.ov_crits
+            .get(&loc)
+            .map_or(0, |v| v.iter().filter(|&&r| r == row).count() as u8)
     }
 
     /// Record one more hit of a region's crit-table row (capped at [`OV_CRIT_MAX`] per row).
@@ -1091,9 +1124,13 @@ impl TrackedMech {
     pub fn ov_crit_effects(&self) -> OvCritEffects {
         let mut e = OvCritEffects::default();
         for (&loc, rows) in &self.ov_crits {
-            let Some(table) = override_conv::crit_table(&self.spec, loc) else { continue };
+            let Some(table) = override_conv::crit_table(&self.spec, loc) else {
+                continue;
+            };
             for &row in rows {
-                let Some(entry) = table.get(row as usize) else { continue };
+                let Some(entry) = table.get(row as usize) else {
+                    continue;
+                };
                 match entry.kind {
                     OvCritKind::Actuator | OvCritKind::Motive => {
                         e.move_penalty += 2;
@@ -1167,9 +1204,17 @@ impl TrackedMech {
         if self.spec.unit_type != UnitType::Mech {
             return false;
         }
-        [LeftLeg, RightLeg, FrontLeftLeg, FrontRightLeg, RearLeftLeg, RearRightLeg, CenterLeg]
-            .into_iter()
-            .any(|l| self.ov_loc_destroyed(l))
+        [
+            LeftLeg,
+            RightLeg,
+            FrontLeftLeg,
+            FrontRightLeg,
+            RearLeftLeg,
+            RearRightLeg,
+            CenterLeg,
+        ]
+        .into_iter()
+        .any(|l| self.ov_loc_destroyed(l))
     }
 
     /// Circumstance forcing an automatic PSR failure this phase (the unit falls / loses control),
@@ -1280,7 +1325,9 @@ impl TrackedMech {
             self.ov_ammo_live(loc)
                 && override_conv::crit_table(&self.spec, loc).is_some_and(|table| {
                     rows.iter().any(|&r| {
-                        table.get(r as usize).is_some_and(|e| e.kind == OvCritKind::Ammo)
+                        table
+                            .get(r as usize)
+                            .is_some_and(|e| e.kind == OvCritKind::Ammo)
                     })
                 })
         })
@@ -1401,7 +1448,9 @@ impl TrackedMech {
         let mut seen: BTreeSet<&str> = BTreeSet::new();
         let mut lost = 0u16;
         for (loc, set) in &self.crit_hits {
-            let Some(slots) = self.spec.crit_slots.get(loc) else { continue };
+            let Some(slots) = self.spec.crit_slots.get(loc) else {
+                continue;
+            };
             for cs in slots {
                 if cs.hs > 0 && set.contains(&cs.slot) && seen.insert(cs.uid.as_str()) {
                     lost += cs.hs as u16;
@@ -1413,7 +1462,9 @@ impl TrackedMech {
 
     /// Heat dissipated per turn right now: the sheet value minus destroyed heat sinks.
     pub fn dissipation(&self) -> u16 {
-        self.spec.dissipation.saturating_sub(self.sink_dissipation_lost())
+        self.spec
+            .dissipation
+            .saturating_sub(self.sink_dissipation_lost())
     }
 
     fn cockpit_destroyed(&self) -> bool {
@@ -1466,9 +1517,7 @@ impl TrackedMech {
         }
         Location::TROOPERS
             .iter()
-            .filter(|&&l| {
-                self.spec.armor.contains_key(&l) && self.internal_remaining(l) > 0
-            })
+            .filter(|&&l| self.spec.armor.contains_key(&l) && self.internal_remaining(l) > 0)
             .count() as u16
     }
 
@@ -1488,7 +1537,9 @@ impl TrackedMech {
 
     /// Whether suit `idx` is still standing (its trooper track has internal structure left).
     pub fn suit_alive(&self, idx: usize) -> bool {
-        self.suits().get(idx).is_some_and(|&l| self.internal_remaining(l) > 0)
+        self.suits()
+            .get(idx)
+            .is_some_and(|&l| self.internal_remaining(l) > 0)
     }
 
     /// Position of a trooper location among the squad's suits (for syncing the firing suit to the
@@ -1508,7 +1559,11 @@ impl TrackedMech {
         if !self.suit_alive(suit) {
             return 0;
         }
-        self.suit_ammo.get(&bin_id).and_then(|v| v.get(suit)).copied().unwrap_or(0)
+        self.suit_ammo
+            .get(&bin_id)
+            .and_then(|v| v.get(suit))
+            .copied()
+            .unwrap_or(0)
     }
 
     /// Conventional-infantry damage at the current strength: the full-strength platoon damage
@@ -1540,7 +1595,13 @@ impl TrackedMech {
     /// doesn't slow infantry — it removes troopers/strength, which scales damage instead.)
     fn infantry_movement(&self) -> Movement {
         if self.troopers_remaining() == 0 {
-            return Movement { walk: 0, run: 0, jump: 0, immobile: true, note: Some("wiped out") };
+            return Movement {
+                walk: 0,
+                run: 0,
+                jump: 0,
+                immobile: true,
+                note: Some("wiped out"),
+            };
         }
         Movement {
             walk: self.spec.walk,
@@ -1554,7 +1615,13 @@ impl TrackedMech {
     /// Effective aerospace thrust: `walk` = Safe Thrust, `run` = Max Thrust (no jump). Reduced by
     /// the heat movement penalty; immobile when its SI is gone, shut down, or the pilot is out.
     fn aero_movement(&self) -> Movement {
-        let still = |note| Movement { walk: 0, run: 0, jump: 0, immobile: true, note };
+        let still = |note| Movement {
+            walk: 0,
+            run: 0,
+            jump: 0,
+            immobile: true,
+            note,
+        };
         if self.is_destroyed(Location::AeroSI) {
             return still(Some("structural integrity gone"));
         }
@@ -1614,7 +1681,13 @@ impl TrackedMech {
     /// immobilized when wrecked / crew out / motive-immobilized. Stored in the same `Movement`
     /// (walk = Cruise, run = Flank).
     fn vehicle_movement(&self) -> Movement {
-        let still = |note| Movement { walk: 0, run: 0, jump: 0, immobile: true, note };
+        let still = |note| Movement {
+            walk: 0,
+            run: 0,
+            jump: 0,
+            immobile: true,
+            note,
+        };
         if self.is_mech_destroyed() {
             return still(Some("wrecked"));
         }
@@ -1625,13 +1698,21 @@ impl TrackedMech {
             return still(Some("immobilized"));
         }
         let cruise = self.motive_cruise();
-        let flank = if cruise == 0 { 0 } else { ((cruise as u16 * 3).div_ceil(2)) as u8 };
+        let flank = if cruise == 0 {
+            0
+        } else {
+            ((cruise as u16 * 3).div_ceil(2)) as u8
+        };
         Movement {
             walk: cruise,
             run: flank,
             jump: self.spec.jump,
             immobile: cruise == 0 && self.spec.jump == 0,
-            note: if self.motive_damage.is_empty() { None } else { Some("motive") },
+            note: if self.motive_damage.is_empty() {
+                None
+            } else {
+                Some("motive")
+            },
         }
     }
 
@@ -1694,7 +1775,11 @@ impl TrackedMech {
     /// Most hits a system crit at `idx` can take: aerospace systems accumulate to [`AERO_CRIT_MAX`];
     /// a combat vehicle's are one-shot (1 = a plain on/off mark).
     pub fn crit_cap(&self) -> u8 {
-        if self.spec.is_aerospace() { AERO_CRIT_MAX } else { 1 }
+        if self.spec.is_aerospace() {
+            AERO_CRIT_MAX
+        } else {
+            1
+        }
     }
 
     /// Hits taken by the system crit at `idx` (into [`Self::unit_crits`]). Aerospace reads the
@@ -1716,7 +1801,11 @@ impl TrackedMech {
     /// single key both marks and clears). Returns the new hit count.
     pub fn bump_crit(&mut self, idx: usize) -> u8 {
         let cap = self.crit_cap();
-        let next = if self.crit_hits_at(idx) >= cap { 0 } else { self.crit_hits_at(idx) + 1 };
+        let next = if self.crit_hits_at(idx) >= cap {
+            0
+        } else {
+            self.crit_hits_at(idx) + 1
+        };
         let key = idx as u8;
         if self.spec.is_aerospace() {
             if next == 0 {
@@ -1773,7 +1862,11 @@ impl TrackedMech {
             return 0;
         }
         let sensors = self.aero_sensor_hits();
-        let sensor_mod = if sensors >= AERO_CRIT_MAX { 5 } else { sensors as i32 };
+        let sensor_mod = if sensors >= AERO_CRIT_MAX {
+            5
+        } else {
+            sensors as i32
+        };
         let fcs_mod = self.aero_fcs_hits() as i32 * 2;
         sensor_mod + fcs_mod
     }
@@ -1883,7 +1976,12 @@ impl TrackedMech {
     /// Toggle a jammable weapon's `JAM` mark on/off; returns the new state. No-op for a weapon that
     /// can't jam (returns its current — always `false` — state).
     pub fn toggle_jam(&mut self, weapon_id: u32) -> bool {
-        if !self.spec.weapons.iter().any(|w| w.id == weapon_id && w.can_jam()) {
+        if !self
+            .spec
+            .weapons
+            .iter()
+            .any(|w| w.id == weapon_id && w.can_jam())
+        {
             return false;
         }
         if self.jammed.remove(&weapon_id) {
@@ -1897,7 +1995,10 @@ impl TrackedMech {
     /// Whether the unit mounts a named piece of gear (case-insensitive substring on the equipment
     /// list). Destroyed gear no longer counts.
     fn has_gear(&self, matches: impl Fn(&str) -> bool) -> bool {
-        self.spec.equipment.iter().any(|e| matches(&e.name) && !self.is_equipment_disabled(e))
+        self.spec
+            .equipment
+            .iter()
+            .any(|e| matches(&e.name) && !self.is_equipment_disabled(e))
     }
 
     /// Whether the unit carries a (working) MASC.
@@ -1958,7 +2059,8 @@ impl TrackedMech {
         if s.is_vehicle() || s.is_infantry() || s.is_aerospace() {
             return false;
         }
-        (self.masc_engaged && self.has_masc()) || (self.supercharger_engaged && self.has_supercharger())
+        (self.masc_engaged && self.has_masc())
+            || (self.supercharger_engaged && self.has_supercharger())
     }
 
     /// A short label for the engaged, mounted MP booster(s): `"MASC"`, `"SC"`, or `"MASC+SC"`.
@@ -2058,7 +2160,12 @@ impl TrackedMech {
         outcome
     }
 
-    fn apply_damage_cascade(&mut self, loc: Location, facing: Facing, amount: u16) -> DamageOutcome {
+    fn apply_damage_cascade(
+        &mut self,
+        loc: Location,
+        facing: Facing,
+        amount: u16,
+    ) -> DamageOutcome {
         let mut cur = loc;
         let mut face = facing;
         let mut amt = amount;
@@ -2361,7 +2468,13 @@ impl TrackedMech {
     /// at the sheet value unless the 'Mech can't move at all.
     pub fn movement(&self) -> Movement {
         let s = &self.spec;
-        let still = |note| Movement { walk: 0, run: 0, jump: 0, immobile: true, note };
+        let still = |note| Movement {
+            walk: 0,
+            run: 0,
+            jump: 0,
+            immobile: true,
+            note,
+        };
         if s.is_vehicle() {
             return self.vehicle_movement();
         }
@@ -2386,7 +2499,13 @@ impl TrackedMech {
             return still(Some("legs gone"));
         }
         if biped && legs_gone == 1 {
-            return Movement { walk: 1, run: 0, jump: 0, immobile: false, note: Some("leg gone") };
+            return Movement {
+                walk: 1,
+                run: 0,
+                jump: 0,
+                immobile: false,
+                note: Some("leg gone"),
+            };
         }
         let heat_pen = self.heat_effects().movement_penalty;
         let actuator = self.leg_actuator_hits() as u8;
@@ -2396,8 +2515,18 @@ impl TrackedMech {
         if heat_pen == 0 && actuator == 0 && hips == 0 && leg_loss == 0 {
             // Undamaged: keep the baked run unless an MP booster is engaged, which lifts it above
             // the sheet's base (⌈walk×1.5⌉) value.
-            let run = if self.mp_boost_active() { self.run_from_walk(s.walk) } else { s.run };
-            return Movement { walk: s.walk, run, jump: s.jump, immobile: false, note: None };
+            let run = if self.mp_boost_active() {
+                self.run_from_walk(s.walk)
+            } else {
+                s.run
+            };
+            return Movement {
+                walk: s.walk,
+                run,
+                jump: s.jump,
+                immobile: false,
+                note: None,
+            };
         }
         // Hip crits: a single hip halves Walking MP (round up); two or more zero it out
         // (MegaMek `Mech.getWalkMP` / TW). Repeated halving would wrongly leave a 'Mech mobile.
@@ -2412,7 +2541,13 @@ impl TrackedMech {
         let run = if w == 0 { 0 } else { self.run_from_walk(w) };
         // 0 walking MP from heat/crits isn't "immobile" (the 'Mech is still functional) — only
         // shutdown / pilot-out / lost legs set that banner.
-        Movement { walk: w, run, jump: s.jump, immobile: false, note: None }
+        Movement {
+            walk: w,
+            run,
+            jump: s.jump,
+            immobile: false,
+            note: None,
+        }
     }
 
     /// Fire a weapon: add its heat and, if it uses ammo, spend one shot from a compatible bin.
@@ -2425,7 +2560,10 @@ impl TrackedMech {
         // Battle Armor fires per suit (the active suit marks this weapon); everything else uses
         // the squad-wide shot count (Ultra/Rotary fire several times).
         if self.spec.unit_type == UnitType::BattleArmor {
-            self.suit_fired.entry(weapon_id).or_default().insert(self.active_suit);
+            self.suit_fired
+                .entry(weapon_id)
+                .or_default()
+                .insert(self.active_suit);
         } else {
             *self.fired.entry(weapon_id).or_insert(0) += 1;
         }
@@ -2467,14 +2605,19 @@ impl TrackedMech {
     /// Whether a weapon has fired at all this turn (any suit, for Battle Armor).
     pub fn is_fired(&self, weapon_id: u32) -> bool {
         if self.spec.unit_type == UnitType::BattleArmor {
-            return self.suit_fired.get(&weapon_id).is_some_and(|s| !s.is_empty());
+            return self
+                .suit_fired
+                .get(&weapon_id)
+                .is_some_and(|s| !s.is_empty());
         }
         self.shots_fired(weapon_id) > 0
     }
 
     /// Battle Armor: whether the active suit has already fired this weapon this turn.
     pub fn active_suit_fired(&self, weapon_id: u32) -> bool {
-        self.suit_fired.get(&weapon_id).is_some_and(|s| s.contains(&self.active_suit))
+        self.suit_fired
+            .get(&weapon_id)
+            .is_some_and(|s| s.contains(&self.active_suit))
     }
 
     /// Battle Armor: how many suits have fired this weapon this turn.
@@ -2514,7 +2657,12 @@ impl TrackedMech {
                 _ => return None,
             }
         }
-        let heat = self.spec.weapons.iter().find(|w| w.id == weapon_id).map_or(0, |w| w.heat);
+        let heat = self
+            .spec
+            .weapons
+            .iter()
+            .find(|w| w.id == weapon_id)
+            .map_or(0, |w| w.heat);
         self.adjust_heat(-(heat as i32));
         Some(heat)
     }
@@ -2649,7 +2797,11 @@ impl TrackedMech {
     pub fn fire_ammo(&mut self, bin_id: u32, shots: u16) -> u16 {
         if self.spec.unit_type == UnitType::BattleArmor {
             let suit = self.active_suit;
-            let Some(entry) = self.suit_ammo.get_mut(&bin_id).and_then(|v| v.get_mut(suit)) else {
+            let Some(entry) = self
+                .suit_ammo
+                .get_mut(&bin_id)
+                .and_then(|v| v.get_mut(suit))
+            else {
                 return 0;
             };
             let spent = shots.min(*entry);
@@ -2674,7 +2826,11 @@ impl TrackedMech {
         // Battle Armor adjusts the active suit's copy of the bin.
         if self.spec.unit_type == UnitType::BattleArmor {
             let suit = self.active_suit;
-            if let Some(cur) = self.suit_ammo.get_mut(&bin_id).and_then(|v| v.get_mut(suit)) {
+            if let Some(cur) = self
+                .suit_ammo
+                .get_mut(&bin_id)
+                .and_then(|v| v.get_mut(suit))
+            {
                 *cur = (*cur as i32 + delta).clamp(0, cap as i32) as u16;
             }
             return;
@@ -3042,7 +3198,10 @@ impl Session {
     pub fn sbf_remove_formation(&mut self, fi: usize) {
         if fi < self.sbf.formations.len() {
             self.sbf.formations.remove(fi);
-            self.sbf.active_formation = self.sbf.active_formation.min(self.sbf.formations.len().saturating_sub(1));
+            self.sbf.active_formation = self
+                .sbf
+                .active_formation
+                .min(self.sbf.formations.len().saturating_sub(1));
         }
     }
 
@@ -3061,7 +3220,10 @@ impl Session {
         // like the formation-movement rule (spec §2.4), so `Unknown`-typed junk keeps the ground
         // caps. (Airship "Flights of 1 element" are unreachable: airship SVs bake as V/ground.)
         let aero = f.units.iter().all(|u| {
-            matches!(self.sbf_unit(u).sbf_type, SbfElementType::As | SbfElementType::La)
+            matches!(
+                self.sbf_unit(u).sbf_type,
+                SbfElementType::As | SbfElementType::La
+            )
         });
         let (max_units, max_elements, max_per_unit) = if aero { (6, 12, 2) } else { (4, 20, 6) };
         if f.units.len() > max_units {
@@ -3156,8 +3318,11 @@ impl Session {
         }
         match target {
             SbfAssign::Unit(fi, ui) => {
-                if let Some(u) =
-                    self.sbf.formations.get_mut(fi).and_then(|f| f.units.get_mut(ui))
+                if let Some(u) = self
+                    .sbf
+                    .formations
+                    .get_mut(fi)
+                    .and_then(|f| f.units.get_mut(ui))
                 {
                     u.elements.push(elem);
                 }
@@ -3165,7 +3330,11 @@ impl Session {
             SbfAssign::NewUnit(fi) => {
                 if let Some(f) = self.sbf.formations.get_mut(fi) {
                     let name = format!("Unit {}", f.units.len() + 1);
-                    f.units.push(SbfUnitState { name, elements: vec![elem], ..Default::default() });
+                    f.units.push(SbfUnitState {
+                        name,
+                        elements: vec![elem],
+                        ..Default::default()
+                    });
                 }
             }
             SbfAssign::NewFormation => {
@@ -3201,7 +3370,12 @@ impl Session {
             }
         }
         if !was {
-            if let Some(u) = self.sbf.formations.get_mut(fi).and_then(|f| f.units.get_mut(ui)) {
+            if let Some(u) = self
+                .sbf
+                .formations
+                .get_mut(fi)
+                .and_then(|f| f.units.get_mut(ui))
+            {
                 u.is_commander = true;
             }
         }
@@ -3209,7 +3383,9 @@ impl Session {
 
     /// Toggle the Formation Leader (LEAD, IO:BF p.165) on a unit: at most one per formation.
     pub fn sbf_set_leader(&mut self, fi: usize, ui: usize) {
-        let Some(f) = self.sbf.formations.get_mut(fi) else { return };
+        let Some(f) = self.sbf.formations.get_mut(fi) else {
+            return;
+        };
         let was = f.units.get(ui).is_some_and(|u| u.is_leader);
         for u in &mut f.units {
             u.is_leader = false;
@@ -3287,7 +3463,11 @@ impl Session {
         // (unit size, unit name, formation name by unit count) per doctrine, ground arm.
         let ground_scheme: (usize, &str, fn(usize) -> String) = match doctrine {
             SbfDoctrine::InnerSphere => (4, "Lance", |k| {
-                if k == 1 { "Lance".into() } else { "Company".into() }
+                if k == 1 {
+                    "Lance".into()
+                } else {
+                    "Company".into()
+                }
             }),
             SbfDoctrine::Clan => (5, "Star", |k| match k {
                 1 => "Star".into(),
@@ -3295,16 +3475,28 @@ impl Session {
                 _ => "Trinary".into(),
             }),
             SbfDoctrine::ComStar => (6, "Level II", |k| {
-                if k == 1 { "Level II".into() } else { "Level III".into() }
+                if k == 1 {
+                    "Level II".into()
+                } else {
+                    "Level III".into()
+                }
             }),
         };
         let aero_scheme: (usize, &str, fn(usize) -> String) = match doctrine {
             // Flight = 2 fighters, Squadron = 3 flights (IO:BF p.165 aerospace formations).
             SbfDoctrine::InnerSphere | SbfDoctrine::Clan => (2, "Flight", |k| {
-                if k == 1 { "Flight".into() } else { "Squadron".into() }
+                if k == 1 {
+                    "Flight".into()
+                } else {
+                    "Squadron".into()
+                }
             }),
             SbfDoctrine::ComStar => (6, "Level II", |k| {
-                if k == 1 { "Level II".into() } else { "Level III".into() }
+                if k == 1 {
+                    "Level II".into()
+                } else {
+                    "Level III".into()
+                }
             }),
         };
 
@@ -3386,7 +3578,10 @@ impl Session {
                 let base = self.sbf_element(i).std_damage;
                 total_elements += 1;
                 let all_zero = |v: &DamageVector| {
-                    v.s == 0.0 && v.m == 0.0 && v.l.unwrap_or(0.0) == 0.0 && v.e.unwrap_or(0.0) == 0.0
+                    v.s == 0.0
+                        && v.m == 0.0
+                        && v.l.unwrap_or(0.0) == 0.0
+                        && v.e.unwrap_or(0.0) == 0.0
                 };
                 if !all_zero(&base) && all_zero(&sbf::reduced_by(base, u.damage_crits)) {
                     zeroed += 1;
@@ -3402,7 +3597,9 @@ impl Session {
         let mut gutted = 0usize;
         for u in &f.units {
             let derived = self.sbf_unit(u);
-            if derived.armor > 0 && !matches!(derived.sbf_type, SbfElementType::Ci | SbfElementType::Ba) {
+            if derived.armor > 0
+                && !matches!(derived.sbf_type, SbfElementType::Ci | SbfElementType::Ba)
+            {
                 units_with_armor += 1;
                 if u.armor_remaining(&derived) == 0 {
                     gutted += 1;
@@ -3426,7 +3623,10 @@ impl Session {
         if f.units.iter().all(|u| u.elements.is_empty()) {
             return false;
         }
-        if matches!(self.sbf_formation(f).sbf_type, SbfElementType::Ci | SbfElementType::Ba) {
+        if matches!(
+            self.sbf_formation(f).sbf_type,
+            SbfElementType::Ci | SbfElementType::Ba
+        ) {
             return false;
         }
         f.morale == MoraleStatus::Routed || self.sbf_is_crippled(f)
@@ -3695,7 +3895,12 @@ impl Session {
                 cu.is_commander = false;
             }
         }
-        if let Some(cu) = self.acs.formations.get_mut(fi).and_then(|f| f.units.get_mut(ui)) {
+        if let Some(cu) = self
+            .acs
+            .formations
+            .get_mut(fi)
+            .and_then(|f| f.units.get_mut(ui))
+        {
             cu.is_commander = true;
         }
     }
@@ -3775,7 +3980,10 @@ impl Session {
                 }
             }
         }
-        let leaf = |elem: usize| AcsUnitGrouping { name: "U1".into(), elements: vec![elem] };
+        let leaf = |elem: usize| AcsUnitGrouping {
+            name: "U1".into(),
+            elements: vec![elem],
+        };
         match target {
             AcsAssign::Unit(fi, cui, ti, ui) => {
                 if let Some(u) = self
@@ -3798,15 +4006,24 @@ impl Session {
                     .and_then(|cu| cu.teams.get_mut(ti))
                 {
                     let name = format!("U{}", t.units.len() + 1);
-                    t.units.push(AcsUnitGrouping { name, elements: vec![elem] });
+                    t.units.push(AcsUnitGrouping {
+                        name,
+                        elements: vec![elem],
+                    });
                 }
             }
             AcsAssign::NewTeam(fi, cui) => {
-                if let Some(cu) =
-                    self.acs.formations.get_mut(fi).and_then(|f| f.units.get_mut(cui))
+                if let Some(cu) = self
+                    .acs
+                    .formations
+                    .get_mut(fi)
+                    .and_then(|f| f.units.get_mut(cui))
                 {
                     let name = format!("Team {}", cu.teams.len() + 1);
-                    cu.teams.push(AcsTeamGrouping { name, units: vec![leaf(elem)] });
+                    cu.teams.push(AcsTeamGrouping {
+                        name,
+                        units: vec![leaf(elem)],
+                    });
                 }
             }
             AcsAssign::NewCombatUnit(fi) => {
@@ -3814,7 +4031,10 @@ impl Session {
                     let name = format!("Combat Unit {}", f.units.len() + 1);
                     f.units.push(AcsCombatUnitState {
                         name,
-                        teams: vec![AcsTeamGrouping { name: "Team 1".into(), units: vec![leaf(elem)] }],
+                        teams: vec![AcsTeamGrouping {
+                            name: "Team 1".into(),
+                            units: vec![leaf(elem)],
+                        }],
                         ..Default::default()
                     });
                 }
@@ -3825,7 +4045,10 @@ impl Session {
                     name: format!("Formation {n}"),
                     units: vec![AcsCombatUnitState {
                         name: "Combat Unit 1".into(),
-                        teams: vec![AcsTeamGrouping { name: "Team 1".into(), units: vec![leaf(elem)] }],
+                        teams: vec![AcsTeamGrouping {
+                            name: "Team 1".into(),
+                            units: vec![leaf(elem)],
+                        }],
                         ..Default::default()
                     }],
                     ..Default::default()
@@ -4065,13 +4288,19 @@ impl Session {
     pub fn bf_remove_unit(&mut self, ui: usize) {
         if ui < self.bf.units.len() {
             self.bf.units.remove(ui);
-            self.bf.active_unit = self.bf.active_unit.min(self.bf.units.len().saturating_sub(1));
+            self.bf.active_unit = self
+                .bf
+                .active_unit
+                .min(self.bf.units.len().saturating_sub(1));
         }
     }
 
     /// Where a pool element currently sits: its unit index, or `None` if unassigned.
     pub fn bf_element_assignment(&self, elem: usize) -> Option<usize> {
-        self.bf.units.iter().position(|u| u.elements.contains(&elem))
+        self.bf
+            .units
+            .iter()
+            .position(|u| u.elements.contains(&elem))
     }
 
     /// Move a pool element between Units: detach it from wherever it is, then attach per
@@ -4108,7 +4337,10 @@ impl Session {
     /// `sbf_prune_empty_units` mirror — the grouping editor prunes after each move).
     pub fn bf_prune_empty_units(&mut self) {
         self.bf.units.retain(|u| !u.elements.is_empty());
-        self.bf.active_unit = self.bf.active_unit.min(self.bf.units.len().saturating_sub(1));
+        self.bf.active_unit = self
+            .bf
+            .active_unit
+            .min(self.bf.units.len().saturating_sub(1));
     }
 
     /// Restamp every Unit's static Size from its current membership (p.53: Size is fixed at
@@ -4415,7 +4647,9 @@ pub fn neurohelmet_dir() -> PathBuf {
         return PathBuf::from(dir);
     }
     let base = dirs::data_dir().unwrap_or_else(|| PathBuf::from("."));
-    pick_data_dir(base.join("neurohelmet"), base.join("mechdoll"), |p| p.exists())
+    pick_data_dir(base.join("neurohelmet"), base.join("mechdoll"), |p| {
+        p.exists()
+    })
 }
 
 /// Pure resolution of the default data dir: prefer the current (`neurohelmet`) location, but fall
@@ -4543,8 +4777,7 @@ fn list_sessions_in(dir: &Path) -> Vec<SessionMeta> {
             .and_then(|b| serde_json::from_slice::<Session>(&b).ok());
         let (mech_count, summary, mode, force_total, limit) = match session {
             Some(s) => {
-                let chassis: Vec<String> =
-                    s.mechs.iter().map(|m| m.spec.chassis.clone()).collect();
+                let chassis: Vec<String> = s.mechs.iter().map(|m| m.spec.chassis.clone()).collect();
                 let summary = if chassis.is_empty() {
                     "empty".to_string()
                 } else {
@@ -4702,9 +4935,27 @@ mod tests {
             crit_slots: BTreeMap::from([(
                 Location::CenterTorso,
                 vec![
-                    CritSlot { slot: 0, name: "Fusion Engine".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 1, name: "Gyro".into(), system: true, hittable: true, ..Default::default() },
-                    CritSlot { slot: 2, name: "Autocannon/20".into(), system: false, hittable: true, ..Default::default() },
+                    CritSlot {
+                        slot: 0,
+                        name: "Fusion Engine".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 1,
+                        name: "Gyro".into(),
+                        system: true,
+                        hittable: true,
+                        ..Default::default()
+                    },
+                    CritSlot {
+                        slot: 2,
+                        name: "Autocannon/20".into(),
+                        system: false,
+                        hittable: true,
+                        ..Default::default()
+                    },
                 ],
             )]),
             as_stats: AsStats {
@@ -4738,7 +4989,14 @@ mod tests {
         m.crit_slots = BTreeMap::new();
         let mut armor = BTreeMap::new();
         for &l in &Location::TROOPERS[..4] {
-            armor.insert(l, LocationArmor { armor_max: 10, rear_max: 0, internal_max: 1 });
+            armor.insert(
+                l,
+                LocationArmor {
+                    armor_max: 10,
+                    rear_max: 0,
+                    internal_max: 1,
+                },
+            );
         }
         m.armor = armor;
         m.weapons = vec![WeaponMount {
@@ -4800,7 +5058,11 @@ mod tests {
         m.crit_slots = BTreeMap::new();
         m.armor = BTreeMap::from([(
             Location::Platoon,
-            LocationArmor { armor_max: 0, rear_max: 0, internal_max: 20 },
+            LocationArmor {
+                armor_max: 0,
+                rear_max: 0,
+                internal_max: 20,
+            },
         )]);
         let mut tm = TrackedMech::new(m);
         assert_eq!(tm.troopers_remaining(), 20);
@@ -4841,11 +5103,18 @@ mod tests {
     fn ov_to_hit_assembles_modifiers() {
         use crate::engine::MoveMode;
         let mut tm = TrackedMech::new(atlas()); // gunnery 4; move_mode defaults to Stationary (−1)
-        assert_eq!(tm.ov_to_hit(0), 3, "gunnery 4 + standstill −1 (the attacker move comes from move_mode)");
+        assert_eq!(
+            tm.ov_to_hit(0),
+            3,
+            "gunnery 4 + standstill −1 (the attacker move comes from move_mode)"
+        );
         tm.move_mode = MoveMode::Walked; // ground, 0
         assert_eq!(tm.ov_to_hit(0), 4);
         assert_eq!(tm.ov_to_hit(2), 6, "range bracket adds in");
-        assert!(!tm.ov_shot_active(), "default shot (target fields) is neutral");
+        assert!(
+            !tm.ov_shot_active(),
+            "default shot (target fields) is neutral"
+        );
         // Target TMM 2 + jumped (+1); attacker jumped (+2).
         tm.ov_shot.target_tmm = 2;
         tm.ov_shot.target_jumped = true;
@@ -4856,7 +5125,11 @@ mod tests {
         tm.ov_shot.target_immobile = true;
         tm.ov_heat = 2;
         tm.hit_pilot();
-        assert_eq!(tm.ov_to_hit(0), 4 + 2 - 2 + 1 + 1, "immobile −2, jump +2, heat +1, pilot +1");
+        assert_eq!(
+            tm.ov_to_hit(0),
+            4 + 2 - 2 + 1 + 1,
+            "immobile −2, jump +2, heat +1, pilot +1"
+        );
         // Floors at the 2+ minimum (gunnery 0, standstill −1).
         let mut easy = TrackedMech::new(atlas());
         easy.gunnery = 0;
@@ -4894,7 +5167,11 @@ mod tests {
             crip.ov_damage(Location::CenterTorso, false);
         }
         assert!(crip.ov_crippled(), "torso stripped → crippled");
-        assert_eq!(crip.ov_morale_target(), 8, "base morale, no crits/condition");
+        assert_eq!(
+            crip.ov_morale_target(),
+            8,
+            "base morale, no crits/condition"
+        );
         crip.ov_add_crit(Location::CenterTorso, 3); // engine crit (system) → +1
         crip.hit_pilot(); // condition hit → +1
         assert_eq!(crip.ov_morale_target(), 10);
@@ -4905,7 +5182,10 @@ mod tests {
         // The atlas test mech carries an AC/20 ammo bin in the right torso → the merged Override
         // torso region has ammo.
         let mut tm = TrackedMech::new(atlas());
-        assert!(tm.ov_region_has_ammo(Location::CenterTorso), "torso carries the AC bin");
+        assert!(
+            tm.ov_region_has_ammo(Location::CenterTorso),
+            "torso carries the AC bin"
+        );
         assert!(!tm.ov_region_has_ammo(Location::Head), "head has no ammo");
         assert!(!tm.ov_ammo_exploded());
 
@@ -4958,11 +5238,46 @@ mod tests {
         m.heat_sinks = 10;
         m.dissipation = 10;
         m.armor = BTreeMap::from([
-            (Location::Nose, LocationArmor { armor_max: 12, rear_max: 0, internal_max: 0 }),
-            (Location::LeftWing, LocationArmor { armor_max: 9, rear_max: 0, internal_max: 0 }),
-            (Location::RightWing, LocationArmor { armor_max: 9, rear_max: 0, internal_max: 0 }),
-            (Location::Aft, LocationArmor { armor_max: 7, rear_max: 0, internal_max: 0 }),
-            (Location::AeroSI, LocationArmor { armor_max: 0, rear_max: 0, internal_max: 5 }),
+            (
+                Location::Nose,
+                LocationArmor {
+                    armor_max: 12,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::LeftWing,
+                LocationArmor {
+                    armor_max: 9,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::RightWing,
+                LocationArmor {
+                    armor_max: 9,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::Aft,
+                LocationArmor {
+                    armor_max: 7,
+                    rear_max: 0,
+                    internal_max: 0,
+                },
+            ),
+            (
+                Location::AeroSI,
+                LocationArmor {
+                    armor_max: 0,
+                    rear_max: 0,
+                    internal_max: 5,
+                },
+            ),
         ]);
         m
     }
@@ -4970,7 +5285,11 @@ mod tests {
     #[test]
     fn aero_arcs_spill_into_shared_si_then_destroyed() {
         let mut tm = TrackedMech::new(aero_fighter());
-        assert_eq!((tm.movement().walk, tm.movement().run), (5, 8), "safe/max thrust");
+        assert_eq!(
+            (tm.movement().walk, tm.movement().run),
+            (5, 8),
+            "safe/max thrust"
+        );
         assert!(tm.destroyed_reason().is_none());
         // Arcs aren't "destroyed" (no per-arc internal); SI is the structure pool.
         assert!(!tm.is_destroyed(Location::Nose));
@@ -5070,7 +5389,10 @@ mod tests {
         assert!(tm.destroyed_reason().is_none());
 
         // Sensors: +N at 1–2, +5 at 3. FCS: +2 per hit; >2 takes weapons offline.
-        let sensors = AEROSPACE_CRITS.iter().position(|n| *n == "Sensors").unwrap();
+        let sensors = AEROSPACE_CRITS
+            .iter()
+            .position(|n| *n == "Sensors")
+            .unwrap();
         tm.bump_crit(sensors); // 1 hit
         assert_eq!(tm.aero_weapon_to_hit(), 1);
         tm.bump_crit(sensors);
@@ -5084,10 +5406,16 @@ mod tests {
         tm.bump_crit(fcs);
         tm.bump_crit(fcs); // 3 FCS hits (>2) → fire control gone
         assert!(tm.aero_fire_control_destroyed());
-        assert!(tm.is_weapon_disabled(&ppc), "weapons offline with FCS shot out");
+        assert!(
+            tm.is_weapon_disabled(&ppc),
+            "weapons offline with FCS shot out"
+        );
 
         // Avionics: control-roll modifier +N (1–2), +5 destroyed.
-        let avi = AEROSPACE_CRITS.iter().position(|n| *n == "Avionics").unwrap();
+        let avi = AEROSPACE_CRITS
+            .iter()
+            .position(|n| *n == "Avionics")
+            .unwrap();
         assert_eq!(tm.aero_control_modifier(), 0);
         tm.bump_crit(avi);
         assert_eq!(tm.aero_control_modifier(), 1);
@@ -5096,7 +5424,10 @@ mod tests {
         assert_eq!(tm.aero_control_modifier(), 5);
 
         // Landing Gear has no on-map combat effect — purely a mark.
-        let gear = AEROSPACE_CRITS.iter().position(|n| *n == "Landing Gear").unwrap();
+        let gear = AEROSPACE_CRITS
+            .iter()
+            .position(|n| *n == "Landing Gear")
+            .unwrap();
         tm.bump_crit(gear);
         assert!(tm.crit_marked(gear));
     }
@@ -5252,13 +5583,21 @@ mod tests {
             Location::RightTorso,
             Location::LeftArm,
         ] {
-            armor.insert(loc, LocationArmor { armor_max: 10, rear_max: 0, internal_max: 5 });
+            armor.insert(
+                loc,
+                LocationArmor {
+                    armor_max: 10,
+                    rear_max: 0,
+                    internal_max: 5,
+                },
+            );
         }
         let cs = |slot: u8, name: &str, system: bool| CritSlot {
             slot,
             name: name.into(),
             system,
-            hittable: true, ..Default::default()
+            hittable: true,
+            ..Default::default()
         };
         let crit_slots = BTreeMap::from([
             (
@@ -5273,12 +5612,20 @@ mod tests {
             ),
             (
                 Location::Head,
-                vec![cs(0, "Life Support", true), cs(1, "Sensors", true), cs(2, "Cockpit", true)],
+                vec![
+                    cs(0, "Life Support", true),
+                    cs(1, "Sensors", true),
+                    cs(2, "Cockpit", true),
+                ],
             ),
             (
                 Location::RightTorso,
                 // A side-torso weapon plus XL engine slots (lost together when the torso goes).
-                vec![cs(0, "AC/20", false), cs(1, "XL Fusion Engine", true), cs(2, "XL Fusion Engine", true)],
+                vec![
+                    cs(0, "AC/20", false),
+                    cs(1, "XL Fusion Engine", true),
+                    cs(2, "XL Fusion Engine", true),
+                ],
             ),
         ]);
         Mech {
@@ -5372,9 +5719,16 @@ mod tests {
         // gun and its 2 XL engine slots.
         tm.damage(Location::RightTorso, Facing::Front, 15);
         assert!(tm.is_destroyed(Location::RightTorso));
-        assert!(!tm.is_destroyed(Location::CenterTorso), "no excess cascaded inward");
+        assert!(
+            !tm.is_destroyed(Location::CenterTorso),
+            "no excess cascaded inward"
+        );
         assert!(tm.is_weapon_disabled(&ac20));
-        assert_eq!(tm.engine_hits(), 2, "two XL engine slots lost with the torso");
+        assert_eq!(
+            tm.engine_hits(),
+            2,
+            "two XL engine slots lost with the torso"
+        );
     }
 
     #[test]
@@ -5494,7 +5848,13 @@ mod tests {
         tm.ct_adjust_hexes(3); // no-op without a target
         assert_eq!(tm.ct_target, None);
         tm.ct_adjust_distance(1); // None -> Some(distance 1)
-        assert_eq!(tm.ct_target, Some(CtTarget { distance: 1, ..CtTarget::default() }));
+        assert_eq!(
+            tm.ct_target,
+            Some(CtTarget {
+                distance: 1,
+                ..CtTarget::default()
+            })
+        );
         assert!(tm.ct_shot_active());
         tm.ct_adjust_distance(CT_TARGET_DISTANCE_MAX as i32 + 5); // climbs, then clamps
         assert_eq!(tm.ct_target.unwrap().distance, CT_TARGET_DISTANCE_MAX);
@@ -5517,7 +5877,11 @@ mod tests {
     #[test]
     fn as_crit_kinds_by_unit_type() {
         let mech = TrackedMech::new(atlas());
-        assert_eq!(mech.as_crit_kinds(), &AsCritKind::ALL, "'Mech uses the full crit set");
+        assert_eq!(
+            mech.as_crit_kinds(),
+            &AsCritKind::ALL,
+            "'Mech uses the full crit set"
+        );
         assert!(mech.as_crit_kinds().contains(&AsCritKind::Mp));
 
         let mut aero_spec = atlas();
@@ -5525,7 +5889,11 @@ mod tests {
         let aero = TrackedMech::new(aero_spec);
         assert_eq!(
             aero.as_crit_kinds(),
-            &[AsCritKind::Engine, AsCritKind::FireControl, AsCritKind::Weapon],
+            &[
+                AsCritKind::Engine,
+                AsCritKind::FireControl,
+                AsCritKind::Weapon
+            ],
             "aerospace omits MP"
         );
         assert!(!aero.as_crit_kinds().contains(&AsCritKind::Mp));
@@ -5536,11 +5904,19 @@ mod tests {
         let mut veh = TrackedMech::new(veh_spec);
         assert_eq!(
             veh.as_crit_kinds(),
-            &[AsCritKind::Engine, AsCritKind::FireControl, AsCritKind::Weapon, AsCritKind::Motive]
+            &[
+                AsCritKind::Engine,
+                AsCritKind::FireControl,
+                AsCritKind::Weapon,
+                AsCritKind::Motive
+            ]
         );
         veh.as_crit_inc(AsCritKind::Engine);
         veh.as_crit_inc(AsCritKind::Engine);
-        assert!(!veh.as_destroyed(), "2 engine crits don't kill a vehicle (only a 'Mech)");
+        assert!(
+            !veh.as_destroyed(),
+            "2 engine crits don't kill a vehicle (only a 'Mech)"
+        );
         for _ in 0..6 {
             veh.as_crit_inc(AsCritKind::Motive);
         }
@@ -5578,7 +5954,11 @@ mod tests {
         };
         spec.crit_slots.insert(
             Location::LeftArm,
-            vec![hs(0, "DHS@LA#0", 2), hs(1, "DHS@LA#0", 2), hs(2, "HS@LA#2", 1)],
+            vec![
+                hs(0, "DHS@LA#0", 2),
+                hs(1, "DHS@LA#0", 2),
+                hs(2, "HS@LA#2", 1),
+            ],
         );
         let mut tm = TrackedMech::new(spec);
         assert_eq!(tm.dissipation(), 10);
@@ -5676,7 +6056,10 @@ mod tests {
         let mut tm = TrackedMech::new(atlas());
         tm.damage(Location::LeftTorso, Facing::Front, 7); // 2 armor + 4 internal = destroyed
         assert!(tm.is_destroyed(Location::LeftTorso));
-        assert!(tm.is_destroyed(Location::LeftArm), "arm goes with the side torso");
+        assert!(
+            tm.is_destroyed(Location::LeftArm),
+            "arm goes with the side torso"
+        );
     }
 
     #[test]
@@ -5692,7 +6075,11 @@ mod tests {
         assert_eq!(tm.unfire_weapon(0), Some(7));
         assert!(!tm.is_fired(0));
         assert_eq!(tm.heat, 0);
-        assert_eq!(tm.unfire_weapon(0), None, "un-firing an unfired weapon is a no-op");
+        assert_eq!(
+            tm.unfire_weapon(0),
+            None,
+            "un-firing an unfired weapon is a no-op"
+        );
 
         // End-turn clears all fired marks.
         tm.fire_weapon(0);
@@ -5824,7 +6211,10 @@ mod tests {
 
         // Fresh bundle: same Atlas, now WITH gear + a brand-new second ammo bin.
         let mut fresh = atlas();
-        fresh.equipment = vec![Equipment { name: "Jump Jet".into(), location: Location::LeftLeg }];
+        fresh.equipment = vec![Equipment {
+            name: "Jump Jet".into(),
+            location: Location::LeftLeg,
+        }];
         fresh.ammo.push(AmmoBin {
             id: 1,
             name: "AC/20 Ammo".into(),
@@ -5841,14 +6231,22 @@ mod tests {
         assert_eq!(n, 1, "only the Atlas (in the bundle) is refreshed");
 
         let atlas_tm = &session.mechs[0];
-        assert_eq!(atlas_tm.spec.equipment.len(), 1, "gear pulled in from the bundle");
+        assert_eq!(
+            atlas_tm.spec.equipment.len(),
+            1,
+            "gear pulled in from the bundle"
+        );
         assert_eq!(atlas_tm.ammo_remaining(0), 7, "spent ammo count survived");
         assert_eq!(atlas_tm.ammo_remaining(1), 5, "a new bin starts full");
         assert_eq!(
-            atlas_tm.locations[&Location::CenterTorso].armor_hits, 4,
+            atlas_tm.locations[&Location::CenterTorso].armor_hits,
+            4,
             "battle damage survived"
         );
-        assert!(session.mechs[1].spec.equipment.is_empty(), "unknown unit kept its old spec");
+        assert!(
+            session.mechs[1].spec.equipment.is_empty(),
+            "unknown unit kept its old spec"
+        );
 
         // Idempotent: a second pass changes nothing.
         assert_eq!(session.relink_specs(&bundle), 0);
@@ -5859,10 +6257,17 @@ mod tests {
     fn mover() -> Mech {
         let mut m = atlas();
         let mut armor = BTreeMap::new();
-        for loc in Location::ALL.into_iter().filter(|l| !l.is_vehicle() && !l.is_infantry()) {
+        for loc in Location::ALL
+            .into_iter()
+            .filter(|l| !l.is_vehicle() && !l.is_infantry())
+        {
             armor.insert(
                 loc,
-                LocationArmor { armor_max: 8, rear_max: 0, internal_max: 6 },
+                LocationArmor {
+                    armor_max: 8,
+                    rear_max: 0,
+                    internal_max: 6,
+                },
             );
         }
         m.armor = armor;
@@ -5870,15 +6275,45 @@ mod tests {
         m.run = 9;
         m.jump = 4;
         let leg_slots = vec![
-            CritSlot { slot: 0, name: "Hip".into(), system: true, hittable: true, ..Default::default() },
-            CritSlot { slot: 1, name: "Upper Leg Actuator".into(), system: true, hittable: true, ..Default::default() },
-            CritSlot { slot: 2, name: "Lower Leg Actuator".into(), system: true, hittable: true, ..Default::default() },
-            CritSlot { slot: 3, name: "Foot Actuator".into(), system: true, hittable: true, ..Default::default() },
+            CritSlot {
+                slot: 0,
+                name: "Hip".into(),
+                system: true,
+                hittable: true,
+                ..Default::default()
+            },
+            CritSlot {
+                slot: 1,
+                name: "Upper Leg Actuator".into(),
+                system: true,
+                hittable: true,
+                ..Default::default()
+            },
+            CritSlot {
+                slot: 2,
+                name: "Lower Leg Actuator".into(),
+                system: true,
+                hittable: true,
+                ..Default::default()
+            },
+            CritSlot {
+                slot: 3,
+                name: "Foot Actuator".into(),
+                system: true,
+                hittable: true,
+                ..Default::default()
+            },
         ];
         m.crit_slots = BTreeMap::from([
             (
                 Location::CenterTorso,
-                vec![CritSlot { slot: 0, name: "Gyro".into(), system: true, hittable: true, ..Default::default() }],
+                vec![CritSlot {
+                    slot: 0,
+                    name: "Gyro".into(),
+                    system: true,
+                    hittable: true,
+                    ..Default::default()
+                }],
             ),
             (Location::LeftLeg, leg_slots.clone()),
             (Location::RightLeg, leg_slots),
@@ -5949,7 +6384,7 @@ mod tests {
     #[test]
     fn hexes_clamp_to_the_modes_effective_mp() {
         let mut tm = TrackedMech::new(mover()); // walk 6 / run 9 / jump 4
-        // Stationary means it didn't move — hexes stay 0.
+                                                // Stationary means it didn't move — hexes stay 0.
         tm.adjust_hexes_moved(5);
         assert_eq!(tm.hexes_moved, 0);
 
@@ -5977,7 +6412,11 @@ mod tests {
         tm.cycle_move_mode(1);
         assert_eq!(tm.move_mode, MoveMode::Ran);
         tm.cycle_move_mode(1);
-        assert_eq!(tm.move_mode, MoveMode::Stationary, "no jump MP -> no jumped mode");
+        assert_eq!(
+            tm.move_mode,
+            MoveMode::Stationary,
+            "no jump MP -> no jumped mode"
+        );
         // And backwards from stationary lands on ran, not jumped.
         tm.cycle_move_mode(-1);
         assert_eq!(tm.move_mode, MoveMode::Ran);
@@ -6023,7 +6462,11 @@ mod tests {
         tm.piloting = 3;
         assert_eq!(tm.point_cost(GameMode::Classic), 3187);
         s.mechs = vec![tm];
-        assert_eq!(s.force_total(), 3187, "force totals the skill-adjusted cost");
+        assert_eq!(
+            s.force_total(),
+            3187,
+            "force totals the skill-adjusted cost"
+        );
 
         // No limit -> never over.
         assert!(!s.over_limit());
@@ -6121,7 +6564,10 @@ mod tests {
         assert_eq!(m.weapon_to_hit(&m.weapons[1]), 0);
 
         // Mount a Targeting Computer: -1 to the eligible (direct-fire) weapon only.
-        m.equipment.push(Equipment { name: "Targeting Computer".into(), location: Location::Head });
+        m.equipment.push(Equipment {
+            name: "Targeting Computer".into(),
+            location: Location::Head,
+        });
         assert!(m.has_targeting_computer());
         assert_eq!(m.weapon_to_hit(&m.weapons[0]), -3); // pulse -2 + TC -1
         assert_eq!(m.weapon_to_hit(&m.weapons[1]), 0); // LRM ineligible
@@ -6160,7 +6606,11 @@ mod tests {
         tm.toggle_crit(Location::LeftLeg, 0); // Hip
         assert_eq!(tm.movement().walk, 3);
         tm.toggle_crit(Location::RightLeg, 0); // second Hip
-        assert_eq!(tm.movement().walk, 0, "two hips = 0 walking MP, not halved-again");
+        assert_eq!(
+            tm.movement().walk,
+            0,
+            "two hips = 0 walking MP, not halved-again"
+        );
         tm.toggle_crit(Location::RightLeg, 0); // repair
         tm.toggle_crit(Location::LeftLeg, 0); // repair
 
@@ -6190,12 +6640,16 @@ mod tests {
             location: Location::CenterTorso,
         });
         // Give it a crit slot so a hit there can disable it.
-        spec.crit_slots.get_mut(&Location::CenterTorso).unwrap().push(CritSlot {
-            slot: 5,
-            name: "ECM Suite (Guardian)".into(),
-            system: false,
-            hittable: true, ..Default::default()
-        });
+        spec.crit_slots
+            .get_mut(&Location::CenterTorso)
+            .unwrap()
+            .push(CritSlot {
+                slot: 5,
+                name: "ECM Suite (Guardian)".into(),
+                system: false,
+                hittable: true,
+                ..Default::default()
+            });
         let mut tm = TrackedMech::new(spec);
         let ecm = tm.spec.equipment[0].clone();
         assert!(!tm.is_equipment_disabled(&ecm));
@@ -6206,8 +6660,14 @@ mod tests {
     #[test]
     fn masc_and_supercharger_boost_run() {
         let mut m = mover(); // walk 6, baked run 9 (base ×1.5)
-        m.equipment.push(Equipment { name: "MASC".into(), location: Location::RightTorso });
-        m.equipment.push(Equipment { name: "Supercharger".into(), location: Location::LeftTorso });
+        m.equipment.push(Equipment {
+            name: "MASC".into(),
+            location: Location::RightTorso,
+        });
+        m.equipment.push(Equipment {
+            name: "Supercharger".into(),
+            location: Location::LeftTorso,
+        });
         let mut tm = TrackedMech::new(m);
         assert!(tm.has_masc() && tm.has_supercharger());
         assert_eq!(tm.movement().run, 9, "no booster engaged -> baked base run");
@@ -6227,7 +6687,11 @@ mod tests {
         // The boost composes with a heat cut: walk 6 -> 5 at heat 5, run = 5 ×2 = 10.
         tm.adjust_heat(5);
         assert_eq!(tm.movement().walk, 5);
-        assert_eq!(tm.movement().run, 10, "SC boost recomputed from the reduced walk");
+        assert_eq!(
+            tm.movement().run,
+            10,
+            "SC boost recomputed from the reduced walk"
+        );
     }
 
     #[test]
@@ -6235,7 +6699,11 @@ mod tests {
         let mut tm = TrackedMech::new(mover());
         tm.masc_engaged = true; // no MASC mounted
         assert!(!tm.has_masc() && !tm.mp_boost_active());
-        assert_eq!(tm.movement().run, 9, "engaged flag alone does nothing without the gear");
+        assert_eq!(
+            tm.movement().run,
+            9,
+            "engaged flag alone does nothing without the gear"
+        );
         assert_eq!(tm.mp_boost_label(), None);
     }
 
@@ -6283,8 +6751,14 @@ mod tests {
     #[test]
     fn stealth_and_ecm_detection() {
         let mut m = atlas();
-        m.equipment.push(Equipment { name: "Null Signature System".into(), location: Location::CenterTorso });
-        m.equipment.push(Equipment { name: "Angel ECM Suite".into(), location: Location::LeftTorso });
+        m.equipment.push(Equipment {
+            name: "Null Signature System".into(),
+            location: Location::CenterTorso,
+        });
+        m.equipment.push(Equipment {
+            name: "Angel ECM Suite".into(),
+            location: Location::LeftTorso,
+        });
         let tm = TrackedMech::new(m);
         assert!(tm.has_stealth());
         assert!(tm.has_ecm());
@@ -6306,7 +6780,10 @@ mod tests {
         // Loading a different munition records an override.
         tm.set_bin_munition(0, "Standard");
         assert_eq!(tm.bin_munition(0), "Standard");
-        assert_eq!(tm.munition_choice.get(&0).map(String::as_str), Some("Standard"));
+        assert_eq!(
+            tm.munition_choice.get(&0).map(String::as_str),
+            Some("Standard")
+        );
 
         // Loading back the baked default clears the override (keeps saved state minimal).
         tm.set_bin_munition(0, "Semi-Guided");
@@ -6358,7 +6835,9 @@ mod tests {
         let back = load(&path).unwrap().unwrap();
         assert_eq!(back.mechs.len(), 1);
         assert_eq!(
-            back.active_mech().unwrap().armor_remaining(Location::CenterTorso, Facing::Rear),
+            back.active_mech()
+                .unwrap()
+                .armor_remaining(Location::CenterTorso, Facing::Rear),
             9
         );
         assert_eq!(back.active_mech().unwrap().heat, 12);
@@ -6418,7 +6897,9 @@ mod tests {
                 dmg_l: "2".into(),
                 dmg_e: "0".into(),
                 pv: 52,
-                specials: ["AC2/2/-", "IF1", "LRM1/1/1", "REAR1/1/-"].map(String::from).to_vec(),
+                specials: ["AC2/2/-", "IF1", "LRM1/1/1", "REAR1/1/-"]
+                    .map(String::from)
+                    .to_vec(),
                 ..Default::default()
             },
             ..Default::default()
@@ -6477,7 +6958,15 @@ mod tests {
         assert_eq!(u.armor_remaining(&derived), 5);
         // A damage crit steps every band down by 1; a targeting crit worsens base gunnery.
         u.add_damage_crit();
-        assert_eq!(u.current_damage(&derived), DamageVector { s: 6.0, m: 6.0, l: Some(2.0), e: None });
+        assert_eq!(
+            u.current_damage(&derived),
+            DamageVector {
+                s: 6.0,
+                m: 6.0,
+                l: Some(2.0),
+                e: None
+            }
+        );
         assert_eq!(u.base_gunnery(&derived), 4);
         u.add_targeting_crit();
         assert_eq!(u.base_gunnery(&derived), 5);
@@ -6496,7 +6985,11 @@ mod tests {
         // 5 units → fails (1–4 units).
         let mut five = sbf_session(4);
         five.sbf.formations[0].units = (0..5)
-            .map(|i| SbfUnitState { name: format!("U{i}"), elements: vec![i % 4], ..Default::default() })
+            .map(|i| SbfUnitState {
+                name: format!("U{i}"),
+                elements: vec![i % 4],
+                ..Default::default()
+            })
             .collect();
         assert!(!five.sbf_can_convert(&five.sbf.formations[0]));
 
@@ -6606,12 +7099,22 @@ mod tests {
     fn sbf_morale_is_a_manual_rung() {
         // The ladder cycles by hand: no roll, no TN, terminal ends both ways.
         let mut m = MoraleStatus::Normal;
-        let down = [MoraleStatus::Shaken, MoraleStatus::Broken, MoraleStatus::Routed, MoraleStatus::Routed];
+        let down = [
+            MoraleStatus::Shaken,
+            MoraleStatus::Broken,
+            MoraleStatus::Routed,
+            MoraleStatus::Routed,
+        ];
         for want in down {
             m = m.worsened();
             assert_eq!(m, want);
         }
-        let up = [MoraleStatus::Broken, MoraleStatus::Shaken, MoraleStatus::Normal, MoraleStatus::Normal];
+        let up = [
+            MoraleStatus::Broken,
+            MoraleStatus::Shaken,
+            MoraleStatus::Normal,
+            MoraleStatus::Normal,
+        ];
         for want in up {
             m = m.improved();
             assert_eq!(m, want);
@@ -6648,9 +7151,15 @@ mod tests {
             assert_eq!(s.sbf.formations[0].units[ui].apply_damage(&d, d.armor), 0);
         };
         gut(&mut s, 0);
-        assert!(!s.sbf_is_crippled(&s.sbf.formations[0]), "1 of 3 gutted is under threshold");
+        assert!(
+            !s.sbf_is_crippled(&s.sbf.formations[0]),
+            "1 of 3 gutted is under threshold"
+        );
         gut(&mut s, 1);
-        assert!(s.sbf_is_crippled(&s.sbf.formations[0]), "2 of 3 gutted crosses ceil(3/2)");
+        assert!(
+            s.sbf_is_crippled(&s.sbf.formations[0]),
+            "2 of 3 gutted crosses ceil(3/2)"
+        );
 
         // Prong 3 — ≥ half the units with ≥2 targeting crits; 2 units → threshold 1.
         let mut s = sbf_session(8); // units of 6 + 2
@@ -6717,7 +7226,10 @@ mod tests {
         assert!(!s.sbf_formation_eliminated(&s.sbf.formations[0]));
         assert_eq!(s.sbf_force_pv(), 0);
         // Other modes are unaffected.
-        assert!(Session::new_with_mode(GameMode::AlphaStrike).sbf.formations.is_empty());
+        assert!(Session::new_with_mode(GameMode::AlphaStrike)
+            .sbf
+            .formations
+            .is_empty());
     }
 
     // ---- Abstract Combat System (Phase 2) ----
@@ -6741,7 +7253,10 @@ mod tests {
         assert!(s.acs.formations[0].units.is_empty());
         assert_eq!(s.acs_force_pv(), 0);
         // Other modes carry no ACS state.
-        assert!(Session::new_with_mode(GameMode::AlphaStrike).acs.formations.is_empty());
+        assert!(Session::new_with_mode(GameMode::AlphaStrike)
+            .acs
+            .formations
+            .is_empty());
     }
 
     #[test]
@@ -6797,7 +7312,10 @@ mod tests {
         let cu = s.acs_combat_unit(&s.acs.formations[0].units[0]);
         let thresholds = cu.damage_thresholds;
         let armor = cu.armor;
-        assert!(armor > 0 && thresholds[0] < armor, "sane derived armor/thresholds");
+        assert!(
+            armor > 0 && thresholds[0] < armor,
+            "sane derived armor/thresholds"
+        );
         let st = &mut s.acs.formations[0].units[0];
         // One big hit that crosses the first threshold exactly once.
         let dmg = armor - thresholds[0] + 1;
@@ -6809,7 +7327,10 @@ mod tests {
         let crossed2 = st.apply_damage(&cu, armor * 10);
         assert!(st.is_destroyed(&cu));
         assert_eq!(st.armor_remaining(&cu), 0);
-        assert!(crossed2 >= 1, "the remaining thresholds fall on destruction");
+        assert!(
+            crossed2 >= 1,
+            "the remaining thresholds fall on destruction"
+        );
     }
 
     #[test]
@@ -6849,7 +7370,10 @@ mod tests {
         // The vacated Formation stays as an empty workspace (first-class, deleted only via D), but
         // its emptied Combat Unit/Team/SBF-Unit are pruned away.
         assert_eq!(s.acs.formations.len(), 3);
-        assert!(s.acs.formations[2].units.is_empty(), "vacated Formation is an empty workspace");
+        assert!(
+            s.acs.formations[2].units.is_empty(),
+            "vacated Formation is an empty workspace"
+        );
         let u = &s.acs.formations[0].units[0].teams[0].units[0];
         assert_eq!(u.elements, vec![0, 2]);
         // Split element 2 into a NEW Combat Team within element 0's Combat Unit.
@@ -6870,7 +7394,10 @@ mod tests {
             name: "cu2".into(),
             teams: vec![AcsTeamGrouping {
                 name: "t".into(),
-                units: vec![AcsUnitGrouping { name: "u".into(), elements: vec![0] }],
+                units: vec![AcsUnitGrouping {
+                    name: "u".into(),
+                    elements: vec![0],
+                }],
             }],
             ..Default::default()
         });
@@ -6893,17 +7420,27 @@ mod tests {
         solo.mechs[0].gunnery = 5;
         assert_eq!(pv_at(&solo), 15, "×0.9 per skill point above 4");
         solo.mechs[0].gunnery = 3;
-        assert_eq!(pv_at(&solo), 20, "×1.2 per point below 4 (on the rounded intermediate)");
+        assert_eq!(
+            pv_at(&solo),
+            20,
+            "×1.2 per point below 4 (on the rounded intermediate)"
+        );
 
         let mut lance = sbf_session(4); // one unit of 4, PV 69
-        let before = lance.sbf_unit(&lance.sbf.formations[0].units[0]).point_value;
+        let before = lance
+            .sbf_unit(&lance.sbf.formations[0].units[0])
+            .point_value;
         lance.mechs[0].gunnery = 5; // avg 4.25 → jround 4 → unchanged (rules-correct)
-        let after = lance.sbf_unit(&lance.sbf.formations[0].units[0]).point_value;
+        let after = lance
+            .sbf_unit(&lance.sbf.formations[0].units[0])
+            .point_value;
         assert_eq!(before, after, "single bump in a lance rounds away");
         for tm in &mut lance.mechs {
             tm.gunnery = 5; // avg 5 → the whole unit worsens
         }
-        let all = lance.sbf_unit(&lance.sbf.formations[0].units[0]).point_value;
+        let all = lance
+            .sbf_unit(&lance.sbf.formations[0].units[0])
+            .point_value;
         assert_eq!(all, 62, "69 × 0.9 once every element worsens");
     }
 
@@ -6954,9 +7491,17 @@ mod tests {
         assert_eq!(s.sbf_element_assignment(0), None);
         assert_eq!(s.sbf.formations.len(), 2, "no pruning mid-edit");
         s.sbf_prune_empty_units();
-        assert_eq!(s.sbf.formations.len(), 2, "empty FORMATIONS persist (first-class workspaces)");
+        assert_eq!(
+            s.sbf.formations.len(),
+            2,
+            "empty FORMATIONS persist (first-class workspaces)"
+        );
         assert!(s.sbf.formations[1].units.is_empty());
-        assert_eq!(s.sbf.formations[0].units.len(), 2, "empty split unit pruned");
+        assert_eq!(
+            s.sbf.formations[0].units.len(),
+            2,
+            "empty split unit pruned"
+        );
         // Empty formations are not casualties and carry no PV.
         assert!(!s.sbf_formation_eliminated(&s.sbf.formations[1]));
         let _ = s.sbf_force_pv(); // no panic, empties skipped
@@ -6973,16 +7518,22 @@ mod tests {
         s.sbf_group_doctrine(SbfDoctrine::InnerSphere);
         assert_eq!(s.sbf.formations.len(), 1);
         assert_eq!(s.sbf.formations[0].name, "Company 1");
-        let sizes: Vec<usize> =
-            s.sbf.formations[0].units.iter().map(|u| u.elements.len()).collect();
+        let sizes: Vec<usize> = s.sbf.formations[0]
+            .units
+            .iter()
+            .map(|u| u.elements.len())
+            .collect();
         assert_eq!(sizes, vec![4, 4]);
         assert_eq!(s.sbf.formations[0].units[0].name, "Lance 1");
 
         // Clan: 8 → Star 5 + Star 3 = a Binary. 15 → a Trinary of three full Stars.
         s.sbf_group_doctrine(SbfDoctrine::Clan);
         assert_eq!(s.sbf.formations[0].name, "Binary 1");
-        let sizes: Vec<usize> =
-            s.sbf.formations[0].units.iter().map(|u| u.elements.len()).collect();
+        let sizes: Vec<usize> = s.sbf.formations[0]
+            .units
+            .iter()
+            .map(|u| u.elements.len())
+            .collect();
         assert_eq!(sizes, vec![5, 3]);
         let mut s15 = sbf_session(15);
         s15.sbf_group_doctrine(SbfDoctrine::Clan);
@@ -6992,8 +7543,11 @@ mod tests {
         // ComStar: 8 → Level III of Level II (6) + Level II (2).
         s.sbf_group_doctrine(SbfDoctrine::ComStar);
         assert_eq!(s.sbf.formations[0].name, "Level III 1");
-        let sizes: Vec<usize> =
-            s.sbf.formations[0].units.iter().map(|u| u.elements.len()).collect();
+        let sizes: Vec<usize> = s.sbf.formations[0]
+            .units
+            .iter()
+            .map(|u| u.elements.len())
+            .collect();
         assert_eq!(sizes, vec![6, 2]);
 
         // 13 IS ground → Company (3 lances: 4+4+4) + a lone Lance formation.
@@ -7017,8 +7571,11 @@ mod tests {
         assert_eq!(s.sbf.formations.len(), 2);
         assert_eq!(s.sbf.formations[0].name, "Lance 1");
         assert_eq!(s.sbf.formations[1].name, "Squadron 2");
-        let aero_sizes: Vec<usize> =
-            s.sbf.formations[1].units.iter().map(|u| u.elements.len()).collect();
+        let aero_sizes: Vec<usize> = s.sbf.formations[1]
+            .units
+            .iter()
+            .map(|u| u.elements.len())
+            .collect();
         assert_eq!(aero_sizes, vec![2, 2]);
         assert_eq!(s.sbf.formations[1].units[0].name, "Flight 1");
         assert!(s.sbf_can_convert(&s.sbf.formations[0]));
@@ -7049,7 +7606,12 @@ mod tests {
 
     fn sbf_large_craft(tp: &str) -> crate::domain::Mech {
         use crate::domain::{ArcCard, ArcDamage, FiringArc};
-        let ad = |s: &str| ArcDamage { s: s.into(), m: s.into(), l: s.into(), e: "0".into() };
+        let ad = |s: &str| ArcDamage {
+            s: s.into(),
+            m: s.into(),
+            l: s.into(),
+            e: "0".into(),
+        };
         crate::domain::Mech {
             chassis: tp.into(),
             model: "test".into(),
@@ -7057,12 +7619,19 @@ mod tests {
             as_stats: crate::domain::AsStats {
                 tp: tp.into(),
                 size: 2,
-                movement: if tp == "WS" { "2".into() } else { "0.2k".into() },
+                movement: if tp == "WS" {
+                    "2".into()
+                } else {
+                    "0.2k".into()
+                },
                 armor: 100,
                 structure: 30,
                 pv: 1000,
                 arcs: Some(ArcCard {
-                    front: FiringArc { std: ad("10"), ..Default::default() },
+                    front: FiringArc {
+                        std: ad("10"),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 }),
                 ..Default::default()
@@ -7098,18 +7667,30 @@ mod tests {
         // Large-Aerospace Squadron composition (IO:BF p.183), advisory: one large craft = one
         // Flight; at most one WarShip Flight and at most two Space-Station Flights per Squadron.
         let ok = sbf_la_squadron(&["WS", "DS", "DS"]);
-        assert!(ok.sbf_can_convert(&ok.sbf.formations[0]), "1 WarShip + DropShips is legal");
+        assert!(
+            ok.sbf_can_convert(&ok.sbf.formations[0]),
+            "1 WarShip + DropShips is legal"
+        );
         let two_ws = sbf_la_squadron(&["WS", "WS"]);
-        assert!(!two_ws.sbf_can_convert(&two_ws.sbf.formations[0]), "only one WarShip Flight");
+        assert!(
+            !two_ws.sbf_can_convert(&two_ws.sbf.formations[0]),
+            "only one WarShip Flight"
+        );
         let two_ss = sbf_la_squadron(&["SS", "SS"]);
-        assert!(two_ss.sbf_can_convert(&two_ss.sbf.formations[0]), "two Space Stations are legal");
+        assert!(
+            two_ss.sbf_can_convert(&two_ss.sbf.formations[0]),
+            "two Space Stations are legal"
+        );
         let three_ss = sbf_la_squadron(&["SS", "SS", "SS"]);
         assert!(
             !three_ss.sbf_can_convert(&three_ss.sbf.formations[0]),
             "at most two Space-Station Flights"
         );
         let seven = sbf_la_squadron(&["DS", "DS", "DS", "DS", "DS", "DS", "DS"]);
-        assert!(!seven.sbf_can_convert(&seven.sbf.formations[0]), "7 Flights bust the 6-Flight cap");
+        assert!(
+            !seven.sbf_can_convert(&seven.sbf.formations[0]),
+            "7 Flights bust the 6-Flight cap"
+        );
         // A large craft is a single-element Flight: a WarShip Flight of two elements is illegal.
         let mut fat = sbf_la_squadron(&["WS", "DS"]);
         fat.mechs.push(TrackedMech::new(sbf_large_craft("DS")));
@@ -7126,11 +7707,17 @@ mod tests {
         // ≤6 Flights of ≤2 elements, ≤12 total — where the same shape would bust the ground
         // 4-unit cap.
         let full = sbf_squadron(6, 2);
-        assert!(full.sbf_can_convert(&full.sbf.formations[0]), "6 Flights / 12 elements pass");
+        assert!(
+            full.sbf_can_convert(&full.sbf.formations[0]),
+            "6 Flights / 12 elements pass"
+        );
 
         // A 3-element Flight is over the ≤2-per-Flight cap, even though 3 ≤ the ground 6.
         let fat = sbf_squadron(2, 3);
-        assert!(!fat.sbf_can_convert(&fat.sbf.formations[0]), "3-element Flights are rejected");
+        assert!(
+            !fat.sbf_can_convert(&fat.sbf.formations[0]),
+            "3-element Flights are rejected"
+        );
 
         // A 7th Flight busts the ≤6-Flight (and ≤12-element) Squadron cap.
         let wing = sbf_squadron(7, 2);
@@ -7140,7 +7727,11 @@ mod tests {
         // though a Squadron could hold 5 Flights…
         let mut five = sbf_session(5);
         five.sbf.formations[0].units = (0..5)
-            .map(|i| SbfUnitState { name: format!("U{i}"), elements: vec![i], ..Default::default() })
+            .map(|i| SbfUnitState {
+                name: format!("U{i}"),
+                elements: vec![i],
+                ..Default::default()
+            })
             .collect();
         assert!(!five.sbf_can_convert(&five.sbf.formations[0]));
         // …and a 4-element ground Lance still passes (>2 per unit is aero-only law).
@@ -7257,7 +7848,10 @@ mod tests {
             mp_lost: 3,
             weapon: 1,
             crew_stunned: true,
-            motive: BfMotive { half: true, ..Default::default() },
+            motive: BfMotive {
+                half: true,
+                ..Default::default()
+            },
             arm_spent: true,
             killed: Some(BfKill::Ammo),
             crew_hit: 2,
@@ -7283,7 +7877,11 @@ mod tests {
         s.mechs.push(TrackedMech::new(sbf_atlas()));
         let mut v = serde_json::to_value(&s).unwrap();
         assert!(v.as_object_mut().unwrap().remove("bf").is_some());
-        assert!(v["mechs"][0].as_object_mut().unwrap().remove("bf").is_some());
+        assert!(v["mechs"][0]
+            .as_object_mut()
+            .unwrap()
+            .remove("bf")
+            .is_some());
         let back: Session = serde_json::from_value(v).unwrap();
         assert_eq!(back.bf, BfState::default());
         assert_eq!(back.mechs[0].bf, BfLive::default());
@@ -7298,17 +7896,30 @@ mod tests {
         assert_eq!(s.bf.units[0].name, "Unit 1");
         assert!(s.bf.units[0].elements.is_empty());
         assert_eq!(s.bf.units[0].size, 0);
-        assert!(s.sbf.formations.is_empty(), "no SBF starter in a BF session");
+        assert!(
+            s.sbf.formations.is_empty(),
+            "no SBF starter in a BF session"
+        );
         // Other modes are unaffected.
-        assert!(Session::new_with_mode(GameMode::AlphaStrike).bf.units.is_empty());
-        assert!(Session::new_with_mode(GameMode::StrategicBattleForce).bf.units.is_empty());
+        assert!(Session::new_with_mode(GameMode::AlphaStrike)
+            .bf
+            .units
+            .is_empty());
+        assert!(Session::new_with_mode(GameMode::StrategicBattleForce)
+            .bf
+            .units
+            .is_empty());
     }
 
     #[test]
     fn bf_point_cost_and_mech_cap() {
         // BF shares the AS PV arm (the BF Skill PV table IS the AS one, p.50) and is uncapped.
         let mut tm = TrackedMech::new(bf_mech("BM", "16\"", &[]));
-        assert_eq!(tm.point_cost(GameMode::BattleForce), 30, "default skill 4 = baked PV");
+        assert_eq!(
+            tm.point_cost(GameMode::BattleForce),
+            30,
+            "default skill 4 = baked PV"
+        );
         for g in 0..=SKILL_MAX {
             tm.gunnery = g;
             assert_eq!(
@@ -7357,7 +7968,10 @@ mod tests {
         s.mechs[0].bf.weapon += 1;
         s.mechs[0].bf.engine += 1;
         s.bf_apply_mp_crit(0);
-        s.mechs[0].bf_mark_motive(BfMotive { minus_one: true, ..Default::default() });
+        s.mechs[0].bf_mark_motive(BfMotive {
+            minus_one: true,
+            ..Default::default()
+        });
         assert_eq!(s.mechs[0].spec, spec_before);
         // A fresh element of the same spec still reads the full baseline.
         let fresh = Session {
@@ -7396,9 +8010,18 @@ mod tests {
         // p.43: "a vehicle may only suffer each effect once per game" — each effect is an
         // independent spent-flag; marking the same effect again is a no-op, but DIFFERENT
         // effects stack (−1 MV and ½ MV together).
-        let m1 = BfMotive { minus_one: true, ..Default::default() };
-        let mh = BfMotive { half: true, ..Default::default() };
-        let mi = BfMotive { immobile: true, ..Default::default() };
+        let m1 = BfMotive {
+            minus_one: true,
+            ..Default::default()
+        };
+        let mh = BfMotive {
+            half: true,
+            ..Default::default()
+        };
+        let mi = BfMotive {
+            immobile: true,
+            ..Default::default()
+        };
         let mut s = Session::new_with_mode(GameMode::BattleForce);
         s.mechs.push(TrackedMech::new(bf_mech("CV", "16\"", &[])));
         let tm = &mut s.mechs[0];
@@ -7410,11 +8033,17 @@ mod tests {
         assert_eq!(tm.bf.motive, m1);
         assert_eq!(s.bf_current_mp(0), 7, "−1 MV");
         s.mechs[0].bf_mark_motive(mh);
-        assert!(s.mechs[0].bf.motive.minus_one && s.mechs[0].bf.motive.half, "flags stack");
+        assert!(
+            s.mechs[0].bf.motive.minus_one && s.mechs[0].bf.motive.half,
+            "flags stack"
+        );
         assert_eq!(s.bf_current_mp(0), 3, "(8 − 1) / 2, round down (p.44)");
         s.mechs[0].bf_mark_motive(mi);
         assert_eq!(s.bf_current_mp(0), 0);
-        assert!(s.mechs[0].bf.motive.minus_one, "immobile never clears the spent flags");
+        assert!(
+            s.mechs[0].bf.motive.minus_one,
+            "immobile never clears the spent flags"
+        );
     }
 
     #[test]
@@ -7422,7 +8051,10 @@ mod tests {
         // The vehicle Engine-crit MV halving derives live from bf.engine (never an mp_lost
         // snapshot), so Engine-then-motive and motive-then-Engine read the same — the
         // sequential table value (8 → 4 → 2) either way (§1.2/§1.4 as built).
-        let mh = BfMotive { half: true, ..Default::default() };
+        let mh = BfMotive {
+            half: true,
+            ..Default::default()
+        };
         let mut a = Session::new_with_mode(GameMode::BattleForce);
         a.mechs.push(TrackedMech::new(bf_mech("CV", "16\"", &[])));
         a.mechs[0].bf.engine = 1; // Engine crit first…
@@ -7436,7 +8068,10 @@ mod tests {
         assert_eq!(b.bf_current_mp(0), 4);
         b.mechs[0].bf.engine = 1; // …then the Engine crit
         assert_eq!(b.bf_current_mp(0), 2);
-        assert_eq!(b.mechs[0].bf.mp_lost, 0, "nothing engine-related is snapshotted");
+        assert_eq!(
+            b.mechs[0].bf.mp_lost, 0,
+            "nothing engine-related is snapshotted"
+        );
     }
 
     #[test]
@@ -7449,13 +8084,20 @@ mod tests {
         s.mechs[0].as_adjust_heat(2);
         assert_eq!(s.bf_current_mp(0), 5);
         s.mechs[0].bf.engine = 1;
-        assert_eq!(s.bf_current_mp(0), 3, "thrust −50% of current, round down, min 1");
+        assert_eq!(
+            s.bf_current_mp(0),
+            3,
+            "thrust −50% of current, round down, min 1"
+        );
         s.mechs[0].bf.engine = 2;
         assert_eq!(s.bf_current_mp(0), 0, "2nd hit: TP 0");
         s.mechs[0].as_adjust_heat(-2); // cool back down
         assert_eq!(s.bf_current_mp(0), 0, "TP 0 survives cooling");
         assert_eq!(s.mechs[0].bf.mp_lost, 0, "mp_lost stays MP-crits-only");
-        assert!(!s.mechs[0].bf_destroyed(), "aero engine hits shut down, never destroy");
+        assert!(
+            !s.mechs[0].bf_destroyed(),
+            "aero engine hits shut down, never destroy"
+        );
     }
 
     #[test]
@@ -7484,7 +8126,11 @@ mod tests {
         assert_eq!(s.bf.units[1].name, "Recon");
         s.bf_remove_unit(1);
         assert_eq!(s.bf.units.len(), 1);
-        assert_eq!(s.bf_element_assignment(2), None, "elements return to Unassigned");
+        assert_eq!(
+            s.bf_element_assignment(2),
+            None,
+            "elements return to Unassigned"
+        );
     }
 
     #[test]
@@ -7493,9 +8139,11 @@ mod tests {
         // record-sheet wording. Nothing automatic touches the rung.
         let mut m = BfMorale::default();
         assert_eq!(m, BfMorale::Normal);
-        for (want, label) in
-            [(BfMorale::Broken, "Broken"), (BfMorale::Routed, "Routed"), (BfMorale::Normal, "Normal")]
-        {
+        for (want, label) in [
+            (BfMorale::Broken, "Broken"),
+            (BfMorale::Routed, "Routed"),
+            (BfMorale::Normal, "Normal"),
+        ] {
             m = m.cycled();
             assert_eq!(m, want);
             assert_eq!(m.label(), label);
@@ -7544,10 +8192,15 @@ mod tests {
         // TSM (p.154, detected from the element's specials): +1 MP at heat ≥ 1, and heat 1's
         // MP loss is ignored entirely; heat 2+ subtracts normally.
         let mut s = Session::new_with_mode(GameMode::BattleForce);
-        s.mechs.push(TrackedMech::new(bf_mech("BM", "16\"", &["TSM"])));
+        s.mechs
+            .push(TrackedMech::new(bf_mech("BM", "16\"", &["TSM"])));
         assert_eq!(s.bf_current_mp(0), 8, "no TSM bonus at heat 0");
         s.mechs[0].as_adjust_heat(1);
-        assert_eq!(s.bf_current_mp(0), 9, "heat 1: +1 MP and the heat loss is ignored");
+        assert_eq!(
+            s.bf_current_mp(0),
+            9,
+            "heat 1: +1 MP and the heat loss is ignored"
+        );
         s.mechs[0].as_adjust_heat(1);
         assert_eq!(s.bf_current_mp(0), 7, "heat 2: 8 + 1 − 2");
 
@@ -7568,20 +8221,36 @@ mod tests {
         let mut s = bf_session(1);
         assert_eq!(s.bf_current_damage(0, BfRange::Short), Some(3.0));
         assert_eq!(s.bf_current_damage(0, BfRange::Long), Some(1.0));
-        assert_eq!(s.bf_current_damage(0, BfRange::Extreme), None, "ground E = L−1 = 0");
+        assert_eq!(
+            s.bf_current_damage(0, BfRange::Extreme),
+            None,
+            "ground E = L−1 = 0"
+        );
         s.mechs[0].bf.weapon = 1;
         assert_eq!(s.bf_current_damage(0, BfRange::Short), Some(2.0));
-        assert_eq!(s.bf_current_damage(0, BfRange::Long), None, "reduced to nothing");
+        assert_eq!(
+            s.bf_current_damage(0, BfRange::Long),
+            None,
+            "reduced to nothing"
+        );
 
         // Vehicle Engine crit, 1st hit: damage values × 0.5 round down (§1.4), after the
         // Weapon-crit subtraction.
         let mut s = Session::new_with_mode(GameMode::BattleForce);
         s.mechs.push(TrackedMech::new(bf_mech("CV", "16\"", &[])));
         s.mechs[0].bf.engine = 1;
-        assert_eq!(s.bf_current_damage(0, BfRange::Short), Some(1.0), "3 → 1 (round down)");
+        assert_eq!(
+            s.bf_current_damage(0, BfRange::Short),
+            Some(1.0),
+            "3 → 1 (round down)"
+        );
         assert_eq!(s.bf_current_damage(0, BfRange::Long), None, "1 → 0");
         s.mechs[0].bf.weapon = 1;
-        assert_eq!(s.bf_current_damage(0, BfRange::Short), Some(1.0), "(3−1)/2 = 1");
+        assert_eq!(
+            s.bf_current_damage(0, BfRange::Short),
+            Some(1.0),
+            "(3−1)/2 = 1"
+        );
         // A 'Mech's engine hits never touch its damage line.
         let mut s = bf_session(1);
         s.mechs[0].bf.engine = 1;
@@ -7600,12 +8269,22 @@ mod tests {
         }
         s.bf_group_doctrine(SbfDoctrine::InnerSphere);
         let names: Vec<&str> = s.bf.units.iter().map(|u| u.name.as_str()).collect();
-        assert_eq!(names, vec!["Lance 1", "Lance 2", "Air Lance 1", "Air Lance 2"]);
+        assert_eq!(
+            names,
+            vec!["Lance 1", "Lance 2", "Air Lance 1", "Air Lance 2"]
+        );
         assert_eq!(s.bf.units[0].elements, vec![0, 1, 2, 3]);
-        assert_eq!(s.bf.units[1].elements, vec![4], "understrength Units are legal");
+        assert_eq!(
+            s.bf.units[1].elements,
+            vec![4],
+            "understrength Units are legal"
+        );
         assert_eq!(s.bf.units[2].elements, vec![5, 6]);
         assert_eq!(s.bf.units[3].elements, vec![7]);
-        assert!(s.bf.units.iter().all(|u| u.size == 2), "sizes stamped at grouping time");
+        assert!(
+            s.bf.units.iter().all(|u| u.size == 2),
+            "sizes stamped at grouping time"
+        );
 
         // Clan: Stars of 5, aero Points of 2.
         s.bf_group_doctrine(SbfDoctrine::Clan);

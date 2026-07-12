@@ -55,7 +55,13 @@ fn selftest() -> color_eyre::Result<()> {
         tm.damage(Location::LeftArm, Facing::Front, 9999); // destroy a limb (cascades inward)
         tm.adjust_heat(8);
         // Fire the AC/20 three times to show weapon->ammo auto-linking + heat.
-        if let Some(id) = tm.spec.weapons.iter().find(|w| w.name == "AC/20").map(|w| w.id) {
+        if let Some(id) = tm
+            .spec
+            .weapons
+            .iter()
+            .find(|w| w.name == "AC/20")
+            .map(|w| w.id)
+        {
             for _ in 0..3 {
                 tm.fire_weapon(id);
             }

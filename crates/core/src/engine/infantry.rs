@@ -110,7 +110,19 @@ mod tests {
     fn class_two_and_three_brackets() {
         // Rifle (Energy) / SRM row (class 2): 0:-2, 1-2:0, 3-4:+2, 5-6:+4, 7:out.
         let two: Vec<_> = (0..=7).map(|d| infantry_range_mod(2, d)).collect();
-        assert_eq!(two, vec![Some(-2), Some(0), Some(0), Some(2), Some(2), Some(4), Some(4), None]);
+        assert_eq!(
+            two,
+            vec![
+                Some(-2),
+                Some(0),
+                Some(0),
+                Some(2),
+                Some(2),
+                Some(4),
+                Some(4),
+                None
+            ]
+        );
         // LRM row (class 3): 0:-2, 1-3:0, 4-6:+2, 7-9:+4, 10:out.
         let three: Vec<_> = (0..=10).map(|d| infantry_range_mod(3, d)).collect();
         assert_eq!(

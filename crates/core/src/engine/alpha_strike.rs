@@ -116,7 +116,9 @@ pub fn as_to_hit_full(
 ) -> u8 {
     let base = as_to_hit(skill, range_idx, heat, fire_control, crew_hits, is_vehicle) as i32;
     let modifiers = as_attacker_move_modifier(attacker_jumped)
-        + target.map_or(0, |(tmm, jumped, immobile)| as_target_modifier(tmm, jumped, immobile));
+        + target.map_or(0, |(tmm, jumped, immobile)| {
+            as_target_modifier(tmm, jumped, immobile)
+        });
     (base + modifiers).max(2) as u8
 }
 
@@ -187,14 +189,23 @@ mod tests {
     #[test]
     fn to_hit_full_composes_self_attacker_target() {
         // skill 4, short, attacker jumped (+2), target TMM 2 jumped (+3): 4 + 0 + 2 + 3 = 9.
-        assert_eq!(as_to_hit_full(4, 0, 0, 0, 0, false, true, Some((2, true, false))), 9);
+        assert_eq!(
+            as_to_hit_full(4, 0, 0, 0, 0, false, true, Some((2, true, false))),
+            9
+        );
         // No shot context → identical to the Phase-1 self number.
-        assert_eq!(as_to_hit_full(4, 2, 0, 0, 0, false, false, None), as_to_hit(4, 2, 0, 0, 0, false));
+        assert_eq!(
+            as_to_hit_full(4, 2, 0, 0, 0, false, false, None),
+            as_to_hit(4, 2, 0, 0, 0, false)
+        );
     }
 
     #[test]
     fn to_hit_full_floors_at_two() {
         // skill 4, short, immobile target (−4) → 0, floored to the 2+ minimum.
-        assert_eq!(as_to_hit_full(4, 0, 0, 0, 0, false, false, Some((0, false, true))), 2);
+        assert_eq!(
+            as_to_hit_full(4, 0, 0, 0, 0, false, false, Some((0, false, true))),
+            2
+        );
     }
 }

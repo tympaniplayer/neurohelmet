@@ -317,7 +317,11 @@ fn parse_move_token(tok: &str) -> (u32, String) {
 /// Route one special-ability token into the flat top-level map `out` or, for `TUR(…)` interior
 /// tokens, the `turret` map (the deliberate non-union that keeps the converter MegaMek-faithful,
 /// trap #1). See `docs/sbf-implementation-spec.md` §"Exact parser rules".
-fn parse_special(tok: &str, out: &mut BTreeMap<String, SuaVal>, turret: &mut BTreeMap<String, SuaVal>) {
+fn parse_special(
+    tok: &str,
+    out: &mut BTreeMap<String, SuaVal>,
+    turret: &mut BTreeMap<String, SuaVal>,
+) {
     let tok = tok.trim();
     // TUR(bare-vector, sua, sua, …): store the bare front vector, route the rest INTO `turret`.
     if let Some(inner) = tok.strip_prefix("TUR(").and_then(|s| s.strip_suffix(')')) {
@@ -490,17 +494,32 @@ mod tests {
     fn damage_vector_bands() {
         assert_eq!(
             parse_damage_vector("2/2/-"),
-            DamageVector { s: 2.0, m: 2.0, l: None, e: None }
+            DamageVector {
+                s: 2.0,
+                m: 2.0,
+                l: None,
+                e: None
+            }
         );
         // REAR 4-band with trailing dashes:
         assert_eq!(
             parse_damage_vector("1/1/-/-"),
-            DamageVector { s: 1.0, m: 1.0, l: None, e: None }
+            DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: None,
+                e: None
+            }
         );
         // Minimal bracket inside a vector:
         assert_eq!(
             parse_damage_vector("0*/1/1"),
-            DamageVector { s: 0.5, m: 1.0, l: Some(1.0), e: None }
+            DamageVector {
+                s: 0.5,
+                m: 1.0,
+                l: Some(1.0),
+                e: None
+            }
         );
     }
 
@@ -516,12 +535,41 @@ mod tests {
         assert_eq!(e.sbf_type, SbfElementType::Bm);
         assert_eq!(
             e.std_damage,
-            DamageVector { s: 5.0, m: 5.0, l: Some(2.0), e: Some(0.0) }
+            DamageVector {
+                s: 5.0,
+                m: 5.0,
+                l: Some(2.0),
+                e: Some(0.0)
+            }
         );
-        assert_eq!(e.sua_dmg("AC"), Some(DamageVector { s: 2.0, m: 2.0, l: None, e: None }));
+        assert_eq!(
+            e.sua_dmg("AC"),
+            Some(DamageVector {
+                s: 2.0,
+                m: 2.0,
+                l: None,
+                e: None
+            })
+        );
         assert_eq!(e.sua_num("IF"), 1.0);
-        assert_eq!(e.sua_dmg("LRM"), Some(DamageVector { s: 1.0, m: 1.0, l: Some(1.0), e: None }));
-        assert_eq!(e.sua_dmg("REAR"), Some(DamageVector { s: 1.0, m: 1.0, l: None, e: None }));
+        assert_eq!(
+            e.sua_dmg("LRM"),
+            Some(DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: Some(1.0),
+                e: None
+            })
+        );
+        assert_eq!(
+            e.sua_dmg("REAR"),
+            Some(DamageVector {
+                s: 1.0,
+                m: 1.0,
+                l: None,
+                e: None
+            })
+        );
         assert!(e.turret_suas.is_empty());
     }
 
@@ -534,7 +582,12 @@ mod tests {
         assert_eq!(e.turret_suas.get("IF"), Some(&SuaVal::Num(1.0)));
         assert_eq!(
             e.turret_suas.get("TUR"),
-            Some(&SuaVal::Dmg(DamageVector { s: 2.0, m: 2.0, l: Some(1.0), e: None }))
+            Some(&SuaVal::Dmg(DamageVector {
+                s: 2.0,
+                m: 2.0,
+                l: Some(1.0),
+                e: None
+            }))
         );
     }
 
@@ -544,14 +597,23 @@ mod tests {
         assert!(e.suas.is_empty());
         assert_eq!(
             e.turret_suas.get("SRM"),
-            Some(&SuaVal::Dmg(DamageVector { s: 2.0, m: 2.0, l: None, e: None }))
+            Some(&SuaVal::Dmg(DamageVector {
+                s: 2.0,
+                m: 2.0,
+                l: None,
+                e: None
+            }))
         );
         assert_eq!(e.turret_suas.get("TAG"), Some(&SuaVal::Flag));
     }
 
     #[test]
     fn decimal_transport_and_doors() {
-        let e = as_element(&stats("CV", "6\"t", &["IT1.95", "CT0.009", "CAR4", "CT5-D2"]), "x", 4);
+        let e = as_element(
+            &stats("CV", "6\"t", &["IT1.95", "CT0.009", "CAR4", "CT5-D2"]),
+            "x",
+            4,
+        );
         assert_eq!(e.sua_num("IT"), 1.95);
         assert_eq!(e.sua_num("CAR"), 4.0);
         // Both a decimal CT and a doored CT resolve to the numeric transport value.
@@ -576,12 +638,16 @@ mod tests {
         // C3M2/C3BSM2 carry a value, but MegaMek's enum KEY is C3M/C3BSM (hasSUA true), so we key
         // on the base code (internal digit preserved) rather than burying the whole token — the
         // converter's AC3 network test reads hasSUA(C3M)/hasSUA(C3BSM).
-        let e = as_element(&stats("BM", "6\"", &["C3M2", "C3BSM2", "C3I", "C3S"]), "x", 4);
+        let e = as_element(
+            &stats("BM", "6\"", &["C3M2", "C3BSM2", "C3I", "C3S"]),
+            "x",
+            4,
+        );
         assert_eq!(e.suas.get("C3M"), Some(&SuaVal::Num(2.0)));
         assert_eq!(e.suas.get("C3BSM"), Some(&SuaVal::Num(2.0)));
         assert!(e.has_sua("C3M"));
         assert!(!e.has_sua("C3M2")); // NOT keyed on the whole token
-        // value-1 forms stay presence flags:
+                                     // value-1 forms stay presence flags:
         assert_eq!(e.suas.get("C3I"), Some(&SuaVal::Flag));
         assert_eq!(e.suas.get("C3S"), Some(&SuaVal::Flag));
     }
@@ -614,7 +680,15 @@ mod tests {
 
     #[test]
     fn flags_and_skipped_locals() {
-        let e = as_element(&stats("BM", "6\"", &["ENE", "CASE", "STL", "CF:6", "IMMOBILE", "I-TSM"]), "x", 4);
+        let e = as_element(
+            &stats(
+                "BM",
+                "6\"",
+                &["ENE", "CASE", "STL", "CF:6", "IMMOBILE", "I-TSM"],
+            ),
+            "x",
+            4,
+        );
         assert_eq!(e.suas.get("ENE"), Some(&SuaVal::Flag));
         assert_eq!(e.suas.get("CASE"), Some(&SuaVal::Flag));
         assert_eq!(e.suas.get("STL"), Some(&SuaVal::Flag));
@@ -639,11 +713,20 @@ mod tests {
     #[test]
     fn aerodyne_support_vehicle_routes_to_aerospace() {
         // isAerospaceSV(): a bare SV code is ground, but an aerodyne SV is a fixed-wing aircraft → As.
-        assert_eq!(as_element(&stats("SV", "5a", &[]), "Fixed-Wing", 4).sbf_type, SbfElementType::As);
+        assert_eq!(
+            as_element(&stats("SV", "5a", &[]), "Fixed-Wing", 4).sbf_type,
+            SbfElementType::As
+        );
         // A ground Support Vehicle (hover/tracked/wheeled/…) stays V.
-        assert_eq!(as_element(&stats("SV", "22\"h", &[]), "Truck", 4).sbf_type, SbfElementType::V);
+        assert_eq!(
+            as_element(&stats("SV", "22\"h", &[]), "Truck", 4).sbf_type,
+            SbfElementType::V
+        );
         // Non-SV aerodyne units (fighters) are unaffected by the refinement.
-        assert_eq!(as_element(&stats("AF", "10a", &[]), "ASF", 4).sbf_type, SbfElementType::As);
+        assert_eq!(
+            as_element(&stats("AF", "10a", &[]), "ASF", 4).sbf_type,
+            SbfElementType::As
+        );
     }
 
     #[test]

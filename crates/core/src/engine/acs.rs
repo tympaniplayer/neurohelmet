@@ -1145,13 +1145,14 @@ pub struct AcsCombatDropResult {
 /// Success (roll − TN 6). Better MoS = a tighter drop pattern. The `>12` boundary (folio) is treated
 /// as `>12`; a MoS of exactly 12 folds into the next band (a book gap).
 pub fn acs_combat_drop_result(mos: i64) -> AcsCombatDropResult {
-    let mk = |drop_value, drop_damage_pct, combat_roll_mod, damage_mod, result| AcsCombatDropResult {
-        drop_value,
-        drop_damage_pct,
-        combat_roll_mod,
-        damage_mod,
-        result,
-    };
+    let mk =
+        |drop_value, drop_damage_pct, combat_roll_mod, damage_mod, result| AcsCombatDropResult {
+            drop_value,
+            drop_damage_pct,
+            combat_roll_mod,
+            damage_mod,
+            result,
+        };
     if mos > 12 {
         mk(5, 0, -4, 0.0, "Parade-ground precision")
     } else if mos >= 9 {
@@ -1494,7 +1495,11 @@ mod tests {
             acm: SbfAcm::Off,
         };
         assert_eq!(
-            acs_aero_to_hit(&AcsAeroToHitCtx { range: SbfRange::Long, capital: Some(cap), ..base }),
+            acs_aero_to_hit(&AcsAeroToHitCtx {
+                range: SbfRange::Long,
+                capital: Some(cap),
+                ..base
+            }),
             7
         );
         // ACS-specific rows on the base 4: robotic +1, attacked-by-aero +2, target-recon +3,

@@ -103,7 +103,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("game.log.jsonl");
 
-        assert!(read_from(&path).unwrap().is_empty(), "missing log reads empty");
+        assert!(
+            read_from(&path).unwrap().is_empty(),
+            "missing log reads empty"
+        );
 
         let e1 = LogEntry {
             turn: 1,

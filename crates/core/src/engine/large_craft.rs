@@ -172,9 +172,19 @@ pub fn arc_class_display(card: &ArcCard, arc: Arc, class: WeaponClass) -> Option
     }
     fn band(s: &str) -> &str {
         let t = s.trim();
-        if t.is_empty() { "0" } else { t }
+        if t.is_empty() {
+            "0"
+        } else {
+            t
+        }
     }
-    Some(format!("{}/{}/{}/{}", band(&ad.s), band(&ad.m), band(&ad.l), band(&ad.e)))
+    Some(format!(
+        "{}/{}/{}/{}",
+        band(&ad.s),
+        band(&ad.m),
+        band(&ad.l),
+        band(&ad.e)
+    ))
 }
 
 /// The non-empty printed class lines for an arc, in class order — for card rendering.
@@ -190,7 +200,12 @@ mod tests {
     use super::*;
 
     fn dmg(s: &str, m: &str, l: &str, e: &str) -> ArcDamage {
-        ArcDamage { s: s.into(), m: m.into(), l: l.into(), e: e.into() }
+        ArcDamage {
+            s: s.into(),
+            m: m.into(),
+            l: l.into(),
+            e: e.into(),
+        }
     }
 
     /// A Union-like spheroid DropShip: Nose STD + MSL, an empty Left arc, a light Aft.
@@ -202,7 +217,10 @@ mod tests {
                 specials: vec!["PNT1".into()],
                 ..Default::default()
             },
-            rear: FiringArc { std: dmg("1", "0", "0", "0"), ..Default::default() },
+            rear: FiringArc {
+                std: dmg("1", "0", "0", "0"),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -211,17 +229,33 @@ mod tests {
     fn arc_damage_parses_and_preserves_minimal() {
         let c = union();
         let front_std = arc_damage(&c, Arc::Nose, WeaponClass::Std);
-        assert_eq!((front_std.s, front_std.m, front_std.l), (4.0, 3.0, Some(2.0)));
+        assert_eq!(
+            (front_std.s, front_std.m, front_std.l),
+            (4.0, 3.0, Some(2.0))
+        );
         assert_eq!(front_std.e, Some(0.5), "0* → minimal 0.5");
-        assert!(is_zero(&arc_damage(&c, Arc::Nose, WeaponClass::Cap)), "absent class = all zero");
+        assert!(
+            is_zero(&arc_damage(&c, Arc::Nose, WeaponClass::Cap)),
+            "absent class = all zero"
+        );
     }
 
     #[test]
     fn arc_lines_skips_empty_classes() {
         let c = union();
-        let lines: Vec<WeaponClass> = arc_lines(&c, Arc::Nose).into_iter().map(|(w, _)| w).collect();
-        assert_eq!(lines, vec![WeaponClass::Std, WeaponClass::Msl], "Nose carries STD + MSL only");
-        assert!(arc_lines(&c, Arc::Left).is_empty(), "an empty arc has no lines");
+        let lines: Vec<WeaponClass> = arc_lines(&c, Arc::Nose)
+            .into_iter()
+            .map(|(w, _)| w)
+            .collect();
+        assert_eq!(
+            lines,
+            vec![WeaponClass::Std, WeaponClass::Msl],
+            "Nose carries STD + MSL only"
+        );
+        assert!(
+            arc_lines(&c, Arc::Left).is_empty(),
+            "an empty arc has no lines"
+        );
     }
 
     #[test]
@@ -249,19 +283,36 @@ mod tests {
         assert_eq!(WeaponClass::ScAp.bf_vs_small_mod(true), 3);
         assert_eq!(WeaponClass::Msl.bf_vs_small_mod(true), 0);
         assert_eq!(WeaponClass::Std.bf_vs_small_mod(true), 0);
-        assert_eq!(WeaponClass::Cap.bf_vs_small_mod(false), 0, "waived vs a large / ground target");
+        assert_eq!(
+            WeaponClass::Cap.bf_vs_small_mod(false),
+            0,
+            "waived vs a large / ground target"
+        );
         assert!(WeaponClass::Msl.is_capital() && !WeaponClass::Std.is_capital());
         assert!(threshold_triggered(5.0, 5));
         assert!(!threshold_triggered(4.0, 5));
-        assert!(!threshold_triggered(0.5, 1), "minimal never meets a threshold");
-        assert!(!threshold_triggered(10.0, 0), "no threshold → never triggers");
+        assert!(
+            !threshold_triggered(0.5, 1),
+            "minimal never meets a threshold"
+        );
+        assert!(
+            !threshold_triggered(10.0, 0),
+            "no threshold → never triggers"
+        );
     }
 
     #[test]
     fn arc_display_preserves_printed_strings() {
         let c = union();
-        assert_eq!(arc_class_display(&c, Arc::Nose, WeaponClass::Std).as_deref(), Some("4/3/2/0*"));
-        assert_eq!(arc_class_display(&c, Arc::Nose, WeaponClass::Cap), None, "empty class → None");
+        assert_eq!(
+            arc_class_display(&c, Arc::Nose, WeaponClass::Std).as_deref(),
+            Some("4/3/2/0*")
+        );
+        assert_eq!(
+            arc_class_display(&c, Arc::Nose, WeaponClass::Cap),
+            None,
+            "empty class → None"
+        );
         assert_eq!(
             arc_display_lines(&c, Arc::Nose),
             vec![
