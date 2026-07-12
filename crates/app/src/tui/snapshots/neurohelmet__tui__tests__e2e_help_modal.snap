@@ -19,14 +19,14 @@ expression: render(&mut app)
 ║Equipment                                         m / M    motive damage (vehicles) / repair     ║│
 ║  Space    fire weapon (marks ✓) / spend ammo     L        log snapshot (game log)               ║│
 ║  u        un-fire / refill                       z        undo                                  ║│
-║                                                  , / .    previous / next mech  ([ / ] also)    ║┘
-║Pilot / force                                     a / D    add / delete mech                     ║┐
-║  g        edit gunnery / piloting skills         S        sessions browser                      ║│
-║  b        set force point limit (BV)             ^t       display picker (theme + layout)       ║│
-║  p / P    pilot / crew hit / heal                q        quit                                  ║│
+║  J        toggle state: jam UAC/RAC · MASC/ECM    , / .    previous / next mech  ([ / ] also)   ║┘
+║                                                  a / D    add / delete mech                     ║┐
+║Pilot / force                                     S        sessions browser                      ║│
+║  g        edit gunnery / piloting skills         ^t       display picker (theme + layout)       ║│
+║  b        set force point limit (BV)             q        quit                                  ║│
+║  p / P    pilot / crew hit / heal                                                               ║│
 ║  press any key to close                                                                         ║│
 ╚═════════════════════════════════════════════════════════════════════════════════════════════════╝│
-            │I 10/10   │            │I 10/10   │            │                                      │
             │██████████│            │██████████│            │                                      │
             │          │            │          │            │                                      │
             │          │            │          │            │                                      │

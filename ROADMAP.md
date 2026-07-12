@@ -161,20 +161,29 @@ panel. Remaining work:
 - **Equipment is display-only:** active effects are not modeled (ECM range, jump MP, MASC/Supercharger,
   and similar).
 
-### Equipment active-state toggles
+### Equipment active-state toggles ✅ (2026-07-12)
 
-Equipment is currently display-only. This adds manual toggles on equipment/weapon rows for the states
-that matter at the table, modeled on Mekbay's per-equipment state handlers (UAC jamming, MASC, ECM,
-stealth, BAP, C3).
+Manual per-row toggles for the equipment states that matter at the table, on the `J` key in the Classic
+tracker (modeled on Mekbay's per-equipment state handlers). What shipped:
 
-- **Scope to ship:** UAC/RAC jam (amber `JAM` marker; refuses to fire until cleared — the
-  fired/max-shots plumbing already exists), MASC/Supercharger engaged (the cases with a real effect:
-  run ×2, composing into the existing `movement()`), and display-only ECM / Stealth on-off. Markers
-  plus the few MP/heat effects; everything else remains a tag.
-- **Out of scope here:** C3 networks, which are a force-level construct handled under the large
-  force-management axis.
+- **UAC/RAC jam** — `J` on an Ultra/Rotary-AC row marks it jammed (amber `JAM`, `WeaponMount::can_jam`);
+  a jammed weapon reads amber and refuses to fire (`primary_action` guards on `TrackedMech::is_jammed`)
+  until cleared by hand. The jam persists across turns (clearing a UAC/RAC jam costs the unit a turn) —
+  jam rolls stay manual, per the manual-dice philosophy.
+- **MASC / Supercharger engaged** — `J` on the gear row engages the booster; `TrackedMech::movement`
+  then lifts Running MP from the baked base (⌈walk×1.5⌉) to ⌈walk×2⌉ (one booster) or ⌈walk×2.5⌉ (both),
+  recomputed from the heat/crit-reduced walk, via `run_from_walk` (MegaMek `MPBoosters`). The MOVE panel
+  flags it `MASC↑` / `SC↑`.
+- **ECM / Stealth on-off** — `J` flips a display-only marker (`● ON`, accent) for ECM suites and stealth
+  systems (Stealth Armor, Null/Void Signature, Chameleon LPS).
 
-Size: small.
+Detection is name-based off the baked equipment list (`TrackedMech::has_masc/has_supercharger/has_ecm/
+has_stealth`); a toggle on gear the unit doesn't mount is inert. New `TrackedMech` fields (`jammed`,
+`masc_engaged`, `supercharger_engaged`, `ecm_active`, `stealth_active`) are `#[serde(default)]`, so no
+bundle bump and old sessions load unchanged.
+
+**Out of scope (unchanged):** C3 networks (a force-level construct under the large force-management
+axis); BAP and other tags stay display-only.
 
 ### Dice-reference popups: non-'Mech hit location and additional tables
 
@@ -555,9 +564,8 @@ A set of optional tracker refinements:
   action currently covers the same need, so this remains optional.
 - **"Fire all" volley (Classic mode):** a single key fires every unfired, ready weapon at once — summing
   heat and spending ammo — cleared at end of turn. Distinct from the Alpha Strike game mode.
-- **UAC/RAC jam marker:** a manual toggle on a weapon row to mark it jammed (rendered amber / `JAM`),
-  refusing to fire until cleared, matching the manual-dice philosophy for jam rolls. The existing
-  `fired` / `max_shots` plumbing already supports this.
+- **UAC/RAC jam marker:** ✅ shipped as part of [Equipment active-state toggles](#equipment-active-state-toggles-2026-07-12)
+  (the `J` key).
 - **Canvas silhouette doll:** an alternate `view.rs` rendering using ratatui `Canvas` (Braille) as a
   toggle; cosmetic, aimed at legibility on small screens.
 - **Status-line persistence:** keep the last status message visible slightly longer (it is currently

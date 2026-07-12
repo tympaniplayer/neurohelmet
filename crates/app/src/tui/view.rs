@@ -893,6 +893,7 @@ fn help_modal_lines() -> Vec<Line<'static>> {
         Header("Equipment"),
         Row("Space", "fire weapon (marks ✓) / spend ammo"),
         Row("u", "un-fire / refill"),
+        Row("J", "toggle state: jam UAC/RAC · MASC/ECM"),
         Blank,
         Header("Pilot / force"),
         Row("g", "edit gunnery / piloting skills"),
@@ -5953,6 +5954,12 @@ fn draw_move(f: &mut Frame, area: Rect, tm: &TrackedMech) {
         }
         if let Some(note) = mv.note {
             spans.push(Span::styled(format!("  {note}"), Style::default().fg(theme().danger)));
+        } else if let Some(boost) = tm.mp_boost_label() {
+            // Run boosted by an engaged MASC / Supercharger.
+            spans.push(Span::styled(
+                format!("  {boost}↑"),
+                Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+            ));
         } else if reduced {
             spans.push(Span::styled(
                 if vehicle { "  reduced" } else { "  heat" },
@@ -6442,8 +6449,13 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 // cursor ▶ so it shows even on the selected row); a weapon whose crit slot is
                 // destroyed reads red (still fireable — damage is simultaneous) and takes priority.
                 let fired = tm.is_fired(*id);
+                let jammed = tm.is_jammed(*id);
+                // A destroyed weapon reads red and wins; a jammed UAC/RAC reads amber; then fired
+                // green, else dim.
                 let base = Style::default().fg(if tm.is_weapon_disabled(w) {
                     theme().danger
+                } else if jammed {
+                    theme().warning
                 } else if fired {
                     theme().good
                 } else {
@@ -6531,6 +6543,12 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
                 }
                 spans.push(th);
                 spans.push(fired_mark);
+                if jammed {
+                    spans.push(Span::styled(
+                        "  JAM",
+                        Style::default().fg(theme().warning).add_modifier(Modifier::BOLD),
+                    ));
+                }
                 spans
             }
             EquipRow::Ammo(id) => {
@@ -6543,12 +6561,29 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
             }
             EquipRow::Equip(idx) => {
                 let e = &tm.spec.equipment[*idx];
-                // Destroyed-by-crit equipment shows red, like a knocked-out weapon.
-                let col = if tm.is_equipment_disabled(e) { theme().danger } else { theme().dim };
-                vec![Span::styled(
+                // Stateful gear (MASC/Supercharger/ECM/Stealth) that's currently engaged reads accent
+                // and carries an ON marker; a destroyed-by-crit item shows red, like a dead weapon.
+                let toggle = tm.equip_toggle(e);
+                let col = if tm.is_equipment_disabled(e) {
+                    theme().danger
+                } else if matches!(toggle, Some((_, true))) {
+                    theme().accent
+                } else {
+                    theme().dim
+                };
+                let mut spans = vec![Span::styled(
                     format!("{marker}{:<18} {}", truncate(&e.name, 18), e.location.code()),
                     Style::default().fg(col),
-                )]
+                )];
+                // Only annotate the *active* state (an engaged booster / live ECM-Stealth); an
+                // off toggle reads as plain dim gear, like an unjammed weapon.
+                if matches!(toggle, Some((_, true))) {
+                    spans.push(Span::styled(
+                        "  ● ON",
+                        Style::default().fg(theme().accent).add_modifier(Modifier::BOLD),
+                    ));
+                }
+                spans
             }
         };
         let style = if selected {

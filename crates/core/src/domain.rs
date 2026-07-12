@@ -414,6 +414,15 @@ impl WeaponMount {
         }
     }
 
+    /// Whether this weapon can jam — Ultra and Rotary autocannons, keyed off the same `ammo_key`
+    /// prefix as [`Self::max_shots`]. Jams are rolled by hand (a UAC jams on a to-hit roll of 2, a
+    /// RAC on 2 while multi-firing); this only gates whether the manual `JAM` toggle is offered.
+    pub fn can_jam(&self) -> bool {
+        self.ammo_key
+            .as_deref()
+            .is_some_and(|k| k.starts_with("AC_ULTRA") || k.starts_with("AC_ROTARY"))
+    }
+
     /// The ammo-type prefix of the [`Self::ammo_key`] (`"LRM:20"` → `"LRM"`), or `None` for an
     /// energy weapon with no ammo key.
     pub fn ammo_type(&self) -> Option<&str> {

@@ -296,6 +296,25 @@ pub struct TrackedMech {
     /// end-turn. Empty for non-BA / old sessions.
     #[serde(default)]
     pub suit_fired: BTreeMap<u32, BTreeSet<usize>>,
+    /// Weapons the player has marked **jammed** (Ultra/Rotary autocannons), by [`WeaponMount::id`].
+    /// A jammed weapon refuses to fire until cleared by hand (the `J` toggle); jam rolls stay
+    /// manual, per the manual-dice philosophy. Persists across turns — a jam isn't auto-cleared at
+    /// end of turn (clearing a UAC/RAC jam costs the unit its next turn). Defaulted for old sessions.
+    #[serde(default)]
+    pub jammed: BTreeSet<u32>,
+    /// Equipment active-state toggles — manual, and persisting across turns. MASC / Supercharger
+    /// *engaged* boost Running MP (see [`Self::movement`]); ECM / Stealth are display-only markers
+    /// at the table. Each is meaningful only when the unit actually mounts the corresponding gear
+    /// ([`Self::has_masc`] / [`Self::has_supercharger`] / [`Self::has_ecm`] / [`Self::has_stealth`]),
+    /// so toggling one the unit doesn't carry is a no-op. Defaulted for old sessions.
+    #[serde(default)]
+    pub masc_engaged: bool,
+    #[serde(default)]
+    pub supercharger_engaged: bool,
+    #[serde(default)]
+    pub ecm_active: bool,
+    #[serde(default)]
+    pub stealth_active: bool,
     // ----- Combat-vehicle live state (used only when the spec is a vehicle) -----
     /// Motive System Damage Table results, in the order rolled. Each [`MotiveLevel`] reduces Cruise
     /// MP and adds a Steering penalty (see [`Self::motive_cruise`] / [`Self::motive_steering`]).
@@ -654,6 +673,11 @@ impl TrackedMech {
             altitude: 0,
             fired: BTreeMap::new(),
             suit_fired: BTreeMap::new(),
+            jammed: BTreeSet::new(),
+            masc_engaged: false,
+            supercharger_engaged: false,
+            ecm_active: false,
+            stealth_active: false,
             motive_damage: Vec::new(),
             crew_hits: 0,
             vehicle_crits: BTreeSet::new(),
@@ -1849,6 +1873,125 @@ impl TrackedMech {
         self.mount_disabled(e.location, &e.name)
     }
 
+    // ----- Equipment active-state toggles (UAC/RAC jam, MASC/Supercharger, ECM, Stealth) -----
+
+    /// Whether a weapon is currently marked jammed (see [`Self::jammed`]).
+    pub fn is_jammed(&self, weapon_id: u32) -> bool {
+        self.jammed.contains(&weapon_id)
+    }
+
+    /// Toggle a jammable weapon's `JAM` mark on/off; returns the new state. No-op for a weapon that
+    /// can't jam (returns its current — always `false` — state).
+    pub fn toggle_jam(&mut self, weapon_id: u32) -> bool {
+        if !self.spec.weapons.iter().any(|w| w.id == weapon_id && w.can_jam()) {
+            return false;
+        }
+        if self.jammed.remove(&weapon_id) {
+            false
+        } else {
+            self.jammed.insert(weapon_id);
+            true
+        }
+    }
+
+    /// Whether the unit mounts a named piece of gear (case-insensitive substring on the equipment
+    /// list). Destroyed gear no longer counts.
+    fn has_gear(&self, matches: impl Fn(&str) -> bool) -> bool {
+        self.spec.equipment.iter().any(|e| matches(&e.name) && !self.is_equipment_disabled(e))
+    }
+
+    /// Whether the unit carries a (working) MASC.
+    pub fn has_masc(&self) -> bool {
+        self.has_gear(|n| n.eq_ignore_ascii_case("MASC"))
+    }
+
+    /// Whether the unit carries a (working) Supercharger.
+    pub fn has_supercharger(&self) -> bool {
+        self.has_gear(|n| n.eq_ignore_ascii_case("Supercharger"))
+    }
+
+    /// Whether the unit carries a (working) ECM suite (Guardian / Angel / Single-Hex / …).
+    pub fn has_ecm(&self) -> bool {
+        self.has_gear(|n| n.to_ascii_uppercase().contains("ECM"))
+    }
+
+    /// Whether the unit carries a (working) stealth system — Stealth Armor, Null/Void Signature
+    /// System, or a Chameleon LPS.
+    pub fn has_stealth(&self) -> bool {
+        self.has_gear(|n| {
+            let l = n.to_ascii_lowercase();
+            l.contains("stealth")
+                || l.contains("null signature")
+                || l.contains("void signature")
+                || l.contains("chameleon")
+        })
+    }
+
+    /// The manual toggle carried by a stateful piece of gear (MASC / Supercharger / ECM / Stealth),
+    /// as `(short label, engaged?)`, or `None` for gear with no toggle. Used to render the on/off
+    /// marker; the label matches [`Self::mp_boost_label`]'s abbreviations (`SC` for Supercharger).
+    pub fn equip_toggle(&self, e: &Equipment) -> Option<(&'static str, bool)> {
+        let l = e.name.to_ascii_lowercase();
+        if e.name.eq_ignore_ascii_case("MASC") && self.has_masc() {
+            Some(("MASC", self.masc_engaged))
+        } else if e.name.eq_ignore_ascii_case("Supercharger") && self.has_supercharger() {
+            Some(("SC", self.supercharger_engaged))
+        } else if l.contains("ecm") && self.has_ecm() {
+            Some(("ECM", self.ecm_active))
+        } else if (l.contains("stealth")
+            || l.contains("null signature")
+            || l.contains("void signature")
+            || l.contains("chameleon"))
+            && self.has_stealth()
+        {
+            Some(("Stealth", self.stealth_active))
+        } else {
+            None
+        }
+    }
+
+    /// Whether the run-MP boost applies — an MP booster mounted and engaged on a ground 'Mech (the
+    /// boost lives in the 'Mech path of [`Self::movement`]; vehicles/aero/infantry ignore it, so it
+    /// mustn't show there either).
+    pub fn mp_boost_active(&self) -> bool {
+        let s = &self.spec;
+        if s.is_vehicle() || s.is_infantry() || s.is_aerospace() {
+            return false;
+        }
+        (self.masc_engaged && self.has_masc()) || (self.supercharger_engaged && self.has_supercharger())
+    }
+
+    /// A short label for the engaged, mounted MP booster(s): `"MASC"`, `"SC"`, or `"MASC+SC"`.
+    /// `None` when nothing eligible is engaged.
+    pub fn mp_boost_label(&self) -> Option<&'static str> {
+        let s = &self.spec;
+        if s.is_vehicle() || s.is_infantry() || s.is_aerospace() {
+            return None;
+        }
+        let masc = self.masc_engaged && self.has_masc();
+        let sc = self.supercharger_engaged && self.has_supercharger();
+        match (masc, sc) {
+            (true, true) => Some("MASC+SC"),
+            (true, false) => Some("MASC"),
+            (false, true) => Some("SC"),
+            (false, false) => None,
+        }
+    }
+
+    /// Running MP given `walk`, applying any engaged MP booster (MegaMek `MPBoosters`): base run is
+    /// ⌈walk×1.5⌉, one booster ⌈walk×2⌉ (exact), both ⌈walk×2.5⌉.
+    fn run_from_walk(&self, walk: u8) -> u8 {
+        let w = walk as u16;
+        let masc = self.masc_engaged && self.has_masc();
+        let sc = self.supercharger_engaged && self.has_supercharger();
+        let run = match (masc, sc) {
+            (true, true) => (w * 5).div_ceil(2), // ×2.5
+            (true, false) | (false, true) => w * 2,
+            (false, false) => (w * 3).div_ceil(2), // ×1.5
+        };
+        run.min(u8::MAX as u16) as u8
+    }
+
     /// Whether any destroyed crit slot at `loc` matches `name` (a mounted item is dead once one
     /// of its slots is hit).
     fn mount_disabled(&self, loc: Location, name: &str) -> bool {
@@ -2251,7 +2394,10 @@ impl TrackedMech {
         // Quad/tripod with a leg gone: treat as a flat -1 per missing leg (an approximation).
         let leg_loss = if biped { 0 } else { legs_gone as u8 };
         if heat_pen == 0 && actuator == 0 && hips == 0 && leg_loss == 0 {
-            return Movement { walk: s.walk, run: s.run, jump: s.jump, immobile: false, note: None };
+            // Undamaged: keep the baked run unless an MP booster is engaged, which lifts it above
+            // the sheet's base (⌈walk×1.5⌉) value.
+            let run = if self.mp_boost_active() { self.run_from_walk(s.walk) } else { s.run };
+            return Movement { walk: s.walk, run, jump: s.jump, immobile: false, note: None };
         }
         // Hip crits: a single hip halves Walking MP (round up); two or more zero it out
         // (MegaMek `Mech.getWalkMP` / TW). Repeated halving would wrongly leave a 'Mech mobile.
@@ -2262,7 +2408,8 @@ impl TrackedMech {
             _ => 0,
         };
         let w = w.saturating_sub(heat_pen);
-        let run = if w == 0 { 0 } else { ((w as u16 * 3).div_ceil(2)) as u8 };
+        // Recompute run from the reduced walk, folding in any engaged MP booster (⌈w×2⌉ / ⌈w×2.5⌉).
+        let run = if w == 0 { 0 } else { self.run_from_walk(w) };
         // 0 walking MP from heat/crits isn't "immobile" (the 'Mech is still functional) — only
         // shutdown / pilot-out / lost legs set that banner.
         Movement { walk: w, run, jump: s.jump, immobile: false, note: None }
@@ -6054,6 +6201,94 @@ mod tests {
         assert!(!tm.is_equipment_disabled(&ecm));
         tm.toggle_crit(Location::CenterTorso, 5); // destroy the ECM slot
         assert!(tm.is_equipment_disabled(&ecm));
+    }
+
+    #[test]
+    fn masc_and_supercharger_boost_run() {
+        let mut m = mover(); // walk 6, baked run 9 (base ×1.5)
+        m.equipment.push(Equipment { name: "MASC".into(), location: Location::RightTorso });
+        m.equipment.push(Equipment { name: "Supercharger".into(), location: Location::LeftTorso });
+        let mut tm = TrackedMech::new(m);
+        assert!(tm.has_masc() && tm.has_supercharger());
+        assert_eq!(tm.movement().run, 9, "no booster engaged -> baked base run");
+
+        tm.masc_engaged = true;
+        assert_eq!(tm.movement().run, 12, "MASC -> walk ×2");
+        assert_eq!(tm.mp_boost_label(), Some("MASC"));
+
+        tm.supercharger_engaged = true;
+        assert_eq!(tm.movement().run, 15, "MASC+SC -> ceil(walk ×2.5)");
+        assert_eq!(tm.mp_boost_label(), Some("MASC+SC"));
+
+        tm.masc_engaged = false;
+        assert_eq!(tm.movement().run, 12, "SC alone -> walk ×2");
+        assert_eq!(tm.mp_boost_label(), Some("SC"));
+
+        // The boost composes with a heat cut: walk 6 -> 5 at heat 5, run = 5 ×2 = 10.
+        tm.adjust_heat(5);
+        assert_eq!(tm.movement().walk, 5);
+        assert_eq!(tm.movement().run, 10, "SC boost recomputed from the reduced walk");
+    }
+
+    #[test]
+    fn masc_engaged_without_gear_is_inert() {
+        let mut tm = TrackedMech::new(mover());
+        tm.masc_engaged = true; // no MASC mounted
+        assert!(!tm.has_masc() && !tm.mp_boost_active());
+        assert_eq!(tm.movement().run, 9, "engaged flag alone does nothing without the gear");
+        assert_eq!(tm.mp_boost_label(), None);
+    }
+
+    #[test]
+    fn jam_toggle_only_on_autocannons() {
+        let mut spec = atlas();
+        spec.weapons.push(WeaponMount {
+            id: 100,
+            name: "Ultra AC/20".into(),
+            location: Location::RightTorso,
+            rear: false,
+            heat: 8,
+            damage: "20".into(),
+            range: "3/6/9".into(),
+            crit_slots: 10,
+            ammo_key: Some("AC_ULTRA:20".into()),
+            to_hit: 0,
+            tc_eligible: false,
+            count: 1,
+        });
+        spec.weapons.push(WeaponMount {
+            id: 101,
+            name: "Medium Laser".into(),
+            location: Location::RightArm,
+            rear: false,
+            heat: 3,
+            damage: "5".into(),
+            range: "3/6/9".into(),
+            crit_slots: 1,
+            ammo_key: None,
+            to_hit: 0,
+            tc_eligible: false,
+            count: 1,
+        });
+        let mut tm = TrackedMech::new(spec);
+        assert!(!tm.is_jammed(100));
+        assert!(tm.toggle_jam(100), "UAC can jam");
+        assert!(tm.is_jammed(100));
+        assert!(!tm.toggle_jam(100), "toggled back off");
+        assert!(!tm.is_jammed(100));
+        assert!(!tm.toggle_jam(101), "a laser can't jam");
+        assert!(!tm.is_jammed(101));
+    }
+
+    #[test]
+    fn stealth_and_ecm_detection() {
+        let mut m = atlas();
+        m.equipment.push(Equipment { name: "Null Signature System".into(), location: Location::CenterTorso });
+        m.equipment.push(Equipment { name: "Angel ECM Suite".into(), location: Location::LeftTorso });
+        let tm = TrackedMech::new(m);
+        assert!(tm.has_stealth());
+        assert!(tm.has_ecm());
+        assert!(!tm.has_masc());
     }
 
     #[test]

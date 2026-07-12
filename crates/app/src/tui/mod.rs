@@ -2310,6 +2310,53 @@ mod tests {
     }
 
     #[test]
+    fn e2e_equipment_active_states() {
+        // A 'Mech with a jammable Ultra AC plus a MASC and an ECM suite. Drives the `J` toggle:
+        // jam the UAC and engage the MASC, then check the JAM / ● ON markers and the boosted run.
+        let mut m = sample_mech();
+        m.walk = 3;
+        m.run = 5; // base ⌈3×1.5⌉
+        m.weapons = vec![WeaponMount {
+            id: 1,
+            name: "Ultra AC/20".into(),
+            location: Location::RightTorso,
+            rear: false,
+            heat: 8,
+            damage: "20".into(),
+            range: "3/6/9".into(),
+            crit_slots: 10,
+            ammo_key: Some("AC_ULTRA:20".into()),
+            to_hit: 0,
+            tc_eligible: false,
+            count: 1,
+        }];
+        m.ammo = vec![];
+        m.equipment = vec![
+            Equipment { name: "MASC".into(), location: Location::CenterTorso },
+            Equipment { name: "ECM Suite (Guardian)".into(), location: Location::LeftTorso },
+        ];
+
+        let mut app = app_with_mech(m);
+        press(&mut app, KeyCode::Tab); // focus the equipment panel (row 0 = the Ultra AC)
+        press(&mut app, KeyCode::Char('J')); // jam the UAC
+        press(&mut app, KeyCode::Down); // row 1 = MASC
+        press(&mut app, KeyCode::Char('J')); // engage the MASC
+
+        let screen = render(&mut app);
+        assert!(screen.contains("JAM"), "jammed UAC shows a JAM marker");
+        assert!(screen.contains("● ON"), "engaged MASC shows an ON marker");
+        assert!(screen.contains("Run 6"), "MASC lifts run to walk ×2 (3 → 6)");
+        assert!(screen.contains("MASC↑"), "MOVE panel flags the booster");
+
+        // Firing a jammed weapon is refused.
+        press(&mut app, KeyCode::Up); // back to the UAC row
+        press(&mut app, KeyCode::Char(' '));
+        assert!(app.status.contains("JAMMED"), "jammed weapon refuses to fire: {}", app.status);
+
+        insta::assert_snapshot!(screen);
+    }
+
+    #[test]
     fn e2e_gator_to_hit_target() {
         use super::app::Modal;
         let mut app = app_with_one_mech();

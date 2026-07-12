@@ -2338,6 +2338,7 @@ impl App {
             }
             KeyCode::Char(' ') | KeyCode::Enter => self.primary_action(),
             KeyCode::Char('u') => self.secondary_action(),
+            KeyCode::Char('J') => self.toggle_equip_state(),
             KeyCode::Char('c') => self.open_crit(),
             KeyCode::Char('r') => self.open_dice(),
             // p/P: pilot hits for 'Mechs, crew hits for vehicles. m/M: vehicle motive hits.
@@ -4722,6 +4723,71 @@ impl App {
         }
     }
 
+    /// `J`: toggle the selected equipment-panel row's manual active state — jam/unjam a Ultra/Rotary
+    /// autocannon, engage/disengage a MASC or Supercharger (which boosts Running MP), or flip the
+    /// display-only ECM / Stealth marker. A no-op on any other row. Only meaningful with the
+    /// equipment panel focused.
+    fn toggle_equip_state(&mut self) {
+        if self.focus != Focus::Equipment {
+            return;
+        }
+        let Some(row) = self.equip_rows().get(self.equip_sel).copied() else { return };
+        let Some(tm) = self.session.active_mech_mut() else { return };
+        match row {
+            EquipRow::Weapon(id) => {
+                let name = tm.spec.weapons.iter().find(|w| w.id == id).map(|w| w.name.clone());
+                let can_jam = tm.spec.weapons.iter().any(|w| w.id == id && w.can_jam());
+                if !can_jam {
+                    self.status = "Only Ultra/Rotary ACs can jam".into();
+                    return;
+                }
+                let name = name.unwrap_or_default();
+                self.status = if tm.toggle_jam(id) {
+                    format!("{name} JAMMED")
+                } else {
+                    format!("{name} jam cleared")
+                };
+                self.dirty = true;
+            }
+            EquipRow::Equip(idx) => {
+                let Some(e) = tm.spec.equipment.get(idx).cloned() else { return };
+                // Classify with the same core helper the renderer uses, then flip the right field.
+                let Some((label, _)) = tm.equip_toggle(&e) else {
+                    self.status = format!("{} — no toggle-able state", e.name);
+                    return;
+                };
+                let now = match label {
+                    "MASC" => {
+                        tm.masc_engaged = !tm.masc_engaged;
+                        tm.masc_engaged
+                    }
+                    "SC" => {
+                        tm.supercharger_engaged = !tm.supercharger_engaged;
+                        tm.supercharger_engaged
+                    }
+                    "ECM" => {
+                        tm.ecm_active = !tm.ecm_active;
+                        tm.ecm_active
+                    }
+                    _ => {
+                        tm.stealth_active = !tm.stealth_active;
+                        tm.stealth_active
+                    }
+                };
+                // MASC/Supercharger "engage"; ECM/Stealth are "on/off" markers.
+                let (full, verb) = match label {
+                    "MASC" => ("MASC", if now { "engaged" } else { "disengaged" }),
+                    "SC" => ("Supercharger", if now { "engaged" } else { "disengaged" }),
+                    "ECM" => ("ECM", if now { "on" } else { "off" }),
+                    other => (other, if now { "on" } else { "off" }),
+                };
+                self.status = format!("{full} {verb}");
+                self.dirty = true;
+            }
+            EquipRow::Ammo(_) => self.status = "No toggle-able state".into(),
+        }
+    }
+
     /// The weapon id of the currently selected equipment row, if that row is a weapon.
     pub fn selected_weapon_id(&self) -> Option<u32> {
         match self.equip_rows().get(self.equip_sel) {
@@ -5019,7 +5085,9 @@ impl App {
                             } else {
                                 tm.shots_fired(id) >= max
                             };
-                            if blocked {
+                            if tm.is_jammed(id) {
+                                self.status = "JAMMED — press J to clear".into();
+                            } else if blocked {
                                 self.status = if ba {
                                     format!("{suit_tag}already fired this weapon — u to un-fire")
                                 } else if max > 1 {
