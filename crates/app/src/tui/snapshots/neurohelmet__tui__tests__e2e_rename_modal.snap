@@ -31,4 +31,4 @@ expression: render(&mut app)
 
 
 
- [↑↓] sel  [Enter] load  [n] new  [A] AS  [O] OV  [B] SBF  [F] BF  [r] rename  [D] del  [Esc] back
+ [↑↓] sel  [Enter] load  [n] new  [A] AS  [O] OV  [B] SBF  [F] BF  [C] ACS  [r] rename  [D] del  [Es

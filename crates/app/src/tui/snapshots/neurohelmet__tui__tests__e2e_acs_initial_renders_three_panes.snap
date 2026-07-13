@@ -31,4 +31,4 @@ expression: screen
 │                              │║                            ║│                                    │
 │                              │║                            ║│                                    │
 └──────────────────────────────┘╚════════════════════════════╝└────────────────────────────────────┘
- Spc:dmg  u:rep  m/M:CU/form morale  f/F:fatigue  n:round  e:done  g:group  [/]:range  +/-:tmm  ?:he
+ Spc:dmg  u:rep  m/M:CU/form morale  f/F:fatigue  n:round  e:done  a:add  g:group  [/]:range  +/-:tm
