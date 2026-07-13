@@ -249,6 +249,7 @@ mod tests {
                 ..Default::default()
             },
             availability: BTreeMap::new(),
+            quirks: Vec::new(),
         }
     }
 
@@ -1755,6 +1756,36 @@ mod tests {
             }),
             "expected some DropShip to have front-arc STD damage"
         );
+    }
+
+    #[test]
+    fn quirks_baked_and_render_in_preview() {
+        use super::view::preview_lines;
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
+        let bundle = Bundle::load(std::path::Path::new(path)).expect("load bundle");
+        // The real catalog carries chassis quirks on thousands of units (guards against a filtered
+        // or pre-quirk re-bake silently clobbering the field).
+        let quirky: Vec<_> = bundle.mechs.iter().filter(|m| !m.quirks.is_empty()).collect();
+        assert!(
+            quirky.len() >= 3000,
+            "expected thousands of units with baked quirks, found {}",
+            quirky.len()
+        );
+        // A unit with quirks renders a "Quirks" row in the picker preview; a unit without one
+        // renders none.
+        let m = quirky[0];
+        let has_row = |m: &neurohelmet_core::domain::Mech| {
+            preview_lines(m)
+                .iter()
+                .any(|l| l.spans.iter().any(|s| s.content.contains("Quirks")))
+        };
+        assert!(has_row(m), "{} should show a Quirks row", m.display_name());
+        let plain = bundle
+            .mechs
+            .iter()
+            .find(|m| m.quirks.is_empty())
+            .expect("some unit has no quirks");
+        assert!(!has_row(plain), "quirk-less unit shows no Quirks row");
     }
 
     #[test]

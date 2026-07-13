@@ -93,6 +93,7 @@ fn build_extra(e: ExtraUnit) -> Mech {
         crit_slots: BTreeMap::new(),
         as_stats: e.as_stats,
         availability: BTreeMap::new(),
+        quirks: Vec::new(),
     }
 }
 
