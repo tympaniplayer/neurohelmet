@@ -1823,7 +1823,7 @@ fn draw_sessions(f: &mut Frame, app: &App) {
         f.render_widget(Paragraph::new(lines), area);
     }
 
-    let mut help = " [↑↓] sel  [Enter] load  [n] new  [A] AS  [O] OV  [B] SBF  [F] BF  [r] rename  [D] del  [Esc] back ".to_string();
+    let mut help = " [↑↓] sel  [Enter] load  [n] new  [A] AS  [O] OV  [B] SBF  [F] BF  [C] ACS  [r] rename  [D] del  [Esc] back ".to_string();
     if !app.status.is_empty() {
         help = format!("{help}| {} ", app.status);
     }
@@ -4535,7 +4535,7 @@ fn sbf_help_modal_lines() -> Vec<Line<'static>> {
 // ---------- Abstract Combat System mode (spec Phase 4) ----------
 
 const ACS_HELP: &str =
-    " Spc:dmg  u:rep  m/M:CU/form morale  f/F:fatigue  n:round  e:done  g:group  [/]:range  +/-:tmm  ?:help ";
+    " Spc:dmg  u:rep  m/M:CU/form morale  f/F:fatigue  n:round  e:done  a:add  g:group  [/]:range  +/-:tmm  S:sess  ?:help ";
 
 fn acs_morale_color(m: AcsMorale) -> Color {
     match m {

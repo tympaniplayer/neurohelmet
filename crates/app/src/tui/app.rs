@@ -3733,6 +3733,14 @@ impl App {
     fn acs_key(&mut self, key: KeyEvent) {
         use neurohelmet_core::engine::acs::AcsRange;
         match key.code {
+            KeyCode::Char('q') => self.confirm_quit(),
+            KeyCode::Char('a') => {
+                self.screen = Screen::Picker;
+                self.picker.reset();
+                self.picker
+                    .refilter(&self.names, &self.bundle, &self.filters);
+            }
+            KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('?') => self.modal = Some(Modal::Help),
             KeyCode::Left | KeyCode::Char('h') => self.acs_cycle_formation(-1),
             KeyCode::Right | KeyCode::Char(',') => self.acs_cycle_formation(-1),
