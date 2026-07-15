@@ -1765,7 +1765,11 @@ mod tests {
         let bundle = Bundle::load(std::path::Path::new(path)).expect("load bundle");
         // The real catalog carries chassis quirks on thousands of units (guards against a filtered
         // or pre-quirk re-bake silently clobbering the field).
-        let quirky: Vec<_> = bundle.mechs.iter().filter(|m| !m.quirks.is_empty()).collect();
+        let quirky: Vec<_> = bundle
+            .mechs
+            .iter()
+            .filter(|m| !m.quirks.is_empty())
+            .collect();
         assert!(
             quirky.len() >= 3000,
             "expected thousands of units with baked quirks, found {}",
