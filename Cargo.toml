@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/core", "crates/bake", "crates/app"]
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 # Code: GPLv3-or-later (matches the MegaMek ecosystem). The bundled BattleTech data
 # (data/mechs.bin) is separately CC-BY-NC-SA-4.0 — see NOTICE.md.
