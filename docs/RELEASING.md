@@ -26,17 +26,25 @@ or right-click → Open. Package-manager installs are unaffected.)
 
 ## Cutting a release
 
-```sh
-# 1. Bump the version (must match the tag) and commit.
-#    Edit [workspace.package] version in Cargo.toml, e.g. 0.1.0 -> 0.2.0
-git commit -am "Release v0.2.0"
+`main` is a **protected branch** (PRs only, gated on the `fmt` check), so the version
+bump can't be pushed straight to it — `git push origin main` will be rejected. Land the
+bump the same way as any other change: **inside the feature PR that ships the release**,
+then tag the merge commit.
 
-# 2. Tag and push. The tag push triggers the release workflow.
-git tag v0.2.0
-git push origin main --tags
+```sh
+# 1. In the feature PR for this release, bump the version so it matches the tag you'll
+#    cut: edit [workspace.package] version in Cargo.toml (e.g. 0.3.1 -> 0.3.2), run a
+#    build so Cargo.lock picks it up, and commit. Merge the PR to main as usual.
+#      -> Do NOT open a separate "Release vX.Y.Z" PR just for the bump; ride the feature PR.
+
+# 2. Once the bump is on main, tag that commit and push just the tag (main is already
+#    up to date). The tag push triggers the release workflow.
+git checkout main && git pull --ff-only
+git tag -a v0.3.2 -m "v0.3.2 — <headline>"
+git push origin v0.3.2
 ```
 
-The workflow guards that the tag (`v0.2.0`) matches the crate version (`0.2.0`) and
+The workflow guards that the tag (`v0.3.2`) matches the crate version (`0.3.2`) and
 fails early if they disagree. To re-run against an existing tag, use the
 **Run workflow** button (workflow_dispatch) and enter the tag.
 
