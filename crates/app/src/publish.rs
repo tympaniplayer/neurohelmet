@@ -345,6 +345,7 @@ mod tests {
             crit_slots: BTreeMap::new(),
             as_stats: AsStats::default(),
             availability: BTreeMap::new(),
+            quirks: Vec::new(),
         };
         let entries = vec![LogEntry {
             turn: 1,

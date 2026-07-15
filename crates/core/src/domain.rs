@@ -819,6 +819,13 @@ pub struct Mech {
     /// `eras`/`factions`. Defaulted for bundles baked before availability support.
     #[serde(default)]
     pub availability: BTreeMap<u16, BTreeMap<u16, u8>>,
+    /// Chassis design quirks, as printed on the record sheet — display-ready names straight from
+    /// Mekbay's `unit.quirks` (e.g. `["Command Mech", "Narrow/Low Profile"]`). Reference-only:
+    /// shown in the picker preview and the tracker, not yet folded into any rule (the accuracy
+    /// quirks are a natural later hook into per-weapon to-hit). Empty for units with no quirks and
+    /// defaulted for bundles baked before quirk support.
+    #[serde(default)]
+    pub quirks: Vec<String>,
 }
 
 /// Availability rarity tier for a unit at a chosen era/faction (§35). Buckets the 0..=100
@@ -1023,6 +1030,7 @@ mod tests {
         av.insert(10, BTreeMap::from([(27, 90u8)]));
         let m = Mech {
             availability: av,
+            quirks: Vec::new(),
             ..Default::default()
         };
 
@@ -1174,6 +1182,7 @@ mod tests {
             )]),
             as_stats: AsStats::default(),
             availability: BTreeMap::new(),
+            quirks: Vec::new(),
         };
         let json = serde_json::to_string(&mech).unwrap();
         let back: Mech = serde_json::from_str(&json).unwrap();

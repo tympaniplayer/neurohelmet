@@ -308,12 +308,18 @@ rebuild. Remaining items:
 - **A MUL-vs-catalog roster diff** to find the remaining missing units, baselined against the MUL
   (comparing only to Mekbay confirms faithfulness but cannot surface gaps).
 
-### Quirks (display-only)
+### Quirks (display-only) ✅ (2026-07-13)
 
-Small bake plus display work. Chassis quirks (`unit.quirks`) are a separate, currently un-baked data
-source. Bake the quirk name list onto `Mech` (a bundle version bump), and show it in the unit-picker
-preview and in an unobtrusive spot on the tracker. The accuracy quirks (Improved/Poor Targeting) are a
-natural later hook into the per-weapon to-hit assembly.
+Chassis design quirks are baked onto `Mech` and shown throughout. What shipped: `Mech.quirks`
+(`Vec<String>`, `#[serde(default)]`) baked verbatim from Mekbay's `unit.quirks` — a flat array of
+display-ready strings, e.g. `["Command Mech", "Narrow/Low Profile"]` — for all 5 unit build paths
+(`bake/join.rs`), carried on ~3,300 of 9,724 units (bundle v24). Displayed as a "Quirks" row in the
+unit-picker preview (`preview_lines`) and as a dim, truncated footer in the tracker's WEAPONS/AMMO/EQUIP
+panel when it isn't focused (reusing the detail-line slot — the unobtrusive tracker home, working for
+every unit type).
+
+Remaining hook: the accuracy quirks (Improved/Poor Targeting) are a natural later addition to the
+per-weapon to-hit assembly (`Mech::weapon_to_hit`) — the names are now baked and ready to match on.
 
 ### Unit-picker filtering — remaining work
 

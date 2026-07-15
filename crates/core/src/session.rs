@@ -4977,6 +4977,7 @@ mod tests {
                 ..Default::default()
             },
             availability: BTreeMap::new(),
+            quirks: Vec::new(),
         }
     }
 
@@ -5673,6 +5674,7 @@ mod tests {
             crit_slots,
             as_stats: AsStats::default(),
             availability: BTreeMap::new(),
+            quirks: Vec::new(),
         }
     }
 

@@ -2036,7 +2036,7 @@ fn filter_summary(app: &App) -> String {
 /// The detail lines for a unit (size/tech/role/year, move, points, armor/structure, transport,
 /// the grouped weapon + equipment lists). Shared by the Tab preview popup and the pre-add modal
 /// so both show the same summary.
-fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
+pub(crate) fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
     let label = Style::default().fg(theme().dim);
     let mut lines: Vec<Line> = Vec::new();
 
@@ -2147,6 +2147,10 @@ fn preview_lines(m: &Mech) -> Vec<Line<'static>> {
     // Transport / storage bays (Infantry Compartment, Cargo, …), if any.
     if !m.transport.is_empty() {
         lines.push(row("Transport", m.transport.join(", "), ""));
+    }
+    // Chassis design quirks (display-only), if any.
+    if !m.quirks.is_empty() {
+        lines.push(row("Quirks", m.quirks.join(", "), ""));
     }
     lines.push(Line::from(""));
     lines.push(Line::from(Span::styled(
@@ -7646,8 +7650,20 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
             .map(|(span, mods)| format!("range {span}  ({mods})")),
         _ => None,
     });
+    // When the panel isn't focused (so the detail line is idle), reuse the bottom slot for a dim
+    // chassis-quirks footer — the unobtrusive tracker home for the display-only design quirks.
+    // Only claim the slot when the whole list still fits above it (unfocused means no scrolling, so
+    // a reserved footer would otherwise hide un-scrollable rows) and the panel is wide enough to
+    // render some quirk text (avoids a labeled-but-empty footer on a very narrow split).
+    let quirks_footer = (!focused
+        && !tm.spec.quirks.is_empty()
+        && rows.len() as u16 <= inner.height.saturating_sub(2)
+        && inner.width > 14)
+        .then(|| tm.spec.quirks.join(" · "));
     let detail_h: u16 = if detail.is_some() {
         2 + u16::from(detail_extra.is_some())
+    } else if quirks_footer.is_some() {
+        2
     } else {
         0
     };
@@ -8053,6 +8069,29 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
             ]));
         }
         f.render_widget(Paragraph::new(dlines), detail_area);
+    } else if let Some(q) = quirks_footer {
+        let footer_area = Rect {
+            x: inner.x,
+            y: inner.y + list_h,
+            width: inner.width,
+            height: detail_h,
+        };
+        // Truncate to the panel width (minus the " quirks   " gutter) so a long list never wraps.
+        let avail = inner.width.saturating_sub(10) as usize;
+        let dlines = vec![
+            Line::from(Span::styled(
+                "─".repeat(inner.width as usize),
+                Style::default().fg(theme().dim),
+            )),
+            Line::from(vec![
+                Span::styled(" quirks", Style::default().fg(theme().dim)),
+                Span::styled(
+                    format!("   {}", truncate(&q, avail)),
+                    Style::default().fg(theme().accent),
+                ),
+            ]),
+        ];
+        f.render_widget(Paragraph::new(dlines), footer_area);
     }
 }
 

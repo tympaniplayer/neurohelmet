@@ -249,6 +249,7 @@ mod tests {
                 ..Default::default()
             },
             availability: BTreeMap::new(),
+            quirks: Vec::new(),
         }
     }
 
@@ -1754,6 +1755,77 @@ mod tests {
                     .is_some_and(|a| !a.front.std.s.is_empty() && a.front.std.s != "0")
             }),
             "expected some DropShip to have front-arc STD damage"
+        );
+    }
+
+    #[test]
+    fn quirks_baked_and_render_in_preview() {
+        use super::view::preview_lines;
+        let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../data/mechs.bin");
+        let bundle = Bundle::load(std::path::Path::new(path)).expect("load bundle");
+        // The real catalog carries chassis quirks on thousands of units (guards against a filtered
+        // or pre-quirk re-bake silently clobbering the field).
+        let quirky: Vec<_> = bundle
+            .mechs
+            .iter()
+            .filter(|m| !m.quirks.is_empty())
+            .collect();
+        assert!(
+            quirky.len() >= 3000,
+            "expected thousands of units with baked quirks, found {}",
+            quirky.len()
+        );
+        // A unit with quirks renders a "Quirks" row in the picker preview; a unit without one
+        // renders none.
+        let m = quirky[0];
+        let has_row = |m: &neurohelmet_core::domain::Mech| {
+            preview_lines(m)
+                .iter()
+                .any(|l| l.spans.iter().any(|s| s.content.contains("Quirks")))
+        };
+        assert!(has_row(m), "{} should show a Quirks row", m.display_name());
+        let plain = bundle
+            .mechs
+            .iter()
+            .find(|m| m.quirks.is_empty())
+            .expect("some unit has no quirks");
+        assert!(!has_row(plain), "quirk-less unit shows no Quirks row");
+    }
+
+    #[test]
+    fn tracker_quirks_footer_only_when_list_fits() {
+        // Positive: a short loadout leaves room, so the dim quirks footer renders on the tracker.
+        let mut m = sample_mech();
+        m.quirks = vec!["Command Mech".into(), "Distracting".into()];
+        let mut session = Session::new();
+        session.add_mech(m.clone());
+        let out = super::render_once(Bundle::new(vec![m.clone()]), session, 100, 30);
+        assert!(
+            out.contains("quirks"),
+            "short-loadout quirky unit should show the tracker quirks footer"
+        );
+
+        // Negative (the reviewed regression): pad the loadout past the panel height. Unfocused =
+        // no scrolling, so the footer must yield rather than clip un-scrollable equipment rows.
+        let mut big = m.clone();
+        big.weapons = (0..40)
+            .map(|i| {
+                let mut w = big.weapons[0].clone();
+                w.id = i;
+                w
+            })
+            .collect();
+        let mut session = Session::new();
+        session.add_mech(big.clone());
+        let out = super::render_once(Bundle::new(vec![big.clone()]), session, 100, 30);
+        assert!(
+            !out.contains("quirks"),
+            "overflowing loadout must drop the footer, not hide equipment rows"
+        );
+        // ...and the last weapon row is actually visible (nothing clipped by a phantom footer).
+        assert!(
+            out.contains("Medium Laser"),
+            "the equipment list should render its rows"
         );
     }
 
