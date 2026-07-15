@@ -7652,8 +7652,14 @@ fn draw_equip(f: &mut Frame, area: Rect, app: &App, tm: &TrackedMech) {
     });
     // When the panel isn't focused (so the detail line is idle), reuse the bottom slot for a dim
     // chassis-quirks footer — the unobtrusive tracker home for the display-only design quirks.
-    let quirks_footer =
-        (!focused && !tm.spec.quirks.is_empty()).then(|| tm.spec.quirks.join(" · "));
+    // Only claim the slot when the whole list still fits above it (unfocused means no scrolling, so
+    // a reserved footer would otherwise hide un-scrollable rows) and the panel is wide enough to
+    // render some quirk text (avoids a labeled-but-empty footer on a very narrow split).
+    let quirks_footer = (!focused
+        && !tm.spec.quirks.is_empty()
+        && rows.len() as u16 <= inner.height.saturating_sub(2)
+        && inner.width > 14)
+        .then(|| tm.spec.quirks.join(" · "));
     let detail_h: u16 = if detail.is_some() {
         2 + u16::from(detail_extra.is_some())
     } else if quirks_footer.is_some() {

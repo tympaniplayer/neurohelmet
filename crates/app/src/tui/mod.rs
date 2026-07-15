@@ -1789,6 +1789,43 @@ mod tests {
     }
 
     #[test]
+    fn tracker_quirks_footer_only_when_list_fits() {
+        // Positive: a short loadout leaves room, so the dim quirks footer renders on the tracker.
+        let mut m = sample_mech();
+        m.quirks = vec!["Command Mech".into(), "Distracting".into()];
+        let mut session = Session::new();
+        session.add_mech(m.clone());
+        let out = super::render_once(Bundle::new(vec![m.clone()]), session, 100, 30);
+        assert!(
+            out.contains("quirks"),
+            "short-loadout quirky unit should show the tracker quirks footer"
+        );
+
+        // Negative (the reviewed regression): pad the loadout past the panel height. Unfocused =
+        // no scrolling, so the footer must yield rather than clip un-scrollable equipment rows.
+        let mut big = m.clone();
+        big.weapons = (0..40)
+            .map(|i| {
+                let mut w = big.weapons[0].clone();
+                w.id = i;
+                w
+            })
+            .collect();
+        let mut session = Session::new();
+        session.add_mech(big.clone());
+        let out = super::render_once(Bundle::new(vec![big.clone()]), session, 100, 30);
+        assert!(
+            !out.contains("quirks"),
+            "overflowing loadout must drop the footer, not hide equipment rows"
+        );
+        // ...and the last weapon row is actually visible (nothing clipped by a phantom footer).
+        assert!(
+            out.contains("Medium Laser"),
+            "the equipment list should render its rows"
+        );
+    }
+
+    #[test]
     fn capital_ships_baked_phase2() {
         use super::app::bf_element_of;
         use neurohelmet_core::engine::battleforce::{bf_crit_col, bf_is_aero, BfCritCol};

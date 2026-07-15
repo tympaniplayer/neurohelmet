@@ -258,10 +258,12 @@ fn num_u8(v: &Value, key: &str) -> u8 {
         .unwrap_or(0)
 }
 
-/// Chassis design quirks: Mekbay's `unit.quirks` is a flat array of display-ready strings
-/// (e.g. `["Command Mech", "Narrow/Low Profile"]`). Baked verbatim; empty when absent.
-fn quirks(unit: &Value) -> Vec<String> {
-    unit.get("quirks")
+/// Parse a JSON string array at `key` into owned strings, skipping any non-string entries; empty
+/// when the key is absent or not an array. Shared by chassis quirks (Mekbay's `unit.quirks`, a flat
+/// array of display-ready names like `["Command Mech", "Narrow/Low Profile"]`) and the AS-card /
+/// firing-arc `specials`.
+fn str_array(v: &Value, key: &str) -> Vec<String> {
+    v.get(key)
         .and_then(Value::as_array)
         .map(|a| {
             a.iter()
@@ -284,16 +286,7 @@ fn parse_as_stats(unit: &Value) -> AsStats {
             .unwrap_or("0")
             .to_string()
     };
-    let specials: Vec<String> = a
-        .get("specials")
-        .and_then(Value::as_array)
-        .map(|arr| {
-            arr.iter()
-                .filter_map(Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default();
+    let specials = str_array(a, "specials");
     AsStats {
         pv: num_u16(a, "PV"),
         size: num_u8(a, "SZ"),
@@ -366,16 +359,7 @@ fn parse_firing_arc(arc: &Value) -> FiringArc {
             e: band("dmgE"),
         }
     };
-    let specials = arc
-        .get("specials")
-        .and_then(Value::as_array)
-        .map(|arr| {
-            arr.iter()
-                .filter_map(Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
-        .unwrap_or_default();
+    let specials = str_array(arc, "specials");
     FiringArc {
         std: dmg("STD"),
         cap: dmg("CAP"),
@@ -674,7 +658,7 @@ pub fn build_infantry(
         crit_slots: BTreeMap::new(),
         as_stats: parse_as_stats(unit),
         availability: BTreeMap::new(),
-        quirks: quirks(unit),
+        quirks: str_array(unit, "quirks"),
     };
     Ok(BuildOutcome {
         mech,
@@ -741,7 +725,7 @@ pub fn build_aero(
         crit_slots: BTreeMap::new(),
         as_stats: parse_as_stats(unit),
         availability: BTreeMap::new(),
-        quirks: quirks(unit),
+        quirks: str_array(unit, "quirks"),
     };
     Ok(BuildOutcome {
         mech,
@@ -792,7 +776,7 @@ pub fn build_large_craft(unit: &Value) -> Result<BuildOutcome, String> {
         crit_slots: BTreeMap::new(),
         as_stats: parse_as_stats(unit), // includes the multi-arc card (`usesArcs`)
         availability: BTreeMap::new(),
-        quirks: quirks(unit),
+        quirks: str_array(unit, "quirks"),
     };
     Ok(BuildOutcome {
         mech,
@@ -852,7 +836,7 @@ pub fn build_vehicle(
         crit_slots: BTreeMap::new(),
         as_stats: parse_as_stats(unit),
         availability: BTreeMap::new(),
-        quirks: quirks(unit),
+        quirks: str_array(unit, "quirks"),
     };
     Ok(BuildOutcome {
         mech,
@@ -965,7 +949,7 @@ pub fn build_mech(
         crit_slots,
         as_stats,
         availability: BTreeMap::new(),
-        quirks: quirks(unit),
+        quirks: str_array(unit, "quirks"),
     };
     Ok(BuildOutcome {
         mech,
@@ -1029,15 +1013,21 @@ mod tests {
     }
 
     #[test]
-    fn quirks_parse_from_string_array() {
-        // Present: a flat array of display-ready strings, baked verbatim in order.
+    fn str_array_parses_string_arrays() {
+        // Present: a flat array of display-ready strings, kept verbatim in order (e.g. quirks).
         let unit = json!({ "quirks": ["Command Mech", "Narrow/Low Profile"] });
-        assert_eq!(quirks(&unit), vec!["Command Mech", "Narrow/Low Profile"]);
-        // Empty array and absent key both yield no quirks.
-        assert!(quirks(&json!({ "quirks": [] })).is_empty());
-        assert!(quirks(&json!({ "chassis": "Locust" })).is_empty());
+        assert_eq!(
+            str_array(&unit, "quirks"),
+            vec!["Command Mech", "Narrow/Low Profile"]
+        );
+        // Empty array and absent key both yield nothing.
+        assert!(str_array(&json!({ "quirks": [] }), "quirks").is_empty());
+        assert!(str_array(&json!({ "chassis": "Locust" }), "quirks").is_empty());
         // Non-string entries are skipped rather than panicking.
-        assert_eq!(quirks(&json!({ "quirks": ["Stable", 7, null] })), vec!["Stable"]);
+        assert_eq!(
+            str_array(&json!({ "quirks": ["Stable", 7, null] }), "quirks"),
+            vec!["Stable"]
+        );
     }
 
     #[test]
