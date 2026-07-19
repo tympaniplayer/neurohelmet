@@ -22,9 +22,9 @@ sheet and surfaces the consequences.
   </tr>
 </table>
 
-📖 **Documentation:** the [Neurohelmet guide](docs/guide/src/introduction.md) covers install, the six
-systems, sessions, the game log & publishing, and configuration. (Source under `docs/guide/`; rendered
-to a browsable site via GitHub Pages.)
+📖 **Documentation:** the **[Neurohelmet guide](https://tympaniplayer.github.io/neurohelmet/)** covers
+install, the six systems, sessions, the game log & publishing, PDF record sheets, and configuration.
+(Source under `docs/guide/`; also browsable [in the repo](docs/guide/src/introduction.md).)
 
 ## The six systems it tracks
 
@@ -35,11 +35,10 @@ to a browsable site via GitHub Pages.)
 | **Override** | one unit | [**BattleTech: Override**](https://dfawargaming.com) — DFA Wargaming's streamlined fan ruleset. Any catalog unit is converted to an Override card (pip armor/structure, a 0–5 heat ladder, TIC weapon groups, a condition monitor) and tracked live. |
 | **Standard BattleForce** (IO:BF) | a company of lances | Per-element AS-card tracking at hex scale, grouped into lance-Units, with the BF critical-hit table and manual morale. |
 | **Strategic BattleForce** (IO:BF) | formations | The AS-element roster grouped into Units (1–6 elements) and Formations, tracked at unit scale — spillover damage, the crit table, to-hit, and manual morale. |
-| **Abstract Combat System** (IO:BF) | planetary invasion | The multi-regiment scale: elements fuse up through Combat Units into Formations, tracked as armor pools with damage thresholds, fatigue, and morale (ground-only v1). |
+| **Abstract Combat System** (IO:BF) | planetary invasion | The multi-regiment scale: elements fuse up through Combat Units into Formations, tracked as armor pools with damage thresholds, fatigue, and morale — ground and aerospace. |
 
 Each session is locked to one system when you create it; you can keep many named sessions side by
-side. From Classic or Alpha Strike you can also peek at any unit's **Override** card on the fly with
-`O`, without starting an Override session.
+side.
 
 ## Shared across every mode
 
@@ -62,7 +61,7 @@ side. From Classic or Alpha Strike you can also peek at any unit's **Override** 
 crates/core   library: domain types, rules engines, session/persistence, bundle loader (no UI)
 crates/bake   tool: download Mekbay data + bake it into one bundle (data/mechs.bin)
 crates/app    the ratatui runtime app (binary: `neurohelmet`)
-data/mechs.bin  the committed, baked dataset (9,291 units, ~10 MB) — embedded in the app
+data/mechs.bin  the committed, baked dataset (9,724 units, ~11 MB) — embedded in the app
 ```
 
 `core` has **no** UI or terminal dependencies; all rules are pure and unit-tested. ratatui is
@@ -227,7 +226,7 @@ case-sensitive. The Classic tracker — the core loop — is:
 | `c` | **critical-slot** popup (mark hits; set active ammo bin; swap munitions) |
 | `r` | **dice reference** (cluster hits / hit location) |
 | `o` / `i` | heat up / down |
-| `e` | end turn (dissipate heat, clear fired ✓, movement, prompt PSRs) |
+| `e` | end turn for the active unit (dissipate heat, clear fired ✓ and movement) |
 | `v` / `t` | movement this turn (→ modifiers, TMM, PSR) · GATOR **to-hit** target |
 | `x` / `d` | toggle shutdown · toggle prone (knocked down) |
 | `p` / `P` / `X` | pilot/crew hit / heal · knock out / wake |
@@ -236,11 +235,13 @@ case-sensitive. The Classic tracker — the core loop — is:
 | `,` / `.` | previous / next unit in the roster (also `[` / `]`, `Shift+Tab`) |
 | `a` / `D` | add a unit (fuzzy picker) · remove the active unit |
 | `L` / `S` / `z` | log snapshot · **Sessions** browser · undo (50 deep) |
-| `s` / `?` / `q` | save now · key reference · quit (`Ctrl-C` force-quit) |
+| `?` / `q` | key reference · quit (`Ctrl-C` force-quit); saving is automatic |
 
-The other five modes share this vocabulary (`Space` damages, `u` repairs, `c` crits, `t` to-hit,
-`,`/`.` cycle units) with mode-specific additions — group/lance editors, morale and fatigue rungs,
-round management. The cheat sheet has the full per-mode tables.
+The other five modes share this vocabulary (`Space` damages, `u` repairs, `c` crits, `t` to-hit;
+`,`/`.` cycle units — formations in SBF/ACS) with mode-specific additions — group/lance editors,
+morale and fatigue rungs, round management. The cheat sheet has the full per-mode tables, and the
+[guide's keybindings reference](https://tympaniplayer.github.io/neurohelmet/reference/keybindings.html)
+covers every mode.
 
 ## Sessions
 
@@ -336,7 +337,5 @@ surfaces the consequences (heat effects, crit consequences, cascade, PSR/to-hit 
 fatigue). That's the identity, not a limitation — it's a fast paper doll for the table, not a
 battle simulator.
 
-Planned work and where to start are in [ROADMAP.md](ROADMAP.md) — highlights: aerospace beyond
-fighters, unit quirks, and print-to-PDF record sheets (specced in
-[docs/pdf-record-sheet-spec.md](docs/pdf-record-sheet-spec.md)). The design boundaries that come with
+Planned work and where to start are in [ROADMAP.md](ROADMAP.md). The design boundaries that come with
 being manual-first and offline, and the reasoning behind them, are recorded there too.

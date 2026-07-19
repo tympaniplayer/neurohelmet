@@ -14,3 +14,7 @@ edit-url-template = "https://github.com/tympaniplayer/neurohelmet/edit/main/docs
 [output.html.fold]
 enable = true
 level = 1
+
+# Old URLs from the pre-overhaul structure.
+[output.html.redirect]
+"/getting-started.html" = "install.html"
