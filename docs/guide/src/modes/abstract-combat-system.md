@@ -130,9 +130,10 @@ Neurohelmet never applies it anywhere — read it out, and your opponent takes i
 
 ## Aerospace Formations
 
-ACS covers aerospace, not just ground. A Formation that derives as aerospace switches the detail
-pane to the **aero readout** — its own to-hit table with the four-step range ladder (Short
-through **Extreme** on **`[`**/**`]`**), plus extra shot-editor keys:
+ACS covers aerospace, not just ground. A Formation that derives as aerospace carries an `aero` tag
+in the FORMATIONS pane and switches the detail pane to the **aero readout** — its own to-hit table
+with the four-step range ladder (Short through **Extreme** on **`[`**/**`]`**), plus extra
+shot-editor keys:
 
 | Key | Effect |
 |---|---|

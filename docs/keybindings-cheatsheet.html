@@ -51,9 +51,10 @@
     <h2>Global (everywhere)</h2>
     <table>
       <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>c</kbd></td><td class="d">Quit immediately</td></tr>
-      <tr><td class="k"><kbd>q</kbd></td><td class="d">Quit (Tracker / AS / Sessions)</td></tr>
-      <tr><td class="k"><kbd>z</kbd></td><td class="d">Undo (Tracker / AS)</td></tr>
-      <tr><td class="k"><kbd>?</kbd></td><td class="d">Help overlay (Tracker / AS)</td></tr>
+      <tr><td class="k"><kbd>q</kbd></td><td class="d">Quit from any play screen (in Sessions/picker: back)</td></tr>
+      <tr><td class="k"><kbd>z</kbd></td><td class="d">Undo (all six modes, 50 deep)</td></tr>
+      <tr><td class="k"><kbd>?</kbd></td><td class="d">Help overlay (all six modes)</td></tr>
+      <tr><td class="k"><kbd>Ctrl</kbd>+<kbd>t</kbd></td><td class="d">Display picker (theme · layout · icons)</td></tr>
     </table>
   </section>
 
@@ -103,7 +104,7 @@
       <tr><td class="k"><kbd>Space</kbd> / <kbd>Enter</kbd></td><td class="d">1 damage (armor → structure)</td></tr>
       <tr><td class="k"><kbd>u</kbd></td><td class="d">Repair 1</td></tr>
       <tr><td class="k"><kbd>o</kbd> / <kbd>i</kbd></td><td class="d">Heat up / down (dial 1 2 3 S)</td></tr>
-      <tr><td class="k"><kbd>c</kbd></td><td class="d">Crit popup (Eng / FC / MP / Wpn)</td></tr>
+      <tr><td class="k"><kbd>c</kbd></td><td class="d">Crit popup (set varies by unit type)</td></tr>
       <tr><td class="k"><kbd>t</kbd></td><td class="d">To-hit shot: atk move + target TMM</td></tr>
       <tr><td class="k"><kbd>g</kbd></td><td class="d">Edit Skill</td></tr>
       <tr><td class="k"><kbd>b</kbd></td><td class="d">Set force point limit (PV)</td></tr>
@@ -120,7 +121,7 @@
     <h2 class="alt4">Override card</h2>
     <table>
       <tr><td class="k"><kbd>Tab</kbd></td><td class="d">Switch panel (armor / weapons)</td></tr>
-      <tr><td class="k"><kbd>Space</kbd></td><td class="d">Damage region / fire TIC</td></tr>
+      <tr><td class="k"><kbd>Space</kbd> / <kbd>Enter</kbd></td><td class="d">Damage region / fire TIC</td></tr>
       <tr><td class="k"><kbd>u</kbd></td><td class="d">Repair region / un-fire TIC</td></tr>
       <tr><td class="k"><kbd>f</kbd></td><td class="d">Front / rear armor face</td></tr>
       <tr><td class="k"><kbd>c</kbd></td><td class="d">Crit popup (region table)</td></tr>
@@ -161,7 +162,7 @@
   <section>
     <h2 class="alt5">Strategic BattleForce</h2>
     <table>
-      <tr><td class="k"><kbd>Space</kbd></td><td class="d">1 damage to unit (overflow spills)</td></tr>
+      <tr><td class="k"><kbd>Space</kbd> / <kbd>Enter</kbd></td><td class="d">1 damage to unit (overflow spills)</td></tr>
       <tr><td class="k"><kbd>u</kbd></td><td class="d">Repair 1</td></tr>
       <tr><td class="k"><kbd>c</kbd></td><td class="d">Crit counters + 2d6 table</td></tr>
       <tr><td class="k"><kbd>t</kbd></td><td class="d">To-hit (range + target TMM)</td></tr>
@@ -170,9 +171,10 @@
       <tr><td class="k"><kbd>g</kbd></td><td class="d">Group editor (move / split / skill / remove; <kbd>a</kbd> = doctrine auto-group)</td></tr>
       <tr><td class="k"><kbd>r</kbd> / <kbd>R</kbd></td><td class="d">Rename formation / unit</td></tr>
       <tr><td class="k"><kbd>C</kbd> / <kbd>l</kbd></td><td class="d">Force Commander (COM) / Formation Leader (LEAD)</td></tr>
-      <tr><td class="k"><kbd>,</kbd> / <kbd>.</kbd></td><td class="d">Prev / next formation (<kbd>[</kbd>/<kbd>]</kbd>)</td></tr>
+      <tr><td class="k"><kbd>,</kbd> / <kbd>.</kbd></td><td class="d">Prev / next formation (<kbd>[</kbd>/<kbd>]</kbd>, <kbd>Tab</kbd>/<kbd>⇧Tab</kbd>)</td></tr>
       <tr><td class="k"><kbd>↑</kbd><kbd>↓</kbd> / <kbd>k</kbd><kbd>j</kbd></td><td class="d">Prev / next unit</td></tr>
       <tr><td class="k"><kbd>b</kbd></td><td class="d">Set force PV limit</td></tr>
+      <tr><td class="k"><kbd>L</kbd></td><td class="d">Log snapshot (game log)</td></tr>
       <tr><td class="k"><kbd>a</kbd> / <kbd>D</kbd> / <kbd>S</kbd></td><td class="d">Add · delete formation · sessions</td></tr>
       <tr><td class="k"><kbd>P</kbd></td><td class="d">Export record-sheet PDF</td></tr>
     </table>
@@ -181,17 +183,18 @@
   <section>
     <h2 class="alt6">Abstract Combat System</h2>
     <table>
-      <tr><td class="k"><kbd>Space</kbd></td><td class="d">Damage to Combat Unit (typed amount)</td></tr>
+      <tr><td class="k"><kbd>Space</kbd> / <kbd>Enter</kbd></td><td class="d">Damage to Combat Unit (typed amount)</td></tr>
       <tr><td class="k"><kbd>u</kbd></td><td class="d">Repair 1 armor</td></tr>
       <tr><td class="k"><kbd>m</kbd> / <kbd>M</kbd></td><td class="d">Cycle Combat Unit / Formation morale rung</td></tr>
       <tr><td class="k"><kbd>f</kbd> / <kbd>F</kbd></td><td class="d">Accrue fatigue (fought) / rest (−1 FP)</td></tr>
       <tr><td class="k"><kbd>n</kbd> / <kbd>e</kbd></td><td class="d">Begin round / Formation done</td></tr>
-      <tr><td class="k"><kbd>g</kbd></td><td class="d">Group editor (move / split / new tier; <kbd>a</kbd> = doctrine auto-group)</td></tr>
+      <tr><td class="k"><kbd>g</kbd></td><td class="d">Group editor (move / split / new tier; <kbd>a</kbd> = auto-group 4/4/3)</td></tr>
       <tr><td class="k"><kbd>r</kbd> / <kbd>D</kbd></td><td class="d">Rename / delete Formation</td></tr>
       <tr><td class="k"><kbd>C</kbd> / <kbd>l</kbd></td><td class="d">Force Commander (COM) / Formation Leader (LEAD)</td></tr>
-      <tr><td class="k"><kbd>[</kbd> / <kbd>]</kbd></td><td class="d">Readout range (Short/Medium/Long)</td></tr>
+      <tr><td class="k"><kbd>[</kbd> / <kbd>]</kbd></td><td class="d">Readout range (S/M/L; aero adds Extreme)</td></tr>
       <tr><td class="k"><kbd>+</kbd> / <kbd>-</kbd> / <kbd>s</kbd></td><td class="d">Target TMM up/down · toggle secondary</td></tr>
-      <tr><td class="k"><kbd>,</kbd> / <kbd>.</kbd></td><td class="d">Prev / next Formation</td></tr>
+      <tr><td class="k"><kbd>w</kbd> <kbd>v</kbd> <kbd>x</kbd> <kbd>L</kbd> <kbd>y</kbd></td><td class="d">Aero: weapon class · arc · matchup · large craft · GS mission</td></tr>
+      <tr><td class="k"><kbd>,</kbd> / <kbd>.</kbd></td><td class="d">Prev / next Formation (<kbd>←</kbd>/<kbd>→</kbd>, <kbd>h</kbd>)</td></tr>
       <tr><td class="k"><kbd>↑</kbd><kbd>↓</kbd> / <kbd>k</kbd><kbd>j</kbd></td><td class="d">Prev / next Combat Unit</td></tr>
       <tr><td class="k"><kbd>P</kbd></td><td class="d">Export record-sheet PDF</td></tr>
     </table>
@@ -250,7 +253,7 @@
     </table>
     <h3>Dice reference (<kbd>r</kbd>)</h3>
     <table>
-      <tr><td class="k"><kbd>Tab</kbd> / <kbd>⇧Tab</kbd></td><td class="d">Cycle tables (read-only)</td></tr>
+      <tr><td class="k"><kbd>Tab</kbd> / <kbd>⇧Tab</kbd></td><td class="d">Cycle tables (read-only; <kbd>←</kbd>/<kbd>→</kbd>, <kbd>h</kbd>/<kbd>l</kbd> too)</td></tr>
     </table>
     <h3>Filters (<kbd>^F</kbd>)</h3>
     <table>
@@ -283,6 +286,6 @@
 
 </div>
 
-<footer>Generated from the key dispatchers in crates/app/src/tui/ · Neurohelmet</footer>
+<footer>Hand-maintained against the key dispatchers in crates/app/src/tui/ · Neurohelmet</footer>
 </body>
 </html>

@@ -27,8 +27,7 @@ for infantry), role, intro year, and BV.
 | `Ctrl+G` | generate a random force |
 | `Esc` | close the preview, or back to your session (empty roster: offers the Sessions browser) |
 
-Because letters type into the search, `j`/`k` don't navigate here — use the arrows. And the
-footer's `[Tab] prev` is short for *preview*, not "previous".
+Because letters type into the search, `j`/`k` don't navigate here — use the arrows.
 
 ## Previewing a unit
 

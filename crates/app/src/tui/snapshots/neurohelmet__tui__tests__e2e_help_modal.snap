@@ -7,26 +7,26 @@ expression: render(&mut app)
                         │A 20/20   │                        │Heat 0 / 30   diss 20                 │
                         │██████████│                        │░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░│
                         │I 10/10   │                        │sinks 20× Single                      │
-╔ Keys ═══════════════════════════════════════════════════════════════════════════════════════════╗│
-║Doll                                            General                                          ║│
-║  Space    damage current location                Tab      switch panel                          ║│
-║  u        repair (internal first)                o / i    heat up / down                        ║┘
-║  c        crit slots (a=bin · t=munition)        e        end turn (heat, clear fired ✓ + PSR)  ║┐
-║  r        dice reference (cluster · hit loc)     x / X    toggle shutdown / pilot KO / wake     ║│
-║  f        toggle front / rear armor              d        toggle prone (knocked down)           ║│
-║  ←↑↓→     move cursor                            v        movement this turn (mode + hexes)     ║┘
-║                                                  t        to-hit target (GATOR)                 ║┐
-║Equipment                                         m / M    motive damage (vehicles) / repair     ║│
-║  Space    fire weapon (marks ✓) / spend ammo     L        log snapshot (game log)               ║│
-║  u        un-fire / refill                       z        undo                                  ║│
-║  J        toggle state: jam UAC/RAC · MASC/ECM    , / .    previous / next mech  ([ / ] also)   ║┘
-║                                                  a / D    add / delete mech                     ║┐
-║Pilot / force                                     S        sessions browser                      ║│
-║  g        edit gunnery / piloting skills         ^t       display picker (theme + layout)       ║│
-║  b        set force point limit (BV)             q        quit                                  ║│
-║  p / P    pilot / crew hit / heal                                                               ║│
-║  press any key to close                                                                         ║│
-╚═════════════════════════════════════════════════════════════════════════════════════════════════╝│
+╔ Keys ════════════════════════════════════════════════════════════════════════════════════════════╗
+║Doll                                            General                                           ║
+║  Spc/Ent  damage current location                Tab      switch panel                           ║
+║  u        repair (internal first)                o / i    heat up / down                         ║
+║  c        crit slots (a=bin · t=munition)        e        end turn (heat, clear fired ✓ + PSR)   ║
+║  r        dice reference (cluster · hit loc)     x / X    toggle shutdown / pilot KO / wake      ║
+║  f        toggle front / rear armor              d        toggle prone (knocked down)            ║
+║  ←↑↓→     move cursor (hjkl too)                 v        movement this turn (mode + hexes)      ║
+║                                                  t        to-hit target (GATOR)                  ║
+║Equipment                                         m / M    motive damage (vehicles) / repair      ║
+║  Spc/Ent  fire weapon (marks ✓) / spend ammo     L        log snapshot (game log)                ║
+║  u        un-fire / refill                       z        undo                                   ║
+║  J        toggle state: jam UAC/RAC · MASC/ECM    , / .    previous / next mech  ([ / ] also)    ║
+║                                                  a / D    add / delete mech                      ║
+║Pilot / force                                     S        sessions browser                       ║
+║  g        edit gunnery / piloting skills         ^t       display picker (theme · layout · icons)║
+║  b        set force point limit (BV)             q        quit                                   ║
+║  p / P    pilot / crew hit / heal                                                                ║
+║  press any key to close                                                                          ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════╝
             │██████████│            │██████████│            │                                      │
             │          │            │          │            │                                      │
             │          │            │          │            │                                      │
