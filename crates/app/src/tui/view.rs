@@ -1009,15 +1009,15 @@ fn help_modal_lines() -> Vec<Line<'static>> {
     use HelpItem::{Blank, Header, Row};
     let left = [
         Header("Doll"),
-        Row("Space", "damage current location"),
+        Row("Spc/Ent", "damage current location"),
         Row("u", "repair (internal first)"),
         Row("c", "crit slots (a=bin · t=munition)"),
         Row("r", "dice reference (cluster · hit loc)"),
         Row("f", "toggle front / rear armor"),
-        Row("←↑↓→", "move cursor"),
+        Row("←↑↓→", "move cursor (hjkl too)"),
         Blank,
         Header("Equipment"),
-        Row("Space", "fire weapon (marks ✓) / spend ammo"),
+        Row("Spc/Ent", "fire weapon (marks ✓) / spend ammo"),
         Row("u", "un-fire / refill"),
         Row("J", "toggle state: jam UAC/RAC · MASC/ECM"),
         Blank,
@@ -1041,7 +1041,7 @@ fn help_modal_lines() -> Vec<Line<'static>> {
         Row(", / .", "previous / next mech  ([ / ] also)"),
         Row("a / D", "add / delete mech"),
         Row("S", "sessions browser"),
-        Row("^t", "display picker (theme + layout)"),
+        Row("^t", "display picker (theme · layout · icons)"),
         Row("q", "quit"),
     ];
     let mut lines = two_column_help(&left, &right);
@@ -1652,7 +1652,7 @@ fn as_help_modal_lines() -> Vec<Line<'static>> {
     };
     vec![
         header("Alpha Strike"),
-        row("Space", "1 damage (armor then structure)"),
+        row("Spc/Ent", "1 damage (armor then structure)"),
         row("u", "repair 1"),
         row("o / i", "heat up / down"),
         row("c", "critical hits"),
@@ -1667,7 +1667,7 @@ fn as_help_modal_lines() -> Vec<Line<'static>> {
         row("a / D", "add / delete unit"),
         row("S", "sessions browser"),
         row("z", "undo"),
-        row("^t", "display picker (theme + layout)"),
+        row("^t", "display picker (theme · layout · icons)"),
         row("q", "quit"),
         Line::from(Span::styled(
             "  press any key to close",
@@ -1696,16 +1696,16 @@ fn ov_help_modal_lines() -> Vec<Line<'static>> {
     };
     vec![
         header("Armor panel (Tab to focus)"),
-        row("Space", "damage region (armor then structure)"),
+        row("Spc/Ent", "damage region (armor then structure)"),
         row("u", "repair region"),
         row("f", "toggle front / rear armor"),
         row("c", "critical hits (region table)"),
         header("Weapons panel (Tab to focus)"),
-        row("Space", "fire TIC (banks its heat)"),
+        row("Spc/Ent", "fire TIC (banks its heat)"),
         row("u", "un-fire TIC (refund heat)"),
         header("General"),
         row("Tab", "switch panel (armor / weapons)"),
-        row("↑↓ / kj", "move selection in panel"),
+        row("↑↓←→", "move selection in panel (hjkl too)"),
         row("o / i", "heat up / down (0–5 ladder)"),
         row("v", "movement this turn (mode + hexes)"),
         row("t", "to-hit shot (target movement / state)"),
@@ -1718,7 +1718,7 @@ fn ov_help_modal_lines() -> Vec<Line<'static>> {
         row(", / .", "previous / next unit  ([ / ] also)"),
         row("a / D", "add / delete unit"),
         row("S", "sessions browser"),
-        row("^t", "display picker (theme + layout)"),
+        row("^t", "display picker (theme · layout · icons)"),
         row("q", "quit"),
         Line::from(Span::styled(
             "  Override included with permission from Death From Above Wargaming.",
@@ -1980,7 +1980,7 @@ fn draw_picker(f: &mut Frame, app: &mut App) {
 
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
-            "[type] search  [^f] filter  [^g] gen  [^b] budget  [↑↓] select  [Tab] prev  [Enter] add  [Esc] back",
+            "[type] search  [^f] filter  [^g] gen  [^b] budget  [↑↓] select  [Tab] info  [Enter] add  [Esc] back",
             Style::default().fg(theme().dim),
         ))),
         chunks[2],
@@ -4508,7 +4508,7 @@ fn sbf_help_modal_lines() -> Vec<Line<'static>> {
     };
     vec![
         header("Strategic BattleForce"),
-        row("Space", "1 damage to unit (overflow spills over)"),
+        row("Spc/Ent", "1 damage to unit (overflow spills over)"),
         row("u", "repair 1"),
         row("c", "crit counters (roll 2d6, mark the result)"),
         row("t", "to-hit (range + hand-entered target)"),
@@ -4519,15 +4519,15 @@ fn sbf_help_modal_lines() -> Vec<Line<'static>> {
         row("r / R", "rename formation / unit"),
         row("C / l", "mark Force Commander / Formation Leader"),
         header("Selection"),
-        row(", / .", "previous / next formation  ([ / ] also)"),
+        row(", / .", "previous / next formation  ([ / ] Tab too)"),
         row("↑↓ / kj", "previous / next unit"),
         header("General"),
         row("b", "set force PV limit"),
-        row("z", "undo"),
+        row("z / L", "undo / log snapshot"),
         row("a / D", "add elements / delete formation"),
         row("S", "sessions browser"),
         row("P", "export record-sheet PDF"),
-        row("^t", "display picker (theme + layout)"),
+        row("^t", "display picker (theme · layout · icons)"),
         row("q", "quit"),
         Line::from(Span::styled(
             "  press any key to close",
@@ -4642,9 +4642,9 @@ fn draw_acs_formations(f: &mut Frame, area: Rect, app: &App) {
             head.push(Span::styled(" ✓", Style::default().fg(theme().good)));
         }
         if derived.is_aerospace() {
-            // Abstract Combat Aerospace is a v1 non-goal; the ground converter's numbers for an
-            // aero Formation are not valid. Flag it (full explanation in the detail pane).
-            head.push(Span::styled(" ⚠aero", Style::default().fg(theme().warning)));
+            // Aerospace Formations use the Abstract Combat Aerospace calculators (arc/weapon-class
+            // shot keys, Extreme range) — tag them so the different key set is no surprise.
+            head.push(Span::styled(" aero", Style::default().fg(theme().accent)));
         }
         lines.push(Line::from(head));
         lines.push(Line::from(vec![
@@ -5187,7 +5187,7 @@ fn acs_help_modal_lines() -> Vec<Line<'static>> {
     };
     vec![
         header("Abstract Combat System"),
-        row("Space", "apply damage to Combat Unit (typed amount)"),
+        row("Spc/Ent", "apply damage to Combat Unit (typed amount)"),
         row("u", "repair 1 armor"),
         row("m / M", "cycle Combat Unit / Formation morale rung"),
         row("f / F", "accrue fatigue (fought) / rest (−1 FP)"),
@@ -5196,15 +5196,20 @@ fn acs_help_modal_lines() -> Vec<Line<'static>> {
         row("r / D", "rename / delete Formation"),
         row("C / l", "mark Force Commander / Formation Leader"),
         header("Readout"),
-        row("[ / ]", "cycle range (Short/Medium/Long)"),
+        row("[ / ]", "cycle range (S/M/L; aero adds Extreme)"),
         row("+ / -", "target TMM up / down"),
         row("s", "toggle secondary target"),
+        header("Aero Formations"),
+        row("w / v", "cycle weapon class / firing arc"),
+        row("x / L", "cross-type matchup / target is large craft"),
+        row("y", "cycle Ground-Support mission"),
         header("Selection"),
-        row(", / .", "previous / next Formation"),
+        row("←→ / ,.", "previous / next Formation (h too)"),
         row("↑↓ / kj", "previous / next Combat Unit"),
         header("General"),
         row("a / z", "add elements / undo"),
         row("P", "export record-sheet PDF"),
+        row("^t", "display picker (theme · layout · icons)"),
         row("S / q", "sessions browser / quit"),
         Line::from(Span::styled(
             "  press any key to close",
@@ -6466,7 +6471,7 @@ fn bf_help_modal_lines() -> Vec<Line<'static>> {
     };
     vec![
         header("Standard BattleForce"),
-        row("Space", "1 damage (armor then structure)"),
+        row("Spc/Ent", "1 damage (armor then structure)"),
         row("u", "repair 1"),
         row("o / i", "heat up / down (manual cooldown, p.49)"),
         row("c", "criticals (p.42 column; a = ARM spent)"),
@@ -6486,7 +6491,7 @@ fn bf_help_modal_lines() -> Vec<Line<'static>> {
         row("a / D", "add / delete element"),
         row("P", "export record-sheet PDF"),
         row("S", "sessions browser"),
-        row("^t", "display picker (theme + layout)"),
+        row("^t", "display picker (theme · layout · icons)"),
         row("q", "quit"),
         Line::from(Span::styled(
             "  press any key to close",

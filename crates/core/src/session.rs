@@ -3795,10 +3795,9 @@ impl Session {
             .sum()
     }
 
-    /// Whether an ACS Formation is aerospace (its converted type is `As`/`La`). Abstract Combat
-    /// Aerospace is a v1 non-goal (see `engine/acs.rs`); the UI flags aerospace Formations as
-    /// unsupported rather than silently running them through the ground converter. Empty
-    /// Formations are never aerospace.
+    /// Whether an ACS Formation is aerospace (its converted type is `As`/`La`). Aerospace
+    /// Formations route through the Abstract Combat Aerospace calculators (aero shot editor,
+    /// Extreme range) instead of the ground ones. Empty Formations are never aerospace.
     pub fn acs_formation_is_aerospace(&self, f: &AcsFormationState) -> bool {
         !f.units.is_empty() && self.acs_formation(f).is_aerospace()
     }

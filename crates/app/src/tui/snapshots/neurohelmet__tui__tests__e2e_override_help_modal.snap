@@ -4,16 +4,16 @@ expression: screen
 ---
   1:Atlas     ╔ Keys ════════════════════════════════════════════════════════════════╗
               ║Armor panel (Tab to focus)                                            ║─────────────┐
-              ║  Space    damage region (armor then structure)                       ║t            │
+              ║  Spc/Ent  damage region (armor then structure)                       ║t            │
               ║  u        repair region                                              ║             │
               ║  f        toggle front / rear armor                                  ║             │
               ║  c        critical hits (region table)                               ║             │
               ║Weapons panel (Tab to focus)                                          ║             │
-              ║  Space    fire TIC (banks its heat)                                  ║             │
+              ║  Spc/Ent  fire TIC (banks its heat)                                  ║             │
               ║  u        un-fire TIC (refund heat)                                  ║             │
 ┌LA 10,11──┐  ║General                                                               ║             │
 │A 7/7     │  ║  Tab      switch panel (armor / weapons)                             ║             │
-│██████████│  ║  ↑↓ / kj  move selection in panel                                    ║             │
+│██████████│  ║  ↑↓←→     move selection in panel (hjkl too)                         ║             │
 │S 3/3     │  ║  o / i    heat up / down (0–5 ladder)                                ║             │
 │██████████│  ║  v        movement this turn (mode + hexes)                          ║             │
 │          │  ║  t        to-hit shot (target movement / state)                      ║             │
@@ -26,7 +26,7 @@ expression: screen
             ┌L║  , / .    previous / next unit  ([ / ] also)                         ║─────────────┐
             │A║  a / D    add / delete unit                                          ║             │
             │█║  S        sessions browser                                           ║             │
-            │S║  ^t       display picker (theme + layout)                            ║             │
+            │S║  ^t       display picker (theme · layout · icons)                    ║             │
             │█║  q        quit                                                       ║             │
             │ ║  Override included with permission from Death From Above Wargaming.  ║             │
             │ ║  Learn more about Override & DFA at https://dfawargaming.com         ║             │

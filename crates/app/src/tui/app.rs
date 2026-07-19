@@ -745,11 +745,12 @@ impl App {
             });
             return;
         }
-        // Undo is handled up front so it never snapshots itself.
-        if matches!(
-            self.screen,
-            Screen::Tracker | Screen::AlphaStrike | Screen::Sbf | Screen::BattleForce | Screen::Acs
-        ) && key.code == KeyCode::Char('z')
+        // Undo is handled up front so it never snapshots itself. Every play screen gets it —
+        // exclude only the two screens where `z` means something else (the picker's search box)
+        // or nothing at all (the Sessions browser), so a future mode is correct by default
+        // rather than repeating the dead-key bug Override had.
+        if !matches!(self.screen, Screen::Picker | Screen::Sessions)
+            && key.code == KeyCode::Char('z')
         {
             self.undo();
             return;
@@ -3742,9 +3743,8 @@ impl App {
             }
             KeyCode::Char('S') => self.open_sessions(),
             KeyCode::Char('?') => self.modal = Some(Modal::Help),
-            KeyCode::Left | KeyCode::Char('h') => self.acs_cycle_formation(-1),
-            KeyCode::Right | KeyCode::Char(',') => self.acs_cycle_formation(-1),
-            KeyCode::Char('.') => self.acs_cycle_formation(1),
+            KeyCode::Left | KeyCode::Char('h') | KeyCode::Char(',') => self.acs_cycle_formation(-1),
+            KeyCode::Right | KeyCode::Char('.') => self.acs_cycle_formation(1),
             KeyCode::Up | KeyCode::Char('k') => self.acs_cycle_unit(-1),
             KeyCode::Down | KeyCode::Char('j') => self.acs_cycle_unit(1),
             KeyCode::Char(' ') | KeyCode::Enter => self.acs_open_damage_input(),

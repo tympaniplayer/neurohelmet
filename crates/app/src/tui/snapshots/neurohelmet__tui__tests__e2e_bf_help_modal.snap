@@ -6,7 +6,7 @@ expression: screen
 ▸ Lance 1   MV 3  SZ 4  PV 208  Normal
 ┌ Atlas AS7-D ──────╔ Keys ════════════════════════════════════════════════════╗───────────────────┐
 │BM   SZ 4   MV 3   ║Standard BattleForce                                      ║                   │
-│Skill 4+   PV 52   ║  Space    1 damage (armor then structure)                ║                   │
+│Skill 4+   PV 52   ║  Spc/Ent  1 damage (armor then structure)                ║                   │
 │Armor     █████████║  u        repair 1                                       ║                   │
 │Structure ████████ ║  o / i    heat up / down (manual cooldown, p.49)         ║                   │
 │Heat      [0] 1  2 ║  c        criticals (p.42 column; a = ARM spent)         ║                   │
@@ -26,7 +26,7 @@ expression: screen
 │To-Hit    S 4+  M 6║  a / D    add / delete element                           ║ 10+               ║
 │Crits     Eng0  FC0║  P        export record-sheet PDF                        ║n0                 ║
 │Specials  AC2/2/-  ║  S        sessions browser                               ║1/1                ║
-│Rng S 0-1  M 2-4  L║  ^t       display picker (theme + layout)                ║10*                ║
+│Rng S 0-1  M 2-4  L║  ^t       display picker (theme · layout · icons)        ║10*                ║
 └───────────────────║  q        quit                                           ║═══════════════════╝
                     ║  press any key to close                                  ║
                     ╚══════════════════════════════════════════════════════════╝
