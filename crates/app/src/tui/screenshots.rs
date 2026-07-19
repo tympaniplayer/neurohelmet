@@ -29,6 +29,7 @@
 use super::app::{App, EquipRow, Focus};
 use super::icons::{set_icons, IconSet};
 use super::profile::{set_profile, DisplayProfile};
+use super::tests::{isolate_data_dir, press, press_ctrl};
 use super::theme::{set_theme, Theme};
 use super::view;
 use crate::render;
@@ -36,13 +37,18 @@ use neurohelmet_core::data::bundle::Bundle;
 use neurohelmet_core::domain::{Facing, GameMode, Location, Mech};
 use neurohelmet_core::session::{self, SbfDoctrine, Session};
 use ratatui::backend::TestBackend;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::KeyCode;
 use ratatui::Terminal;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 
+/// The real dataset, decoded once for the whole run. Goes through `crate::load_bundle` so a
+/// `NEUROHELMET_DATA` bake override works for screenshots exactly like it does for the app.
 fn real_bundle() -> Bundle {
-    static DATA: &[u8] = include_bytes!("../../../../data/mechs.bin");
-    Bundle::decode(DATA).expect("decode embedded bundle")
+    static BUNDLE: OnceLock<Bundle> = OnceLock::new();
+    BUNDLE
+        .get_or_init(|| crate::load_bundle().expect("load bundle"))
+        .clone()
 }
 
 /// Find a unit by `"Chassis Model"` (case-insensitive; exact match preferred, else substring)
@@ -61,26 +67,22 @@ fn pick(bundle: &Bundle, query: &str) -> Mech {
     m
 }
 
-fn press(app: &mut App, code: KeyCode) {
-    app.handle_key(KeyEvent::new(code, KeyModifiers::NONE));
-}
-
-fn press_ctrl(app: &mut App, code: KeyCode) {
-    app.handle_key(KeyEvent::new(code, KeyModifiers::CONTROL));
-}
-
 fn type_str(app: &mut App, s: &str) {
     for c in s.chars() {
         press(app, KeyCode::Char(c));
     }
 }
 
-fn outdir() -> PathBuf {
-    let dir = std::env::var("NEUROHELMET_SHOTS_DIR")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("../../docs/guide/src/images"));
-    std::fs::create_dir_all(&dir).expect("create shots dir");
-    dir
+/// Output dir, resolved (and created) once per run.
+fn outdir() -> &'static PathBuf {
+    static OUTDIR: OnceLock<PathBuf> = OnceLock::new();
+    OUTDIR.get_or_init(|| {
+        let dir = std::env::var("NEUROHELMET_SHOTS_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("../../docs/guide/src/images"));
+        std::fs::create_dir_all(&dir).expect("create shots dir");
+        dir
+    })
 }
 
 /// Draw one frame at `w`×`h` and write it as a scale-2 PNG.
@@ -92,17 +94,6 @@ fn shot(app: &mut App, name: &str, w: u16, h: u16) {
     let path = outdir().join(name);
     img.write_png(&path).expect("write png");
     println!("wrote {} ({}x{})", path.display(), img.w, img.h);
-}
-
-/// Same formula as `tests::isolate_data_dir` — keep every disk write out of the real data dir.
-fn isolate_data_dir() {
-    use std::sync::Once;
-    static ONCE: Once = Once::new();
-    ONCE.call_once(|| {
-        let dir = std::env::temp_dir().join(format!("neurohelmet-test-{}", std::process::id()));
-        let _ = std::fs::create_dir_all(&dir);
-        std::env::set_var("NEUROHELMET_DIR", &dir);
-    });
 }
 
 /// The Classic hero scene: a battle-worn Atlas leading a Davion medium lance.

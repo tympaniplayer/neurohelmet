@@ -612,11 +612,13 @@ mod tests {
         }
     }
 
-    fn press(app: &mut App, code: KeyCode) {
+    // `pub(super)` on the next three: shared with the sibling `screenshots` generator module,
+    // which drives the same App the same way and must use the same data-dir isolation.
+    pub(super) fn press(app: &mut App, code: KeyCode) {
         app.handle_key(KeyEvent::new(code, KeyModifiers::NONE));
     }
 
-    fn press_ctrl(app: &mut App, code: KeyCode) {
+    pub(super) fn press_ctrl(app: &mut App, code: KeyCode) {
         app.handle_key(KeyEvent::new(code, KeyModifiers::CONTROL));
     }
 
@@ -624,7 +626,7 @@ mod tests {
     /// that exercise the on-disk create/load/log paths never touch the user's real data dir (which
     /// would litter their session list and clobber the "last active" pointer). Idempotent — the
     /// `Once` sets `NEUROHELMET_DIR` before any caller proceeds, so concurrent disk tests agree on it.
-    fn isolate_data_dir() {
+    pub(super) fn isolate_data_dir() {
         use std::sync::Once;
         static ONCE: Once = Once::new();
         ONCE.call_once(|| {

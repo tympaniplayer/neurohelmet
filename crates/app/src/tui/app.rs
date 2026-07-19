@@ -745,16 +745,12 @@ impl App {
             });
             return;
         }
-        // Undo is handled up front so it never snapshots itself.
-        if matches!(
-            self.screen,
-            Screen::Tracker
-                | Screen::AlphaStrike
-                | Screen::Override
-                | Screen::Sbf
-                | Screen::BattleForce
-                | Screen::Acs
-        ) && key.code == KeyCode::Char('z')
+        // Undo is handled up front so it never snapshots itself. Every play screen gets it —
+        // exclude only the two screens where `z` means something else (the picker's search box)
+        // or nothing at all (the Sessions browser), so a future mode is correct by default
+        // rather than repeating the dead-key bug Override had.
+        if !matches!(self.screen, Screen::Picker | Screen::Sessions)
+            && key.code == KeyCode::Char('z')
         {
             self.undo();
             return;
