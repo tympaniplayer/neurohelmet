@@ -23,6 +23,8 @@ mod forcegen;
 mod icons;
 mod picker;
 mod profile;
+#[cfg(test)]
+mod screenshots;
 mod theme;
 mod view;
 
@@ -1458,6 +1460,26 @@ mod tests {
         );
         press(&mut app, KeyCode::Char('z')); // nothing left
         assert_eq!(app.status, "Nothing to undo");
+    }
+
+    /// `z` undo works on the Override screen too (its help modal has always advertised it; the
+    /// intercept used to skip `Screen::Override`, leaving the key dead there).
+    #[test]
+    fn undo_works_in_override() {
+        let mut app = app_with_override(combat_mech());
+        let before = app.session.active_mech().unwrap().ov_armor_hits.clone();
+        press(&mut app, KeyCode::Char(' ')); // mark damage on the focused region
+        assert_ne!(
+            app.session.active_mech().unwrap().ov_armor_hits,
+            before,
+            "Space marked Override damage"
+        );
+        press(&mut app, KeyCode::Char('z')); // undo it
+        assert_eq!(
+            app.session.active_mech().unwrap().ov_armor_hits,
+            before,
+            "z reverts the Override damage"
+        );
     }
 
     #[test]
