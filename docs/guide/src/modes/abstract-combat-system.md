@@ -68,9 +68,10 @@ current home (`Formation · Combat Unit · SBF Unit`, or "unassigned" if it hasn
 | **`Esc`** / **`Enter`** / **`g`** | close (empty tiers are pruned) |
 
 **`a`** auto-group builds one Formation over the entire pool with default nesting (Units of ≤4
-elements, Teams of ≤4 Units, Combat Units of ≤3 Teams) — and it **replaces whatever grouping you
-built by hand, without asking**, and **`z`** won't bring that grouping back. Use it to start, not
-to tidy up.
+elements, Teams of ≤4 Units, Combat Units of ≤3 Teams). Because it rebuilds *everything*, it asks
+first whenever you'd lose something you entered by hand — the prompt itemizes exactly what
+(your grouping, custom names, armor hits, fatigue, morale rungs, COM/LEAD marks). On a pristine
+grouping there's nothing at stake, so it just runs. Either way it's a single **`z`** to undo.
 
 Back on the main screen, **`r`** renames the active Formation and **`D`** deletes it —
 immediately, with no confirmation. The elements survive in the ungrouped pool, and **`z`** brings
