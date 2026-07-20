@@ -143,8 +143,8 @@ Two honest limitations:
 - Neurohelmet is **keyboard only** — there is no mouse support. Press **`?`** on any play
   screen for that mode's key reference; the unit picker and Sessions browser show their keys
   in a footer hint line instead.
-- There is currently no `--help` or `--version` flag; unknown flags are silently ignored and
-  the TUI starts. The verb list lives in the [command-line reference](cli.md).
+- `--version` prints the version, but there is no `--help` flag; other unknown flags are silently
+  ignored and the TUI starts. The verb list lives in the [command-line reference](cli.md).
 
 ## I want to start completely fresh
 

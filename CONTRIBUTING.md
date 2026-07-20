@@ -132,9 +132,12 @@ To test a bundle without rebuilding, point the app at it: `NEUROHELMET_DATA=/pat
 
 ## Reporting bugs
 
-Open an issue with what you did, what you expected, and what happened. For anything visual, the
-terminal, font, and `NEUROHELMET_THEME` / `NEUROHELMET_PROFILE` / `NEUROHELMET_ICONS` settings are
-useful — and a paste of the screen is worth a lot, since it's all text.
+Open an issue with what you did, what you expected, and what happened, plus your version
+(`neurohelmet --version`) and OS. For anything visual, the terminal, font, and `NEUROHELMET_THEME` /
+`NEUROHELMET_PROFILE` / `NEUROHELMET_ICONS` settings are useful — and a paste of the screen is worth a
+lot, since it's all text.
+
+Found a **security** issue? Report it privately instead — see [SECURITY.md](SECURITY.md).
 
 Rules bugs are the most valuable kind: if Neurohelmet disagrees with the book, cite the rulebook and
 page and it'll get fixed.
