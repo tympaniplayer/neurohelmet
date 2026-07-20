@@ -2,8 +2,13 @@
 
 ## Reporting a vulnerability
 
-Please report security issues privately to **<neurohelmet@natedpalm.com>** rather than opening a
-public issue, so a fix can ship before the details are public.
+Please report security issues privately rather than opening a public issue, so a fix can ship before
+the details are public. Either channel works:
+
+- **[Report a vulnerability](https://github.com/tympaniplayer/neurohelmet/security/advisories/new)** —
+  GitHub's private reporting form. Preferred: the discussion stays attached to the repository, and it
+  can turn into a published advisory once a fix is out.
+- **<neurohelmet@natedpalm.com>** — if you'd rather use email, or don't have a GitHub account.
 
 Helpful things to include: the Neurohelmet version (`neurohelmet --version`), your OS, and the
 smallest steps or input file that reproduce it.
