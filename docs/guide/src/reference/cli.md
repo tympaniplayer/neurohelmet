@@ -2,12 +2,13 @@
 
 Neurohelmet is one binary. Run it with no arguments and you get the TUI; a handful of `--verbs`
 run headless jobs instead — diagnostics, game-log export, publishing, and PDF record sheets. Only
-one verb runs per invocation, and there is no `--help` or `--version` — an unrecognized flag is
-ignored and the TUI starts.
+one verb runs per invocation, and there is no `--help` — an unrecognized flag is ignored and the TUI
+starts.
 
 | Invocation | What it does |
 |------------|--------------|
 | `neurohelmet` | Start the TUI. |
+| `neurohelmet --version` | Print the version and exit. |
 | `neurohelmet --selftest` | Headless smoke test — no terminal needed. |
 | `neurohelmet --term-size` | Print the terminal size the app detects. |
 | `neurohelmet --export <session> [outdir]` | Render the session's game log to image files, offline. |
@@ -29,6 +30,16 @@ One caveat worth knowing: the legacy-session migration (old single `session.json
 `sessions/default.json`) runs **only on TUI startup**. If you upgraded from a very old install and
 go straight to `--export`, `--publish`, or `--pdf` without ever launching the TUI, the verb won't find your old
 session under its new name — launch the app once first.
+
+## `--version`
+
+```
+neurohelmet --version      # -V works too
+```
+
+Prints `neurohelmet <version>` and exits — checked before anything that needs a terminal, so it
+works over SSH, in a pipe, or anywhere without a TTY. Worth including in a
+[bug report](https://github.com/tympaniplayer/neurohelmet/issues).
 
 ## `--selftest`
 

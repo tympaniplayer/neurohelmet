@@ -74,6 +74,13 @@ fn selftest() -> color_eyre::Result<()> {
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
+    // Before anything that needs a terminal — a bug report should be able to ask for this over a
+    // chat window without the reporter having to find a TTY.
+    if std::env::args().any(|a| a == "--version" || a == "-V") {
+        println!("neurohelmet {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
     if std::env::args().any(|a| a == "--selftest") {
         return selftest();
     }

@@ -339,3 +339,10 @@ battle simulator.
 
 Planned work and where to start are in [ROADMAP.md](ROADMAP.md). The design boundaries that come with
 being manual-first and offline, and the reasoning behind them, are recorded there too.
+
+## Contributing
+
+Bug reports, rules fixes, themes, and new game systems are all welcome — see
+[CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the test layers, and the conventions (formatting is
+CI-enforced, and keybindings live in more than one place). Participation is covered by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
