@@ -95,6 +95,8 @@ pub enum PendingAction {
     ApplyDoctrine(SbfDoctrine),
     /// Rebuild the Standard BF Unit grouping under a doctrine after the itemized confirm.
     ApplyBfDoctrine(SbfDoctrine),
+    /// Rebuild the whole ACS grouping from the pool after the player confirmed the itemized losses.
+    AcsAutoGroup,
     /// CASEP ammo crit (IO:BF p.151): the player rolled the 1D6 and it came up ≤ 2 — the ammo
     /// detonates and the element is destroyed (`y`); `n` = the 3+ ignore outcome.
     BfAmmoDetonate,
@@ -608,6 +610,26 @@ fn sbf_default_name(name: &str) -> bool {
             | "Air Lance"
             | "Point"
     )
+}
+
+/// Whether an ACS Formation / Combat Unit name is one the app generated (see
+/// [`Session::acs_new_formation`]) rather than hand-entered. Nested SBF-unit names are seeded as
+/// `"<formation> U<n>"`, so a renamed Formation propagates — the check strips that suffix too.
+/// A false negative merely skips one line of the rebuild warning.
+fn acs_default_name(name: &str) -> bool {
+    let base = name
+        .trim_end_matches(|c: char| c.is_ascii_digit())
+        .trim_end();
+    // "Formation 1 U2" -> "Formation 1" -> "Formation": the per-SBF-unit seed inside a Formation.
+    let base = base
+        .strip_suffix('U')
+        .map(|b| {
+            b.trim_end()
+                .trim_end_matches(|c: char| c.is_ascii_digit())
+                .trim_end()
+        })
+        .unwrap_or(base);
+    matches!(base, "Formation" | "Combat Unit" | "Team")
 }
 
 /// How many actions can be undone.
@@ -1797,6 +1819,7 @@ impl App {
             }
             PendingAction::ApplyDoctrine(doctrine) => self.sbf_apply_doctrine(doctrine),
             PendingAction::ApplyBfDoctrine(doctrine) => self.bf_apply_doctrine(doctrine),
+            PendingAction::AcsAutoGroup => self.acs_auto_group(),
             PendingAction::BfAmmoDetonate => {
                 let before = self.session.clone();
                 if let Some(tm) = self.session.active_mech_mut() {
@@ -1955,6 +1978,7 @@ impl App {
             | PendingAction::DeleteActiveFormation
             | PendingAction::ApplyDoctrine(_)
             | PendingAction::ApplyBfDoctrine(_)
+            | PendingAction::AcsAutoGroup
             | PendingAction::BfAmmoDetonate
             | PendingAction::DeleteSession(_)
             | PendingAction::Quit => {}
@@ -4026,18 +4050,88 @@ impl App {
 
     /// Auto-group the WHOLE pool into one default-nested Formation, replacing any existing grouping
     /// (the opt-in `a` inside the editor). Manual-first: this is never applied implicitly.
+    /// What a rebuild would throw away, itemized for the confirm prompt (the ACS analogue of
+    /// [`Self::sbf_doctrine_losses`]). Empty means the grouping is pristine and auto-group can run
+    /// without asking — grouping-first stays frictionless; hand-entered state gets a bill first.
+    fn acs_auto_group_losses(&self) -> Vec<String> {
+        use neurohelmet_core::engine::acs::AcsMorale;
+        let fs = &self.session.acs.formations;
+        let mut out = Vec::new();
+        // Auto-group collapses everything into a single "Formation 1", so a multi-Formation
+        // arrangement is itself hand-built structure worth naming.
+        let populated = fs.iter().filter(|f| !f.units.is_empty()).count();
+        if populated > 1 {
+            out.push(format!("{populated} formation(s) of grouping"));
+        }
+        let custom_names = fs
+            .iter()
+            .flat_map(|f| {
+                std::iter::once(f.name.as_str()).chain(f.units.iter().map(|u| u.name.as_str()))
+            })
+            .filter(|n| !acs_default_name(n))
+            .count();
+        if custom_names > 0 {
+            out.push(format!("{custom_names} custom name(s)"));
+        }
+        let armor: u32 = fs
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.armor_hits)
+            .sum();
+        if armor > 0 {
+            out.push(format!("{armor} armor hit(s)"));
+        }
+        let fatigue: u16 = fs
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .map(|u| u.fatigue_points_x2)
+            .sum();
+        if fatigue > 0 {
+            out.push("accrued fatigue".into());
+        }
+        let morale = fs.iter().filter(|f| f.morale != AcsMorale::Normal).count()
+            + fs.iter()
+                .flat_map(|f| f.units.iter())
+                .filter(|u| u.morale != AcsMorale::Normal)
+                .count();
+        if morale > 0 {
+            out.push(format!("{morale} morale rung(s)"));
+        }
+        if fs
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .any(|u| u.is_commander)
+        {
+            out.push("the COM mark".into());
+        }
+        let leads = fs
+            .iter()
+            .flat_map(|f| f.units.iter())
+            .filter(|u| u.is_leader)
+            .count();
+        if leads > 0 {
+            out.push(format!("{leads} LEAD mark(s)"));
+        }
+        out
+    }
+
+    /// Rebuild the whole ACS grouping from the pool (one undo step; losses were confirmed or nil).
     fn acs_auto_group(&mut self) {
         let n = self.session.mechs.len();
         if n == 0 {
             self.status = "Pool is empty — [a] to add elements".into();
             return;
         }
+        let before = self.session.clone();
         self.session.acs.formations.clear();
         self.session.acs_new_formation("Formation 1", 0..n);
         self.session.acs.active_formation = 0;
         self.session.acs.active_unit = 0;
-        self.dirty = true;
-        self.status = format!("Auto-grouped {n} element(s)");
+        if self.session != before {
+            self.push_undo(before);
+            self.dirty = true;
+        }
+        self.status = format!("Auto-grouped {n} element(s) — z undoes");
     }
 
     /// Drive the ACS grouping editor (four-tier analogue of `sbf_group_modal_key`): ↑↓ pick a pool
@@ -4150,8 +4244,21 @@ impl App {
             KeyCode::Char('F') => assign(self, AcsAssign::NewFormation),
             KeyCode::Char('u') => assign(self, AcsAssign::Unassign),
             KeyCode::Char('a') => {
-                self.acs_auto_group();
-                self.modal = Some(Modal::AcsGroup { sel });
+                // Grouping-first stays frictionless: a pristine grouping rebuilds immediately.
+                // Anything hand-entered gets an itemized bill first (mirrors the SBF doctrine flow).
+                let losses = self.acs_auto_group_losses();
+                if losses.is_empty() {
+                    self.acs_auto_group();
+                    self.modal = Some(Modal::AcsGroup { sel });
+                } else {
+                    self.modal = Some(Modal::Confirm {
+                        prompt: format!(
+                            "Rebuild the whole grouping?\nDiscards {} — z undoes.",
+                            losses.join(", ")
+                        ),
+                        action: PendingAction::AcsAutoGroup,
+                    });
+                }
             }
             _ => self.modal = Some(Modal::AcsGroup { sel }),
         }

@@ -5294,6 +5294,63 @@ mod tests {
         assert!((0..3).all(|e| app.session.acs_element_assignment(e).is_some()));
     }
 
+    /// Auto-group rebuilds the whole grouping, so hand-entered state gets an itemized confirm
+    /// first and the rebuild is a single undo step. (The pristine path stays frictionless —
+    /// `e2e_acs_group_editor` covers `a` applying with no prompt.)
+    #[test]
+    fn e2e_acs_auto_group_confirms_itemized_losses() {
+        use super::app::Modal;
+        let mut app = app_with_acs(6); // Formation named "Regiment" — a custom name
+        press(&mut app, KeyCode::Char(' ')); // damage input
+        press(&mut app, KeyCode::Char('3'));
+        press(&mut app, KeyCode::Enter);
+        press(&mut app, KeyCode::Char('C')); // COM mark
+        press(&mut app, KeyCode::Char('m')); // Combat Unit morale rung
+        assert!(app.session.acs.formations[0].units[0].is_commander);
+
+        press(&mut app, KeyCode::Char('g'));
+        press(&mut app, KeyCode::Char('a'));
+        let Some(Modal::Confirm { .. }) = app.modal else {
+            panic!(
+                "expected an itemized confirmation, got {:?}",
+                render(&mut app)
+            );
+        };
+        let screen = render(&mut app);
+        for needle in [
+            "1 custom name(s)",
+            "3 armor hit(s)",
+            "1 morale rung(s)",
+            "the COM mark",
+            "z undoes",
+        ] {
+            assert!(
+                screen.contains(needle),
+                "prompt itemizes {needle:?}:\n{screen}"
+            );
+        }
+
+        // n cancels: nothing changed.
+        press(&mut app, KeyCode::Char('n'));
+        assert_eq!(app.session.acs.formations[0].name, "Regiment");
+        assert!(app.session.acs.formations[0].units[0].is_commander);
+
+        // y applies: rebuilt with generated names, and one z restores the lot.
+        press(&mut app, KeyCode::Char('g'));
+        press(&mut app, KeyCode::Char('a'));
+        press(&mut app, KeyCode::Char('y'));
+        assert_eq!(app.session.acs.formations[0].name, "Formation 1");
+        assert!(!app.session.acs.formations[0].units[0].is_commander);
+        assert_eq!(app.session.acs.formations[0].units[0].armor_hits, 0);
+        press(&mut app, KeyCode::Char('z'));
+        assert_eq!(app.session.acs.formations[0].name, "Regiment");
+        assert!(
+            app.session.acs.formations[0].units[0].is_commander,
+            "one z restores the lot"
+        );
+        assert_eq!(app.session.acs.formations[0].units[0].armor_hits, 3);
+    }
+
     #[test]
     fn c_key_creates_acs_session() {
         isolate_data_dir();
